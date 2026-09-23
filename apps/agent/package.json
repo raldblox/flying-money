@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "start": "tsx src/main.ts",
-    "demo:local": "tsx src/local-demo.ts"
+    "demo:local": "tsx src/local-demo.ts",
+    "demo:testnet": "tsx src/testnet-demo.ts"
   },
   "dependencies": {
     "@flying-money/abi": "workspace:*",

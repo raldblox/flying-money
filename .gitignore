@@ -27,3 +27,4 @@ Thumbs.db
 !.vscode/extensions.json
 contracts/deployments/
 contracts/snapshots/
+.flying-money*.json
