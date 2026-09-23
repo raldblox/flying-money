@@ -30,3 +30,4 @@ contracts/snapshots/
 .flying-money*.json
 .e2e-state.json
 apps/web/next-env.d.ts
+.vercel
