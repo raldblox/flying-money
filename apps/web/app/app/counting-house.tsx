@@ -131,7 +131,7 @@ export function CountingHouse({ defaultChain, oraclePayee }: { defaultChain: str
         <div className="sheet p-10 text-center">
           <p className="font-display text-3xl font-semibold">Connect a wallet to open the Counting House.</p>
           <p className="mt-2 text-ink-2">
-            As a funder you issue certificates; as a payee you redeem the notes you were paid with.
+            Paying for someone? Issue a certificate. Being paid? Collect the slips you received.
           </p>
         </div>
       ) : (

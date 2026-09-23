@@ -34,7 +34,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} ${han.variable}`}>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      className={`${display.variable} ${sans.variable} ${mono.variable} ${han.variable}`}
+    >
       <body className="min-h-dvh flex flex-col antialiased">
         <PaperDefs />
         <a

@@ -23,7 +23,7 @@ export function Chapter({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className={`mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 ${className}`}
+      className={`reveal mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 ${className}`}
     >
       <div className="flex items-start gap-5">
         <span className="chapter-mark mt-1 hidden sm:inline-grid" aria-hidden lang="zh-Hant">

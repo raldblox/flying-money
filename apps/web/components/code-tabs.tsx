@@ -29,7 +29,7 @@ export function CodeTabs({ tabs }: { tabs: Array<{ label: string; code: string }
       </div>
       {tabs.map((t, k) => (
         <div key={t.label} id={`${id}-panel-${k}`} role="tabpanel" aria-labelledby={`${id}-tab-${k}`} hidden={i !== k}>
-          <pre className="ledger overflow-x-auto px-6 py-4 font-mono text-sm leading-[2.25rem]">
+          <pre className="ledger bg-origin-content overflow-x-auto px-6 py-4 font-mono text-sm leading-[2.25rem]">
             <code>{t.code}</code>
           </pre>
         </div>

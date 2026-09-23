@@ -21,7 +21,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 const fm = createFlyingMoneyClient({
   chains: ['arbitrum-sepolia'],
   spender: privateKeyToAccount(process.env.AGENT_KEY),
-  store: fileStore('.flying-money.json'),        // durable outbox
+  store: fileStore('.flying-money.json'),         // durable outbox
   certificates: ['0x…'],                          // issued by your funder
   maxPricePerRequest: 50_000n,                    // 0.05 USDC
 })
@@ -39,24 +39,32 @@ app.use('/v1/*', flyingMoney({
 app.get('/v1/tea-price', (c) => c.json({ price: 42 }))`
 
 const WORKED = [
-  ['Deposit before travel', 'prefunded', 'The certificate is funded before anyone spends.'],
-  ['Tied to one redemption', 'scoped', 'It pays one named seller, nobody else.'],
-  ['Halves that must match', 'verifiable', 'A signature checked against the chain record.'],
-  ['Value moved, coins stayed', 'deferred settlement', 'Many payments, one redemption.'],
+  ['Deposit before travel', 'paid upfront', 'The money is locked in before anyone spends it.'],
+  ['Payable in one place', 'one seller', 'It pays one named seller, nobody else.'],
+  [
+    'Halves that must match',
+    'checkable',
+    'Each payment slip is signed, and anyone can check it against the public record.',
+  ],
+  ['Value moved, coins stayed', 'settle later', 'Many small payments, collected once.'],
 ]
 
 const STEPS = [
-  { Icon: IconIssue, t: 'Issue', d: 'Lock 5 USDC for one seller, usable by one agent key, until a date.' },
-  { Icon: IconSeal, t: 'Seal', d: 'Every request carries a signed note: “total so far: 0.37”.' },
+  {
+    Icon: IconIssue,
+    t: 'Issue',
+    d: 'Lock 5 USDC for one seller. Only your agent’s key can spend it, and only until the end date.',
+  },
+  { Icon: IconSeal, t: 'Seal', d: 'With every request, the agent hands over a signed slip: “total so far: 0.37”.' },
   {
     Icon: IconServe,
     t: 'Serve',
-    d: 'The seller verifies the note locally in milliseconds. No transaction, no waiting. It keeps working if the network blinks.',
+    d: 'The seller checks the slip on the spot, in milliseconds. Nothing is sent to the blockchain, so there’s no waiting, and it keeps working if the connection drops for a moment.',
   },
   {
     Icon: IconRedeem,
     t: 'Redeem',
-    d: 'The seller redeems the latest note in one transaction. Leftover funds return to you after expiry.',
+    d: 'The seller collects the latest total in one transaction. Whatever is left comes back to you after the end date.',
   },
 ]
 
@@ -128,8 +136,11 @@ export default function Home() {
             <p className="smallcaps text-sm text-ink-2">Ways to let an agent pay</p>
             <ol className="mt-2">
               {[
-                ['Give it your card?', 'unbounded risk if it loops or gets hijacked'],
-                ['Pay on-chain per request?', 'too slow and too costly at a tenth of a cent a call'],
+                ['Give it your card?', 'no limit if it gets stuck in a loop or hacked'],
+                [
+                  'Pay on the blockchain for every request?',
+                  'too slow and too costly when a call costs a tenth of a cent',
+                ],
                 ['Promise to pay later?', 'sellers can’t trust an anonymous agent'],
               ].map(([q, why]) => (
                 <li key={q} className="flex flex-wrap items-baseline gap-x-3 py-[0.45rem] leading-[2.25rem]">
@@ -201,19 +212,19 @@ export default function Home() {
                 <span className="text-seal">✓</span> Guaranteed
               </h3>
               <ul className="ledger mt-3 leading-[2.25rem]">
-                <li>The spender can’t authorize beyond the face value, even with a stolen key.</li>
-                <li>Every redeemable note is backed by funds reserved for that seller until expiry.</li>
-                <li>Anyone can redeem, but the value only reaches the named seller.</li>
-                <li>You get the remainder back after expiry.</li>
+                <li>The agent can’t spend more than the budget, even if its key is stolen.</li>
+                <li>Every valid slip is backed by money set aside for that seller until the end date.</li>
+                <li>Anyone can submit a slip, but the money only ever goes to the named seller.</li>
+                <li>You get the unspent money back after the end date.</li>
               </ul>
             </div>
             <div className="border-t border-dashed border-seal/40 p-8 sm:p-10 md:border-l md:border-t-0">
               <h3 className="font-display text-2xl font-semibold text-ink-2">Not guaranteed</h3>
               <ul className="ledger mt-3 leading-[2.25rem] text-ink-2">
-                <li>That the seller delivers.</li>
-                <li>That the seller redeems before expiry (its SDK does this automatically).</li>
-                <li>Stablecoin freezes.</li>
-                <li>This is unaudited testnet software.</li>
+                <li>That the seller delivers what you paid for.</li>
+                <li>That the seller collects before the end date (its software does this automatically).</li>
+                <li>That the USDC issuer never freezes funds.</li>
+                <li>That the code is bug-free: it is test software and not yet audited.</li>
               </ul>
             </div>
           </div>
@@ -242,9 +253,9 @@ export default function Home() {
           ))}
         </ul>
         <p className="mt-10 max-w-3xl text-lg leading-relaxed">
-          <strong>No wallet needed to spend.</strong> Give a certificate as a link or QR. The holder sets a PIN and pays
-          by showing a QR. No wallet, no crypto, no gas. Only the giver needs USDC, and unused balance returns to the
-          giver.
+          <strong>No crypto wallet needed to spend.</strong> Send a certificate as a link or QR code. The person sets a
+          PIN and pays by showing a QR code at the counter. They never touch crypto or pay fees. Only you, the giver,
+          need USDC, and whatever they don’t spend comes back to you.
         </p>
       </Chapter>
 
@@ -268,8 +279,9 @@ export default function Home() {
           We removed offline cash. <em className="text-seal">We only ship what the math guarantees.</em>
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-2">
-          We started out building offline cash. Our own adversarial review proved software alone can’t stop someone
-          paying two offline strangers with the same money, so we removed it.
+          We started out building offline cash: paying a stranger with no internet at all. Our own security review
+          showed that software alone can’t stop someone spending the same money twice with two strangers who are both
+          offline. So we removed it.
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>

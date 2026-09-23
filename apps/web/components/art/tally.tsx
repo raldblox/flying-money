@@ -32,21 +32,12 @@ export function TallyArt({
         <clipPath id="right-half">
           <path d={`M520 0 L360 0 ${seam.replace('M360 18', 'L360 18')} L356 320 L520 320 Z`} />
         </clipPath>
-        <pattern id="fibre" width="140" height="140" patternUnits="userSpaceOnUse">
-          <rect width="140" height="140" fill="var(--paper)" />
-          <path
-            d="M0 30 C 40 26, 80 36, 140 28 M0 90 C 50 96, 90 84, 140 94"
-            stroke="var(--line)"
-            strokeWidth="0.8"
-            fill="none"
-          />
-        </pattern>
       </defs>
 
       {/* LEFT half: the certificate */}
       <g className="tally-left">
         <g clipPath="url(#left-half)">
-          <rect x="12" y="12" width="500" height="296" rx="3" fill="url(#fibre)" filter="url(#deckle)" />
+          <rect x="12" y="12" width="500" height="296" rx="3" fill="var(--paper)" filter="url(#deckle)" />
           <rect
             x="30"
             y="30"
@@ -60,7 +51,15 @@ export function TallyArt({
           <text x="54" y="72" fontSize="12" letterSpacing="3" className="fill-ink-2" fontFamily="var(--font-sans)">
             CERTIFICATE · 飛錢
           </text>
-          <text x="54" y="138" fontSize="64" fontWeight="600" className="fill-ink" fontFamily="var(--font-display)">
+          <text
+            x="54"
+            y="138"
+            fontSize="64"
+            fontWeight="600"
+            className="fill-ink"
+            fontFamily="var(--font-display)"
+            style={{ fontVariantNumeric: 'lining-nums' }}
+          >
             {face}
           </text>
           <text x="58" y="162" fontSize="12" className="fill-ink-2" fontFamily="var(--font-sans)">
@@ -69,8 +68,8 @@ export function TallyArt({
           {(
             [
               ['Payable to', payee],
-              ['Holder', holder],
-              ['Until', expires],
+              ['Spent by', holder],
+              ['Valid for', expires],
             ] as const
           ).map(([k, v], i) => (
             <g key={k} fontFamily="var(--font-sans)" fontSize="13">
@@ -90,7 +89,7 @@ export function TallyArt({
       {/* RIGHT half: the counterfoil, kept by the office */}
       <g className="tally-right">
         <g clipPath="url(#right-half)">
-          <rect x="12" y="12" width="500" height="296" rx="3" fill="url(#fibre)" filter="url(#deckle)" />
+          <rect x="12" y="12" width="500" height="296" rx="3" fill="var(--paper)" filter="url(#deckle)" />
           <rect
             x="30"
             y="30"

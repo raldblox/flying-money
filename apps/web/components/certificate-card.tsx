@@ -24,7 +24,7 @@ export function CertificateCard({
       <div className="tally-join relative flex select-none">
         <div className="half-left flex-1 rounded-l-md border border-r-0 border-line bg-paper-2 p-5 shadow-sm">
           <p className="text-xs uppercase tracking-[0.18em] text-ink-2">Certificate</p>
-          <p className="mt-2 font-display text-5xl font-semibold tabular-nums">{face}</p>
+          <p className="mt-2 font-display text-5xl font-semibold lining-nums tabular-nums">{face}</p>
           <p className="text-xs text-ink-2">USDC face value</p>
           <dl className="mt-4 space-y-1 text-sm">
             <div className="flex gap-2">
@@ -32,11 +32,11 @@ export function CertificateCard({
               <dd className="font-medium">{payee}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-20 text-ink-2">Holder</dt>
+              <dt className="w-20 text-ink-2">Spent by</dt>
               <dd className="font-medium">{holder}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-20 text-ink-2">Until</dt>
+              <dt className="w-20 text-ink-2">Valid until</dt>
               <dd className="font-medium">{expires}</dd>
             </div>
           </dl>

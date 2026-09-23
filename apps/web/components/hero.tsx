@@ -11,7 +11,7 @@ const DOORS = {
         Give your AI agent a <em className="text-seal">sealed certificate</em>, not your wallet.
       </>
     ),
-    sub: 'Lock a budget for one seller. Your agent pays per request with signed notes the seller checks instantly. The seller redeems everything in one transaction. Your agent can’t spend past the limit, and every note it signs is backed by money reserved for that seller.',
+    sub: 'Set aside a budget in USDC (a digital dollar) that only one seller can collect. Your agent pays for each request with a signed slip the seller checks instantly, then the seller collects the total in one go. Your agent can’t spend past the budget, and the money behind every slip is already set aside for that seller.',
     card: { face: '5.00', payee: 'Silk Road Oracle', holder: 'Research agent', expires: '7 days' },
   },
   people: {
@@ -21,7 +21,7 @@ const DOORS = {
         <em className="text-seal">reserved</em> for the shop.
       </>
     ),
-    sub: 'Give your kid, employee or friend a certificate for one place, with a hard limit. They pay by showing a QR code, even when the shop’s Wi‑Fi is down. No wallet, no crypto, no gas for them. Unused balance returns to you.',
+    sub: 'Give your kid, employee or friend a certificate for one place, with a hard limit. They pay by showing a QR code, even when the shop’s Wi‑Fi is down. They don’t need a crypto wallet or any fees. Whatever they don’t spend comes back to you.',
     card: { face: '20.00', payee: 'Lantern Café', holder: 'Mia', expires: '30 days' },
   },
 } as const
@@ -76,7 +76,8 @@ export function Hero() {
             >
               Arbitrum · Monad · Arc · Base
             </a>{' '}
-            — same protocol, every chain. <span className="smallcaps">Testnets + capped mainnets · unaudited</span>
+            — the same certificates on every network.{' '}
+            <span className="smallcaps">Test networks + small capped pilots · not yet audited</span>
           </p>
         </div>
         <figure className="relative mx-auto w-full max-w-[34rem]" key={door}>

@@ -19,9 +19,9 @@ export default function AppPage() {
         Issue, keep, <em className="text-seal">redeem</em>.
       </h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
-        Lock a budget for one place, hand a spending key to whoever spends it, and collect sealed notes as the payee.
-        Control happens when you issue: there is no freeze or early cancel, which is exactly why a shop can accept a
-        note instantly.
+        Set aside a budget for one place and give a spending key to whoever will spend it. If you’re the one being paid,
+        collect your money here. You set every limit up front: once issued, a certificate can’t be frozen or cancelled
+        early. That promise is exactly why a shop can accept it instantly.
       </p>
       <Providers>
         <CountingHouse

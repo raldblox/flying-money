@@ -101,7 +101,7 @@ export function IssuedList({ chain, refreshKey }: { chain: ChainConfig; refreshK
               </a>
               <StatusChip kind={st}>{st[0]!.toUpperCase() + st.slice(1)}</StatusChip>
             </div>
-            <p className="mt-3 font-display text-3xl font-semibold tabular-nums">
+            <p className="mt-3 font-display text-3xl font-semibold lining-nums tabular-nums">
               {usdc(c.faceValue - c.redeemed)}{' '}
               <span className="text-base font-normal text-ink-2">of {usdc(c.faceValue)} USDC left</span>
             </p>

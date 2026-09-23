@@ -21,10 +21,10 @@ export default function DemoPage() {
             Watch an agent <em className="text-seal">pay</em>.
           </h1>
           <p className="mt-4 max-w-3xl text-lg text-ink-2">
-            The Merchant, an AI agent planning a tea trade, buys data from the Silk Road Oracle. Its budget is a sealed
-            certificate for that one seller: it pays each request with a signed note the seller checks instantly, and
-            the seller redeems everything in a few on-chain transactions. Tea prices and routes are fictional game data;
-            the weather is real.
+            The Merchant, an AI agent planning a tea trade, buys data from the Silk Road Oracle. Its budget is a
+            certificate for that one seller. It pays for each request with a signed slip that the seller checks
+            instantly, and the seller collects the total in a few blockchain transactions. Tea prices and routes are
+            made-up game data; the weather is real.
           </p>
         </div>
         <SilkRoadMap className="hidden w-full lg:block" />

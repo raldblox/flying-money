@@ -102,7 +102,9 @@ export function DemoClient({ chainName }: { chainName: string }) {
         <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
           {phase === 'running' ? 'Running…' : phase === 'idle' ? 'Run the demo' : 'Run again'}
         </button>
-        <p className="text-xs text-ink-2">Real testnet transactions. Every link opens the explorer.</p>
+        <p className="text-xs text-ink-2">
+          Real transactions with test money. Every link opens the public record (block explorer).
+        </p>
       </div>
 
       {error && (
@@ -113,8 +115,9 @@ export function DemoClient({ chainName }: { chainName: string }) {
 
       {phase === 'idle' && events.length === 0 && (
         <p className="mt-8 text-ink-2">
-          Press <strong>Run the demo</strong>. A funder issues a fresh certificate on-chain for the Silk Road Oracle;
-          the Merchant agent then makes 20 paid calls with sealed notes, and the Oracle redeems in a few transactions.
+          Press <strong>Run the demo</strong>. We create a fresh certificate for the Silk Road Oracle on the blockchain.
+          The Merchant agent then makes 20 paid calls, each with a signed slip, and the Oracle collects its money in a
+          few transactions.
         </p>
       )}
 

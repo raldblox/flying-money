@@ -91,6 +91,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Cormorant defaults to old-style figures (the 5 drops below the line); money reads better with lining figures */
+  font-variant-numeric: lining-nums;
+  scroll-padding-top: 1.5rem;
 }
 body {
   background-color: var(--desk);
@@ -228,6 +231,28 @@ a {
   }
   .rise {
     animation: rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  .page-enter {
+    animation: page-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* chapters ease in as they scroll into view (scroll-driven, no JS; ignored where unsupported) */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 @keyframes tally-left {
