@@ -1,0 +1,27 @@
+# dependencies & builds
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# local archive of the pre-rebuild prototype (also on branch legacy-prototype)
+.legacy/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
