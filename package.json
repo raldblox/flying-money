@@ -17,7 +17,10 @@
     "lint:fix": "biome check --write .",
     "contracts:test": "pnpm --filter @flying-money/contracts test",
     "redis:up": "docker run -d --rm --name fm-redis -p 6379:6379 redis:7-alpine redis-server --appendonly yes",
-    "redis:down": "docker stop fm-redis"
+    "redis:down": "docker stop fm-redis",
+    "deploy:chain": "tsx scripts/deploy.ts",
+    "deploy:all": "tsx scripts/deploy.ts --all",
+    "chains:check": "pnpm --filter @flying-money/chains check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
@@ -25,6 +28,7 @@
     "tsx": "^4.23.15",
     "turbo": "^2.11.3",
     "typescript": "7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "@flying-money/chains": "workspace:*"
   }
 }

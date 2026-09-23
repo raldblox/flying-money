@@ -6,6 +6,7 @@
   "scripts": {
     "build": "forge build",
     "test": "forge test",
-    "snapshot": "forge snapshot"
+    "snapshot": "forge snapshot",
+    "gas": "forge test --mt test_13 --isolate --gas-report"
   }
 }

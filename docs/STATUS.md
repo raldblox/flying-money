@@ -2,6 +2,37 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 2: Contract + unit tests + invariants + Deploy script (23 Sep): ✅ local · ⏸ deploy blocked on H1/H4
+
+**Done** (tests written before the contract, per §0.3)
+- `contracts/src/FlyingMoney.sol`: **byte-for-byte the §7.2 reference** (checked with `diff` against the spec).
+- `contracts/src/MockUSDC.sol` per §7.3: 6 dp, `mUSDC`, `faucet()` gives 100 with a 1 h per-address cooldown, no owner mint.
+- Test fixtures: a fee-on-transfer token, a re-entrant token, an ERC-1271 garbage-accepting code for `vm.etch`, and a transfer-tracking token for the invariants.
+- `script/Deploy.s.sol` + `pnpm deploy:chain <key>` / `pnpm deploy:all` (`scripts/deploy.ts`, cross-platform):
+  - Constructor arguments come from the registry.
+  - Guards:
+    - reverts `RegistryMismatch("chainId")` if the RPC's chain ID ≠ the registry's;
+    - checks USDC `decimals() == 6` and that it has code;
+    - a mainnet needs `--confirm-mainnet` (§0.1) and non-zero caps.
+  - Records `flyingMoney` and `deployedBlock` in `packages/chains/src/deployments.json`, from the broadcast receipt.
+  - `DEPLOYER_KEY` is read from env only and never printed.
+- `docs/SECURITY.md`: guarantees, threat model, test evidence and gas.
+
+**Test results:** `forge test` gives **41/41 pass**.
+- 24 FlyingMoney unit tests cover §7.4 #1–#14b; 1 MockUSDC test.
+- **16 invariant tests: I1, I2, I2b, I3, I4, I5, I6, I7**, each at **256 runs × depth 50 (12,800 calls)**, against an uncapped and a capped (300 / 1,000) deployment.
+- One handler bug (a doubled ghost count when a certificate appeared twice in one batch) was fixed in the *test*. No contract or invariant was changed.
+- Gas: `redeem` 85,758; `redeemMany`(10) 328,192.
+- Deploy on local anvil: ✅. The mainnet refusal and chain-ID mismatch guards were both shown to stop the deploy.
+
+**Blocked:** deploy and verify on **Arbitrum Sepolia** (the rest of this row's ✅) needs:
+- **H1:** `DEPLOYER_KEY` in `.env`, funded with Arbitrum Sepolia ETH;
+- **H4:** an Etherscan-family API key in `EXPLORER_API_KEYS` (Etherscan API v2 keys cover Arbiscan and Basescan).
+
+Then run `pnpm deploy:chain arbitrum-sepolia --verify`.
+
+**Next:** Phase 3, the SDK (core, client, server). Write the property tests C1, S1, S3, S4, the sweeper, redeem-only-served, store-loss and parity tests first. Then the anvil integration run: 50 requests → ≤3 redeems.
+
 ## Phase 1: Reset + skeleton + CI + `@flying-money/chains` (23 Sep): ✅ local
 
 **Done**
