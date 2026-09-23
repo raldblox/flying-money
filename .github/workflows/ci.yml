@@ -61,6 +61,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: forge build
+        working-directory: contracts
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm typecheck

@@ -2,6 +2,67 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 3: core + client + server SDK (23 Sep): ✅ local
+
+**Done** (property tests written before the implementations)
+- `@flying-money/abi`: ABI and bytecode generated from the forge build; a freshness test.
+- `@flying-money/core` (§8.1):
+  - types, EIP-712 domain/types, `certificateId`, `hashNote`, `signNote`;
+  - offline `verifyNoteSignature`: pure ECDSA with OZ parity (65 bytes, v ∈ {27,28}, low-s);
+  - strict `fm1` encode/decode for notes, offers and receipts (D4);
+  - `readCertificate`.
+- `@flying-money/server` (§6.5, §8.3):
+  - `createFlyingMoneyServer` runs the full algorithm: offers, strict parsing, D3 ordering, cert cache, recovery (D5), atomic `begin`/`finish`, sweeper;
+  - `memoryStore` and a Lua **Redis store** (`redisStore(url)` over TCP, `upstashStore()` over HTTPS for Vercel; decimal-string arithmetic in Lua, exact above 2^53);
+  - Hono middleware `@flying-money/server/hono` and a `createIdempotency()` helper;
+  - `createRedeemer`/`startRedeemer`: redeems only served value, batches ≤ 20, records the tx hash before broadcast, never rebroadcasts, reconciles on revert, skip or drop.
+- `@flying-money/client` (§6.6, §8.2):
+  - `createFlyingMoneyClient`: durable outbox, one pending note per certificate, resends the same note on failure, restart resolution, per-certificate mutex;
+  - `NoCertificateError`, `PriceTooHighError` and never signs above face value;
+  - `fileStore` (temp file + fsync + rename) and `memoryStore`;
+  - `paidFetchTool` and the `flying-money keygen` CLI (prints only the address).
+
+**Test results:** `pnpm test` → **all 12 turbo tasks green, 125 tests**.
+
+| Package | Tests | Coverage |
+|---|---|---|
+| contracts | 41 | unchanged from Phase 2 |
+| chains | 18 | |
+| abi | 2 | |
+| core | 11 | incl. **TS↔Solidity parity**: `noteDigest` == `hashNote` for 100 random inputs on anvil, `certificateId` == `issue()`, a TS-signed note redeems on-chain |
+| server | 41 | NoteStore contract + protocol tests; each runs against the **memory store** and the **Redis Lua store** (in-process `ioredis-mock`) |
+| client | 12 | **C1**, fileStore, and **anvil integration** |
+
+- **Server protocol tests:**
+  - **S1:** sequential and 20× concurrent replays execute exactly once.
+  - **S3.**
+  - **S4:** the exact attack of 10 × 10 against accepted 10 admits exactly 1; plus 5 randomised trials of 10–100 concurrent requests with mixed cumulatives and two server instances, with the §6.5 invariant probed after every `begin`/`finish`.
+  - **Sweeper:** done, failed, not-started and running, with a racing retry.
+  - **PENDING resume.**
+  - **D3.**
+  - **Store loss → RECOVERED.**
+  - **Cert cache.**
+  - **"Cut the network".**
+- **C1:** 1,000 requests with 8% dropped requests, 8% lost responses, 5% service failures and 2% crashes at each of sign, save and send. The highest cumulative ever signed == Σ price(SERVED) + credit == the seller's `accepted`, with no higher note.
+- **Anvil integration (the §17 row's ✅):**
+  - 50 requests → **≤ 3 redeems** → payee balance = Σ prices served;
+  - overspend refused at the cap; a thief's over-face note is rejected;
+  - wrong payee is rejected and the client refuses;
+  - replay: same response, no extra charge;
+  - 20 concurrent requests;
+  - **redeem-only-served**: credit is never redeemed and reclaim returns face − consumed;
+  - **store loss**: RECOVERED, seller loss ≤ redemption lag, and the buyer never pays for unserved requests.
+- Real Redis/Upstash runs of the Redis-store tests happen in CI (Redis service), or locally once `REDIS_URL` or `UPSTASH_REDIS_REST_*` is set. **Not yet run against a real Redis:** CI hasn't run because nothing is pushed.
+
+**Blocked:** nothing locally. The Phase 2 deploy is still waiting on H1/H4.
+
+**Human inputs needed next**
+- **H1/H4:** to deploy and verify on Arbitrum Sepolia.
+- **H2/H3:** for the Phase 4 Oracle run on Arbitrum Sepolia (29 Sep): Circle testnet USDC on `DEMO_FUNDER_KEY`, plus `PAYEE_ADDRESS` and a gas-funded `REDEEMER_KEY`.
+- Optional: an Upstash database, to run S4 against real Redis before CI.
+
+**Next:** Phase 4. Build the Silk Road Oracle (Hono, §13.1) and the Merchant agent (§13.2). Run them locally on anvil first, then on Arbitrum Sepolia once H1–H3 arrive.
+
 ## Phase 2: Contract + unit tests + invariants + Deploy script (23 Sep): ✅ local · ⏸ deploy blocked on H1/H4
 
 **Done** (tests written before the contract, per §0.3)

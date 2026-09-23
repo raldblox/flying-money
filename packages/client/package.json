@@ -5,13 +5,30 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": { "@flying-money/chains": "workspace:*", "@flying-money/core": "workspace:*", "viem": "^2.56.8" }
+  "dependencies": {
+    "@flying-money/chains": "workspace:*",
+    "@flying-money/core": "workspace:*",
+    "viem": "^2.56.8"
+  },
+  "devDependencies": {
+    "@flying-money/server": "workspace:*",
+    "hono": "^4.12.0",
+    "@flying-money/abi": "workspace:*"
+  },
+  "bin": {
+    "flying-money": "./dist/cli.js"
+  }
 }

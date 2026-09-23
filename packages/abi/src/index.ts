@@ -1,2 +1,1 @@
-// Implemented in a later §17 phase; see docs/STATUS.md.
-export {}
+export { flyingMoneyAbi, flyingMoneyBytecode, mockUsdcAbi, mockUsdcBytecode } from './generated.js'

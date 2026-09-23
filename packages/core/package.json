@@ -5,13 +5,22 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": { "@flying-money/abi": "workspace:*", "viem": "^2.56.8" }
+  "dependencies": {
+    "@flying-money/abi": "workspace:*",
+    "viem": "^2.56.8",
+    "@noble/curves": "^1.9.1"
+  }
 }
