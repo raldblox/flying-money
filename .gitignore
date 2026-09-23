@@ -25,3 +25,4 @@ contracts/broadcast/*/31337/
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+contracts/deployments/

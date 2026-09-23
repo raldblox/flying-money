@@ -1,0 +1,30 @@
+{
+  "name": "flying-money",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Flying Money (飛錢): sealed spending certificates for AI agents, people and devices.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "contracts:test": "pnpm --filter @flying-money/contracts test",
+    "redis:up": "docker run -d --rm --name fm-redis -p 6379:6379 redis:7-alpine redis-server --appendonly yes",
+    "redis:down": "docker stop fm-redis"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.3",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

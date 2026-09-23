@@ -1,0 +1,9 @@
+{
+  "key": "arc-testnet",
+  "chainId": 5042002,
+  "mainnet": false,
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "usdcDecimals": 6,
+  "maxFaceValue": 0,
+  "maxTotalOutstanding": 0
+}

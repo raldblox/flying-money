@@ -1,0 +1,18 @@
+{
+  "name": "@flying-money/server",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./hono": { "types": "./dist/hono.d.ts", "import": "./dist/hono.js" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": { "@flying-money/chains": "workspace:*", "@flying-money/core": "workspace:*", "viem": "^2.56.8", "@upstash/redis": "^1.39.0", "ioredis": "^6.0.0", "hono": "^4.12.0" }
+}

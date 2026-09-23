@@ -1,0 +1,9 @@
+{
+  "key": "arc",
+  "chainId": 5042,
+  "mainnet": true,
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "usdcDecimals": 6,
+  "maxFaceValue": 100000000,
+  "maxTotalOutstanding": 1000000000
+}

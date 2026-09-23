@@ -1,0 +1,9 @@
+{
+  "key": "anvil",
+  "chainId": 31337,
+  "mainnet": false,
+  "usdc": "0x0000000000000000000000000000000000000000",
+  "usdcDecimals": 6,
+  "maxFaceValue": 0,
+  "maxTotalOutstanding": 0
+}

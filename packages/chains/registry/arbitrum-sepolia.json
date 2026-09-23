@@ -1,0 +1,9 @@
+{
+  "key": "arbitrum-sepolia",
+  "chainId": 421614,
+  "mainnet": false,
+  "usdc": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+  "usdcDecimals": 6,
+  "maxFaceValue": 0,
+  "maxTotalOutstanding": 0
+}

@@ -1,0 +1,28 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.24"
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200
+remappings = [
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "forge-std/=lib/forge-std/src/",
+]
+# Deploy.s.sol reads the generated chain registry (packages/chains/registry/<key>.json) and
+# writes deployment output for pnpm deploy:all. No other filesystem access.
+fs_permissions = [
+  { access = "read", path = "../packages/chains/registry" },
+  { access = "read-write", path = "./deployments" },
+]
+
+[invariant]
+runs = 256
+depth = 50
+fail_on_revert = false
+
+[fmt]
+line_length = 120

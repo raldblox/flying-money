@@ -1,0 +1,20 @@
+# Decision log
+
+The fixed decisions F1–F12 are in `BUILD_SPEC.md` §0 and are not repeated here. This file records the
+implementation decisions taken while building v1.4.1. Each one resolves a gap or ambiguity in the spec and was
+reported to the founder before being applied. **None of them weakens an invariant** (I1–I7, C1, S1–S4).
+
+| # | Spec § | Issue | Decision |
+|---|---|---|---|
+| D1 | §5.4, §7.5 | `ChainConfig` has no `maxTotalOutstanding`, but the constructor needs it and caps must come only from the registry | Added `maxTotalOutstanding: bigint` to `ChainConfig` (mainnets 1,000,000,000; testnets 0) |
+| D2 | §7.5 | `Deploy.s.sol` cannot import the TS registry | `pnpm --filter @flying-money/chains gen` writes `packages/chains/registry/<key>.json` from the TS registry; the script reads it with `vm.parseJson`. A test fails if the files are stale. `anvil` USDC is registered at runtime (`setLocalDeployment`) after MockUSDC is deployed |
+| D3 | §6.5 steps 3–4, §6.6 step 2 | A retry of an already-SERVED request near expiry would get 402 without a receipt, and the client would resend forever. The client had no rule for a deterministic rejection | (i) Server: for a `requestId` that already has an outcome, return the stored outcome **before** the step-3 lifetime/closed check (no admission happens, so no new charge). The ECDSA check runs before a stored response is returned, so a forged note with a copied memo can't read it. (ii) Client: a rejection **without a receipt** (400/401/402) means the note was never admitted, so `pending` is cleared with no state change. C1 holds because no obligation grew |
+| D4 | §6.4 vs §8.1 | Integers are "decimal strings", but the examples show `expiresAt`, `v` and `minRemainingLifetime` as JSON numbers | `v` and `minRemainingLifetime` are JSON numbers. Every other integer (`chainId`, amounts, `expiresAt`) is a decimal string |
+| D5 | §6.5 step 5 | First sight of a new certificate is indistinguishable from a lost store | Initialise as `accepted = consumed = redeemedOnChain`, `reserved = 0`. Status is `RECOVERED` only when `redeemedOnChain > 0`, otherwise `OK`. Admission maths is identical either way |
+| D6 | §8.3 | The redeemer's `maxAgeSeconds` rule needs a timestamp the store interface doesn't expose | `pendingRedemptions` items carry an optional `oldestServedAt` (ms) |
+| D7 | §6.5 | "`redeemedOnChain ≤ accepted` MUST hold" can be broken by the spender redeeming directly on-chain, which §6.5 allows | Asserted in property tests where only the seller redeems. Outside that, the seller is paid more, never less |
+| D8 | §7.2 vs §0.2 | The reference code was verified on `paris`; the pin is `shanghai` | `evm_version = "shanghai"` (the pin wins) |
+| D9 | §0.2 | Foundry 1.x removed `forge install --no-commit` | Same installs without the flag, as git submodules pinned to tags (forge-std v1.10.0, OpenZeppelin v5.1.0) |
+| D10 | §6.7, §7.1 #7 | The contract's 1 h minimum lifetime equals the server's `minRemainingLifetime`, so a 1 h certificate is refused almost immediately | Demo certificates use lifetimes ≥ 1 day. The testnet smoke test's reclaim step waits > 1 h |
+| D11 | §5.3, §8.3 | Store backend: the founder has no Redis and doesn't want Docker; the web deploys to Vercel | **Upstash Redis** (Vercel Marketplace, HTTPS, supports Lua `EVAL`, durable). One Lua-script store with two transports: `upstashStore()` (HTTP, Vercel) and `redisStore(url)` (TCP, any Redis). The S4 Redis tests run in GitHub CI against a Redis service container, and locally when `UPSTASH_REDIS_REST_URL`/`TOKEN` or `REDIS_URL` is set |
+| D12 | §0.2 | TypeScript version | TypeScript 7.0 (latest stable at build time) |
