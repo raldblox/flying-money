@@ -57,6 +57,14 @@ function probed(inner: NoteStore, face: () => bigint, violations: string[]): Not
     },
   })
 }
+/** Poll instead of sleeping a fixed time (the Lua mock is slow under CPU load). */
+async function until(cond: () => Promise<boolean>, ms = 10_000) {
+  const t0 = Date.now()
+  while (!(await cond())) {
+    if (Date.now() - t0 > ms) throw new Error('timed out waiting for condition')
+    await new Promise((r) => setTimeout(r, 10))
+  }
+}
 const bi = (_: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)
 
 const ok = (value: unknown = 'ok'): ExecResult => ({ ok: true, responseRef: JSON.stringify(value) })
@@ -278,7 +286,7 @@ for (const [name, make] of storeFactories()) {
         expect(st.consumed).toBe(servedSum)
         expect(results.filter((r) => r.kind === 'served').length * 10).toBe(Number(servedSum))
       }
-    })
+    }, 60_000) // the in-process Lua VM is slow under CPU load; this is a timing budget, not an invariant
 
     it('sweeper: stale PENDING resolves via the application status; a racing retry never double-finishes', async () => {
       const store = make()
@@ -293,7 +301,7 @@ for (const [name, make] of storeFactories()) {
       const running = await note(spenderKey, cert.id, 40n)
       for (const n of [done, failed, notStarted, running])
         void server.handle({ noteHeader: n.header, price: 10n }, hang)
-      await new Promise((r) => setTimeout(r, 30))
+      await until(async () => (await store.state(key))?.reserved === 40n)
       expect(await store.state(key)).toMatchObject({ reserved: 40n, consumed: 0n })
       statuses.set(done.signed.memo, 'done')
       statuses.set(failed.signed.memo, 'failed')
@@ -331,7 +339,7 @@ for (const [name, make] of storeFactories()) {
       const n = await note(spenderKey, cert.id, 10n)
       let calls = 0
       void server.handle({ noteHeader: n.header, price: 10n }, () => new Promise<ExecResult>(() => {})) // crash
-      await new Promise((r) => setTimeout(r, 20))
+      await until(async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING')
       const r = await server.handle({ noteHeader: n.header, price: 10n }, (ctx) =>
         jobs.runOnce(ctx.requestId, async () => {
           calls++

@@ -1,0 +1,23 @@
+{
+  "name": "@flying-money/oracle",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": { "types": "./dist/app.d.ts", "import": "./dist/app.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "tsx src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@flying-money/chains": "workspace:*",
+    "@flying-money/core": "workspace:*",
+    "@flying-money/server": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.12.0",
+    "viem": "^2.56.8"
+  }
+}

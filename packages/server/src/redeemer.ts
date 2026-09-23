@@ -231,7 +231,15 @@ export function createRedeemer(config: RedeemerConfig): Redeemer {
     await settle(ch, sub, receipt)
   }
 
-  async function tick(opts: { force?: boolean } = {}) {
+  // Ticks are serialised: two overlapping ticks must never both start a submission for one chain.
+  let queue: Promise<void> = Promise.resolve()
+  function tick(opts: { force?: boolean } = {}): Promise<void> {
+    const run = queue.then(() => tickOnce(opts))
+    queue = run.catch(() => {})
+    return run
+  }
+
+  async function tickOnce(opts: { force?: boolean }) {
     for (const ch of chains) {
       try {
         await runChain(ch, opts.force ?? false)

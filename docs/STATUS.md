@@ -2,6 +2,40 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 4: Oracle + Merchant agent (23 Sep): ✅ local on anvil · ⏸ Arbitrum Sepolia run blocked on H1–H3
+
+**Done**
+- `apps/oracle` ("Silk Road Oracle", §13.1), built on Hono:
+  - **Paid endpoints**, with game data labelled `illustrative: true`:
+    - `/v1/tea-price` 0.01
+    - `/v1/route` 0.02
+    - `/v1/weather` 0.01: real Open-Meteo data, attributed, and fetched once per `requestId`
+    - `/v1/proverb` 0.005: public-domain Legge translations, with sources
+  - **Free endpoints:** `/health`, `/fm/prices`, `/.well-known/flying-money.json` (seller discovery, §10.7), `/fm/redeemable/:id` (the highest note with `cumulative ≤ consumed`), `/fm/stream` (SSE of notes and redemptions) and `/openapi.json`.
+  - CORS exposes the Flying Money headers. Bad input returns 400 and becomes credit (S3).
+  - `src/main.ts` is configured from env: store = Upstash, then Redis, then memory (with a loud "not durable" warning). It starts the sweeper, plus the redeemer when `REDEEMER_KEY` is set (demo policy: 0.10 USDC or 60 s).
+- `apps/agent` ("The Merchant", §13.2 mode A):
+  - a deterministic 20-call plan (8 tea prices, 4 weather, 6 routes, 2 proverbs) that summarises the best trade;
+  - `pnpm --filter @flying-money/agent start` against a real Oracle (fileStore outbox, `--json` event lines for the demo runner);
+  - **`pnpm --filter @flying-money/agent demo:local`**: the whole demo on a private anvil in one command.
+- Redeemer hardening: `tick()` is now serialised, so overlapping ticks can never start two submissions.
+- Flaky test fixed: the randomised S4 test could exceed Vitest's 5 s default when run through the in-process Lua VM under load. It was a timeout, never an invariant failure. Fixed-time sleeps were also replaced with polling.
+
+**Test results:** `pnpm test` → all **15 turbo tasks green, 132 tests**.
+- Oracle: 6/6.
+- **Phase 4 local acceptance** (`apps/agent/test/e2e.test.ts`) passes against the Oracle over real HTTP:
+  - **20/20 paid calls**, **≥ 1 on-chain redemption**;
+  - payee received exactly the 0.25 USDC served;
+  - 0.25 USDC remains for the funder at expiry.
+- A manual `demo:local` run with live weather: 20 served, redeemed in **3 transactions**, best trade printed.
+
+**Blocked:** the row's ✅ ("scripted run on Arbitrum Sepolia: ~20 paid calls, ≥ 1 on-chain redemption") needs:
+- **H1:** a deployer with Arbitrum Sepolia ETH;
+- **H2:** Circle testnet USDC on the demo funder;
+- **H3:** `PAYEE_ADDRESS` and `REDEEMER_KEY` with Arbitrum Sepolia ETH.
+
+**Next:** Phase 5, the web minimum (§10–§11): design tokens, landing, `/demo`, `/c/[chain]/[id]`, `/chains`, `/hackathons/arbitrum`, Guarantees. Built against anvil now; the Vercel deploy needs H5.
+
 ## Phase 3: core + client + server SDK (23 Sep): ✅ local
 
 **Done** (property tests written before the implementations)

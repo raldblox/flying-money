@@ -1,0 +1,24 @@
+{
+  "name": "@flying-money/agent",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "tsx src/main.ts",
+    "demo:local": "tsx src/local-demo.ts"
+  },
+  "dependencies": {
+    "@flying-money/abi": "workspace:*",
+    "@flying-money/chains": "workspace:*",
+    "@flying-money/client": "workspace:*",
+    "@flying-money/core": "workspace:*",
+    "@flying-money/oracle": "workspace:*",
+    "@flying-money/server": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "viem": "^2.56.8"
+  }
+}

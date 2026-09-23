@@ -103,7 +103,6 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
     const r = await server.handle({ noteHeader: c.req.header(NOTE_HEADER), price }, execute)
     // After next() has run, Hono only honours a response assigned to c.res (a returned one is ignored).
     const out = await respond(r)
-    c.res = undefined as unknown as Response // drop the handler's response so headers are not merged into ours
     c.res = out
     return c.res
   }
