@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "rootDir": "src", "outDir": "dist" },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/testnet-demo.ts", "src/local-demo.ts", "src/main.ts"]
 }

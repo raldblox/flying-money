@@ -30,7 +30,10 @@ const redeemer = out.find(([n]) => n === 'REDEEMER_KEY')![1]
 if (!has('PAYEE_ADDRESS')) lines.push(`PAYEE_ADDRESS=${redeemer}`)
 if (lines.length) {
   const sep = current && !current.endsWith('\n') ? '\n' : ''
-  appendFileSync(envPath, `${sep}# testnet demo wallets (generated ${new Date().toISOString()}); never use on mainnet\n${lines.join('\n')}\n`)
+  appendFileSync(
+    envPath,
+    `${sep}# testnet demo wallets (generated ${new Date().toISOString()}); never use on mainnet\n${lines.join('\n')}\n`,
+  )
 }
 for (const [name, a, role] of out) console.log(`${name.padEnd(16)} ${a}  ${role}`)
 console.log(`PAYEE_ADDRESS    ${has('PAYEE_ADDRESS') ? '(already set)' : redeemer}`)

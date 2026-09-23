@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* "Paper, Ink, Seal" (BUILD_SPEC §11.2). Tokens verbatim; light + dark. */
+:root {
+  --paper: #f4ede0; /* rice paper (light bg) */
+  --paper-2: #eae0cd; /* card */
+  --ink: #1b1a17; /* text */
+  --ink-2: #4a463f; /* secondary text */
+  --seal: #b7322c; /* vermilion seal (signatures, CTAs) */
+  --ochre: #c08a3e; /* accents, value flow (decorative only: < 4.5:1 on paper) */
+  --indigo: #2e3f5c; /* links, chain/on-chain */
+  --celadon: #7fa38f; /* success / redeemed (fills, not text) */
+  --line: #cdbfa6; /* borders, brush dividers */
+  /* Button fill stays the light-mode seal in both themes so white-ish text keeps ≥ 4.5:1 contrast. */
+  --seal-button: #b7322c;
+  --on-seal: #fff8ec;
+  --amber: #8a5a12; /* UNVERIFIED · merchant risk (text-safe amber) */
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15130f;
+    --paper-2: #1f1c17;
+    --ink: #efe7d8;
+    --ink-2: #b9ae9b;
+    --seal: #d2473f;
+    --ochre: #d3a25c;
+    --indigo: #8fa6cf;
+    --celadon: #93bca5;
+    --line: #3a342b;
+    --amber: #e0a94f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15130f;
+  --paper-2: #1f1c17;
+  --ink: #efe7d8;
+  --ink-2: #b9ae9b;
+  --seal: #d2473f;
+  --ochre: #d3a25c;
+  --indigo: #8fa6cf;
+  --celadon: #93bca5;
+  --line: #3a342b;
+  --amber: #e0a94f;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-seal: var(--seal);
+  --color-seal-button: var(--seal-button);
+  --color-on-seal: var(--on-seal);
+  --color-ochre: var(--ochre);
+  --color-indigo: var(--indigo);
+  --color-celadon: var(--celadon);
+  --color-line: var(--line);
+  --color-amber: var(--amber);
+  --font-display: var(--font-cormorant), "Noto Serif", Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-han: var(--font-noto-tc), "Noto Serif TC", serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+/* Paper grain: SVG noise at ~3.5% (§11.2 texture). Purely decorative. */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Brush divider */
+.brush {
+  height: 6px;
+  background: radial-gradient(ellipse at center, var(--line) 0%, transparent 70%);
+  border: 0;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+/* Motion (§11.2): seal stamp 1.15 → 1 in 180 ms with slight rotation; tally halves join in 400 ms. */
+@media (prefers-reduced-motion: no-preference) {
+  .stamp-in {
+    animation: stamp 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .note-in {
+    animation: note 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .tally-join .half-left {
+    animation: join-left 400ms ease-out both;
+  }
+  .tally-join .half-right {
+    animation: join-right 400ms ease-out both;
+  }
+}
+@keyframes stamp {
+  from {
+    transform: scale(1.15) rotate(-6deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+@keyframes note {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes join-left {
+  from {
+    transform: translateX(-10px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes join-right {
+  from {
+    transform: translateX(10px);
+  }
+  to {
+    transform: none;
+  }
+}

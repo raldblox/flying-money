@@ -35,5 +35,10 @@
         "noUndeclaredEnvVars": "off"
       }
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

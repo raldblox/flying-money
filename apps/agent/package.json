@@ -21,5 +21,11 @@
     "@flying-money/server": "workspace:*",
     "@hono/node-server": "^2.1.1",
     "viem": "^2.56.8"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   }
 }
