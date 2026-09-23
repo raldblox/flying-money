@@ -5,8 +5,8 @@ export function CodeTabs({ tabs }: { tabs: Array<{ label: string; code: string }
   const [i, setI] = useState(0)
   const id = useId()
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-paper-2">
-      <div role="tablist" aria-label="Code examples" className="flex border-b border-line">
+    <div className="sheet">
+      <div role="tablist" aria-label="Code examples" className="flex gap-2 border-b-2 border-seal/60 px-4 pt-2">
         {tabs.map((t, k) => (
           <button
             key={t.label}
@@ -29,7 +29,7 @@ export function CodeTabs({ tabs }: { tabs: Array<{ label: string; code: string }
       </div>
       {tabs.map((t, k) => (
         <div key={t.label} id={`${id}-panel-${k}`} role="tabpanel" aria-labelledby={`${id}-tab-${k}`} hidden={i !== k}>
-          <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed">
+          <pre className="ledger overflow-x-auto px-6 py-4 font-mono text-sm leading-[2.25rem]">
             <code>{t.code}</code>
           </pre>
         </div>

@@ -59,41 +59,142 @@
   --color-celadon: var(--celadon);
   --color-line: var(--line);
   --color-amber: var(--amber);
+  --color-desk: var(--desk);
   --font-display: var(--font-cormorant), "Noto Serif", Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --font-han: var(--font-noto-tc), "Noto Serif TC", serif;
 }
 
+/* ───────── Paper system ─────────
+   The page is a warm desk; content sits on sheets of rice paper with fibres, grain and torn (deckled) edges.
+   Derived tokens only mix the §11.2 palette; no new hues. */
+:root {
+  --desk: color-mix(in oklab, var(--paper-2) 90%, var(--ochre) 10%);
+  --sheet-shadow: 0 1px 1px rgb(60 40 10 / 0.06), 0 8px 24px -6px rgb(60 40 10 / 0.18);
+  --ink-wash: color-mix(in oklab, var(--ink) 14%, transparent);
+  --ledger: color-mix(in oklab, var(--seal) 28%, transparent);
+  /* fine grain + long rice-paper fibres (feTurbulence, stretched on one axis) */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.25  0 0 0 0 0.18  0 0 0 0 0.08  0 0 0 0.22 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+  --fibres: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='480'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.14' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.3  0 0 0 0 0.15  0 0 0 0.7 -0.42'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: color-mix(in oklab, var(--paper) 70%, black 30%);
+    --sheet-shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 10px 30px -8px rgb(0 0 0 / 0.6);
+  }
+}
+:root[data-theme="dark"] {
+  --desk: color-mix(in oklab, var(--paper) 70%, black 30%);
+  --sheet-shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 10px 30px -8px rgb(0 0 0 / 0.6);
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }
 body {
-  background: var(--paper);
+  background-color: var(--desk);
+  background-image: var(--fibres), var(--grain);
+  background-blend-mode: multiply, multiply;
   color: var(--ink);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
 }
+::selection {
+  background: color-mix(in oklab, var(--seal) 25%, transparent);
+}
 
-/* Paper grain: SVG noise at ~3.5% (§11.2 texture). Purely decorative. */
-.grain {
+/* A sheet of paper. The torn edge comes from the #deckle SVG filter on a background layer,
+   so the paper edge is rough while the text on it stays crisp. */
+.sheet {
   position: relative;
   isolation: isolate;
 }
-.grain::before {
+.sheet::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: -1;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgb(120 80 20 / 0.08)), var(--fibres), var(--grain);
+  background-blend-mode: normal, multiply, multiply;
+  filter: url(#deckle) drop-shadow(0 6px 14px rgb(60 40 10 / 0.16));
+}
+.sheet-flat::before {
+  filter: url(#deckle);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sheet::before {
+    background-image: radial-gradient(120% 90% at 50% 40%, transparent 50%, rgb(0 0 0 / 0.35)), var(--grain);
+    filter: url(#deckle) drop-shadow(0 10px 24px rgb(0 0 0 / 0.55));
+  }
 }
 
-/* Brush divider */
+/* Ledger ruling (Chinese account books): red column rules and faint horizontal lines. */
+.ledger {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 calc(2.25rem - 1px),
+    var(--line) calc(2.25rem - 1px) 2.25rem
+  );
+}
+.ledger-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.ledger-table th,
+.ledger-table td {
+  border-bottom: 1px solid var(--line);
+}
+.ledger-table tr > * + * {
+  border-left: 1px solid var(--ledger);
+}
+.ledger-table thead th {
+  border-bottom: 2px solid var(--seal);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Small caps label, like printed marginalia */
+.smallcaps {
+  font-variant: all-small-caps;
+  letter-spacing: 0.12em;
+}
+
+/* Hand-inked rule */
+.ink-rule {
+  height: 14px;
+  border: 0;
+  background:
+    no-repeat center / 100% 100%
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 14' preserveAspectRatio='none'><path d='M2 8 C 120 3, 240 11, 380 7 S 640 4, 798 8' fill='none' stroke='%23b7322c' stroke-opacity='.55' stroke-width='2.2' stroke-linecap='round'/><path d='M40 10 C 200 8, 420 12, 760 9' fill='none' stroke='%231b1a17' stroke-opacity='.18' stroke-width='1'/></svg>");
+}
+
+/* Chapter mark: a formal numeral in a seal frame */
+.chapter-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 2px solid var(--seal);
+  border-radius: 4px;
+  color: var(--seal);
+  font-family: var(--font-han);
+  font-size: 1.6rem;
+  line-height: 1;
+  transform: rotate(-3deg);
+  box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--paper) 90%, transparent);
+}
+
+/* Legacy utilities kept for the app pages */
+.grain {
+  position: relative;
+}
 .brush {
-  height: 6px;
-  background: radial-gradient(ellipse at center, var(--line) 0%, transparent 70%);
+  height: 14px;
   border: 0;
 }
 
@@ -114,6 +215,50 @@ a {
   }
   .tally-join .half-right {
     animation: join-right 400ms ease-out both;
+  }
+  /* the tally halves slide together once, after the page settles */
+  .tally-art .tally-left {
+    animation: tally-left 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 350ms both;
+  }
+  .tally-art .tally-right {
+    animation: tally-right 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 350ms both;
+  }
+  .road-march {
+    animation: road 1.6s linear infinite;
+  }
+  .rise {
+    animation: rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes tally-left {
+  from {
+    transform: translateX(-22px) rotate(-1.5deg);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes tally-right {
+  from {
+    transform: translateX(26px) rotate(1.5deg);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes road {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 @keyframes stamp {

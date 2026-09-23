@@ -13,7 +13,7 @@ export default function ChainsPage() {
   const chains = allChains().filter((c) => c.key !== 'anvil')
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Deployments</p>
+      <p className="smallcaps text-sm text-seal">Deployments</p>
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">Same source, every chain.</h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
         One contract source and protocol, deployed per chain with that chain’s Circle USDC and caps. Addresses differ
@@ -21,10 +21,10 @@ export default function ChainsPage() {
         is the same code. Pulled live from <code className="font-mono text-base">@flying-money/chains</code>.
       </p>
 
-      <div className="mt-10 overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[760px] text-left text-sm">
+      <div className="mt-10 sheet overflow-x-auto px-2 py-2">
+        <table className="ledger-table w-full min-w-[760px] text-left text-sm">
           <caption className="sr-only">Flying Money deployments</caption>
-          <thead className="bg-paper-2 text-ink-2">
+          <thead className="text-ink">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Chain

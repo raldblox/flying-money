@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, Inter, JetBrains_Mono, Noto_Serif_TC } from 'next/font/google'
 import type { ReactNode } from 'react'
+import { PaperDefs } from '@/components/art/paper-defs'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import './globals.css'
 
-const display = Cormorant_Garamond({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-cormorant' })
+const display = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-cormorant',
+})
 const sans = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
 // The Chinese display mark 飛錢 (§11.2). Loaded without preload; glyphs are fetched on demand.
@@ -29,7 +35,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable} ${han.variable}`}>
-      <body className="grain min-h-dvh flex flex-col antialiased">
+      <body className="min-h-dvh flex flex-col antialiased">
+        <PaperDefs />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-paper-2 focus:px-3 focus:py-2"

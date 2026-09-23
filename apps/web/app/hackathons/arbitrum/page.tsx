@@ -13,9 +13,7 @@ export default function ArbitrumPage() {
   const one = getChain('arbitrum')
   return (
     <article className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">
-        Arbitrum Open House Singapore · buildathon
-      </p>
+      <p className="smallcaps text-sm text-seal">Arbitrum Open House Singapore · buildathon</p>
       <h1 className="mt-2 font-display text-5xl font-semibold leading-tight tracking-tight text-balance">
         A novel financial product: one primitive, two front doors.
       </h1>
@@ -26,7 +24,7 @@ export default function ArbitrumPage() {
       </p>
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
-        <section className="rounded-lg border border-line bg-paper-2 p-6" aria-labelledby="shops">
+        <section className="sheet p-6" aria-labelledby="shops">
           <h2 id="shops" className="font-display text-2xl font-semibold">
             For people & shops
           </h2>
@@ -36,7 +34,7 @@ export default function ArbitrumPage() {
           </p>
           <p className="mt-3 text-sm text-ink-2">Shop mode is being built for this submission.</p>
         </section>
-        <section className="rounded-lg border border-line bg-paper-2 p-6" aria-labelledby="agents">
+        <section className="sheet p-6" aria-labelledby="agents">
           <h2 id="agents" className="font-display text-2xl font-semibold">
             For agents
           </h2>

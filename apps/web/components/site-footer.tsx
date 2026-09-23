@@ -1,36 +1,44 @@
 import Link from 'next/link'
 import { SITE } from '@/lib/site'
+import { SealLogo } from './site-header'
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 text-sm text-ink-2 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <footer className="mt-24">
+      <hr className="ink-rule mx-auto max-w-6xl" />
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[auto_1fr_auto] md:items-start">
+        <SealLogo size={52} />
+        <div className="max-w-md text-sm leading-relaxed text-ink-2">
+          <p className="font-display text-xl italic text-ink">Colophon</p>
+          <p className="mt-2">
+            Sealed spending certificates for AI agents, people and devices. Settled in Circle USDC. No token, no points,
+            no airdrop. {SITE.footerStatus}. MIT licensed.
+          </p>
+        </div>
         <nav aria-label="Footer">
-          <ul className="flex flex-wrap gap-x-5 gap-y-2">
+          <ul className="smallcaps grid gap-2 text-sm">
             <li>
-              <a className="hover:text-ink" href={SITE.github}>
-                GitHub
+              <a className="hover:text-seal" href={SITE.github}>
+                Source on GitHub
               </a>
             </li>
             <li>
-              <Link className="hover:text-ink" href="/chains">
+              <Link className="hover:text-seal" href="/chains">
                 Deployments
               </Link>
             </li>
             <li>
-              <Link className="hover:text-ink" href="/guarantees">
+              <Link className="hover:text-seal" href="/guarantees">
                 Guarantees
               </Link>
             </li>
             <li>
-              <Link className="hover:text-ink" href="/hackathons/arbitrum">
-                Hackathon: Arbitrum
+              <Link className="hover:text-seal" href="/hackathons/arbitrum">
+                Arbitrum Open House
               </Link>
             </li>
-            <li>MIT</li>
           </ul>
         </nav>
-        <p>{SITE.footerStatus}</p>
       </div>
     </footer>
   )

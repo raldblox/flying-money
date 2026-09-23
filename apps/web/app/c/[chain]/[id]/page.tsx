@@ -58,7 +58,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
         <Seal size={40} label="Issued on-chain" />
       </div>
 
-      <section aria-labelledby="terms" className="mt-10 rounded-lg border border-line bg-paper-2 p-6">
+      <section aria-labelledby="terms" className="mt-10 sheet p-6">
         <h2 id="terms" className="font-display text-2xl font-semibold">
           Terms
         </h2>
@@ -116,7 +116,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
         ) : timeline.length === 0 ? (
           <p className="mt-4 text-ink-2">No events yet.</p>
         ) : (
-          <ol className="mt-4 divide-y divide-line rounded-lg border border-line">
+          <ol className="mt-4 sheet divide-y divide-line">
             {timeline.map((e) => (
               <li key={`${e.txHash}-${e.kind}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
         )}
       </section>
 
-      <details className="mt-10 rounded-lg border border-line p-5">
+      <details className="mt-10 sheet p-6">
         <summary className="cursor-pointer font-display text-xl font-semibold">Verify it yourself</summary>
         <p className="mt-3 text-ink-2">Read this certificate directly from the chain, no website needed:</p>
         <pre className="mt-3 overflow-x-auto rounded bg-paper-2 p-4 font-mono text-sm">

@@ -132,10 +132,10 @@ const THREATS = [
 export default function GuaranteesPage() {
   return (
     <article className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Guarantees</p>
+      <p className="smallcaps text-sm text-seal">Guarantees</p>
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">What’s guaranteed, and what isn’t.</h1>
 
-      <p className="mt-6 rounded-md border border-line bg-paper-2 p-4 text-ink-2">
+      <p className="mt-6 sheet p-5 text-ink-2">
         <strong className="text-ink">Audit status: not audited.</strong> Invariant- and property-tested. Testnets, plus
         mainnets with immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide).
       </p>
@@ -150,9 +150,9 @@ export default function GuaranteesPage() {
       </ol>
 
       <h2 className="mt-12 font-display text-3xl font-semibold">What each party is guaranteed</h2>
-      <div className="mt-4 overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="bg-paper-2 text-ink-2">
+      <div className="mt-4 sheet overflow-x-auto px-2 py-2">
+        <table className="ledger-table w-full min-w-[640px] text-left text-sm">
+          <thead className="text-ink">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Party
@@ -211,9 +211,9 @@ export default function GuaranteesPage() {
       </p>
 
       <h2 className="mt-12 font-display text-3xl font-semibold">Threat model</h2>
-      <div className="mt-4 overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-paper-2 text-ink-2">
+      <div className="mt-4 sheet overflow-x-auto px-2 py-2">
+        <table className="ledger-table w-full min-w-[720px] text-left text-sm">
+          <thead className="text-ink">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Threat

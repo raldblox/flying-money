@@ -95,7 +95,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
 
   return (
     <div className="mt-8">
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-paper-2 p-4">
+      <div className="flex flex-wrap items-center gap-4 sheet p-4">
         <p className="text-sm">
           Chain <strong>{chainName}</strong> · Budget <strong>0.30 USDC</strong> · 20 paid calls
         </p>
@@ -106,7 +106,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
       </div>
 
       {error && (
-        <div role="alert" className="mt-4 rounded-md border border-seal/40 bg-paper-2 p-4 text-sm">
+        <div role="alert" className="mt-4 sheet border-l-4 border-seal p-5 text-sm">
           {error}
         </div>
       )}
@@ -121,7 +121,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
       {events.length > 0 && (
         <>
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-            <section aria-labelledby="merchant" className="min-w-0 rounded-lg border border-line">
+            <section aria-labelledby="merchant" className="sheet min-w-0">
               <h2 id="merchant" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
                 Merchant (agent)
               </h2>
@@ -150,7 +150,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
               </ol>
             </section>
 
-            <section aria-labelledby="road" className="min-w-0 rounded-lg border border-line">
+            <section aria-labelledby="road" className="sheet min-w-0">
               <h2 id="road" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
                 The Road
               </h2>
@@ -168,7 +168,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
               </ul>
             </section>
 
-            <section aria-labelledby="oracle" className="min-w-0 rounded-lg border border-line">
+            <section aria-labelledby="oracle" className="sheet min-w-0">
               <h2 id="oracle" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
                 Oracle (seller)
               </h2>
@@ -206,7 +206,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
             </section>
           </div>
 
-          <section aria-labelledby="strip" className="mt-4 rounded-lg border border-line p-4">
+          <section aria-labelledby="strip" className="mt-4 sheet p-5">
             <h2 id="strip" className="sr-only">
               Certificate
             </h2>
