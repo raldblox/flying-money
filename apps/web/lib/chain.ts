@@ -2,12 +2,16 @@ import { flyingMoneyAbi } from '@flying-money/abi'
 import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
 import { type Certificate, type Hex, readCertificate } from '@flying-money/core'
 import { createPublicClient, http, type PublicClient } from 'viem'
+import { E2E, e2eMode } from './e2e'
 
 const clients = new Map<ChainKey, PublicClient>()
 export function publicClient(key: ChainKey): PublicClient {
   let c = clients.get(key)
   if (!c) {
-    c = createPublicClient({ chain: getChain(key).chain, transport: http(rpcUrl(key, process.env)) }) as PublicClient
+    c = createPublicClient({
+      chain: getChain(key).chain,
+      transport: http(e2eMode && key === 'anvil' ? E2E.rpc : rpcUrl(key, process.env)),
+    }) as PublicClient
     clients.set(key, c)
   }
   return c

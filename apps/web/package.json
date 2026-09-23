@@ -20,12 +20,15 @@
     "@flying-money/core": "workspace:*",
     "@flying-money/oracle": "workspace:*",
     "@flying-money/server": "workspace:*",
+    "@noble/hashes": "^2.4.0",
+    "@tanstack/react-query": "^5.103.2",
+    "jsqr": "^1.4.0",
     "next": "^16.3.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "uqr": "^0.1.3",
     "viem": "^2.56.8",
-    "wagmi": "^3.7.7",
-    "@tanstack/react-query": "^5.103.2"
+    "wagmi": "^3.7.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

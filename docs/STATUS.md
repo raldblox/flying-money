@@ -2,6 +2,48 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 7: Shop mode minimum (24 Sep): ✅ locally (e2e on anvil, offline shell verified) · ⏸ phone + camera run on Arbitrum Sepolia by a human
+
+**Done**
+- **SDK, tests first** (commit a961c47):
+  - `createCounter`, the shop till (§6.8). It gives GUARANTEED / UNVERIFIED · merchant risk / REJECTED, and a re-scan returns the same outcome.
+  - A note sealed for a different order is rejected.
+  - On reconnect, unverified payments are promoted to guaranteed or flagged.
+  - The till's store is persisted on every write (D21). The S1–S4 tests also run against a store re-opened from its saved snapshot on every call.
+  - Counter wallet (§6.6 at a counter, D20), with a randomised C1 test with crashes.
+- **Web:**
+  - `/shop` (open a till).
+  - `/shop/[chain]/[payee]` (the shop page with a counter QR).
+  - `/shop/[chain]/[payee]/pos` (the till):
+    - price list, keypad, price QR, camera scan or paste;
+    - a seal animation on "Accepted 3.50 · Customer remaining 16.50";
+    - the ledger ("Accepted by you" → "Collected on-chain"), **Collect** in one `redeemMany`, and re-checking unverified payments;
+    - settings: first-visit limit (default 5 USDC), price list, primary-till flag;
+    - one tab per till (Web Locks).
+  - `/wallet`:
+    - PIN-sealed spender keys (scrypt → AES-GCM) in IndexedDB;
+    - add a certificate from a hand-over link (the key travels only in the URL fragment and is cleared after import), or make a key and fund the certificate in the Counting House;
+    - pay: scan the price QR → review → PIN → full-screen sealed-note QR (screen kept awake) → "Yes, the shop accepted it" / "No, the shop didn't accept it";
+    - an open-payment banner, balances "on this device" plus what the shop has collected, backup export/restore, and an Add-to-Home-Screen prompt.
+  - Counting House: "Give it to someone" hand-over link + QR after issuing with a browser-made key.
+  - Offline shell (`public/sw.js`):
+    - pages network-first with a cached fallback; build assets cache-first;
+    - on install it caches `/wallet`, `/shop` and every asset they reference;
+    - pages also add their own assets once the worker is active;
+    - `/api` and cross-origin RPC are never cached.
+- **Verified locally:**
+  1. Issue 20 USDC with a browser key → the hand-over link opens the wallet.
+  2. Tea 3.50 → GUARANTEED.
+  3. The till's chain connection is cut: the returning customer is still GUARANTEED (remaining 13.00), and a new customer is **UNVERIFIED · merchant risk**.
+  4. After reconnecting, the unverified payment is promoted. **Collect** sends one transaction, and the shop balance goes up by exactly 9.25 USDC.
+  5. With the server stopped, `/wallet` still loads (never opened before in that browser).
+  6. A QR round-trip test (uqr → jsQR) decodes a 547-character sealed note.
+- Also: web polish (certificate art, code ruling, smooth scroll, plain-language copy); deployed at https://useflyingmoney.vercel.app (Git-connected, root `apps/web`).
+
+**Needs a human**
+- Run the café flow on two real devices on Arbitrum Sepolia (camera scan, Add to Home Screen, airplane mode).
+- H5: add `DEMO_FUNDER_KEY`, `DEMO_AGENT_KEY`, `REDEEMER_KEY` and `PAYEE_ADDRESS` in Vercel project settings for `/demo`. I didn't copy private keys to a third-party service.
+
 ## Phase 6: Counting House minimum + agent docs (24 Sep): ✅ locally (e2e on anvil) · ⏸ real-wallet run on Arbitrum Sepolia by a human
 
 **Done**

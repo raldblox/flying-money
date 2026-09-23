@@ -8,6 +8,7 @@ import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'w
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
 import { short, usdc } from '@/lib/fmt'
+import { HandOverLink } from './hand-over'
 import { TxStatus, useTx } from './tx'
 
 export interface Place {
@@ -173,6 +174,7 @@ export function IssueWizard({
             Download the agent .env again (with the certificate id)
           </button>
         )}
+        {generated && <HandOverLink chain={chain.key} id={issued.id} spenderKey={generated.key} />}
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
           <a className="text-indigo underline" href={`/c/${chain.key}/${issued.id}`}>
             Open the certificate page

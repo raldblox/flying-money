@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./counter": {
+      "types": "./dist/counter-entry.d.ts",
+      "import": "./dist/counter-entry.js"
     }
   },
   "files": [

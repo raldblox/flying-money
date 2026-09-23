@@ -1,19 +1,9 @@
-import { type ChainConfig, chainKeys, getChain, rpcUrl, setLocalDeployment } from '@flying-money/chains'
-import type { Chain, Hex } from 'viem'
+import { type ChainConfig, chainKeys, getChain, rpcUrl } from '@flying-money/chains'
+import type { Chain } from 'viem'
 import { createConfig, http, injected, mock } from 'wagmi'
+import { E2E, e2eMode } from './e2e'
 
-/**
- * Local end-to-end test mode ONLY (never set in production): the Counting House talks to a private anvil and uses
- * wagmi's mock connector, whose transactions are signed by anvil's unlocked, publicly known dev accounts.
- */
-const E2E = {
-  rpc: process.env.NEXT_PUBLIC_FM_E2E_ANVIL,
-  usdc: process.env.NEXT_PUBLIC_FM_E2E_USDC as Hex | undefined,
-  contract: process.env.NEXT_PUBLIC_FM_E2E_CONTRACT as Hex | undefined,
-  account: process.env.NEXT_PUBLIC_FM_E2E_ACCOUNT as Hex | undefined,
-}
-export const e2eMode = Boolean(E2E.rpc && E2E.usdc && E2E.contract && E2E.account)
-if (e2eMode) setLocalDeployment({ usdc: E2E.usdc!, flyingMoney: E2E.contract! })
+export { e2eMode }
 
 /** Chains the Counting House can use: those with a recorded deployment (from @flying-money/chains). */
 export function deployedChains(): ChainConfig[] {
