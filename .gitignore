@@ -28,3 +28,4 @@ Thumbs.db
 contracts/deployments/
 contracts/snapshots/
 .flying-money*.json
+.e2e-state.json

@@ -11,6 +11,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   // Workspace packages ship ESM from dist/; the demo runner uses Node APIs, so keep these server-external.
   serverExternalPackages: ['@flying-money/agent', '@flying-money/oracle', '@flying-money/server', 'ioredis'],
+  async rewrites() {
+    return [{ source: '/.well-known/flying-money.json', destination: '/api/well-known' }]
+  },
   async headers() {
     return [
       {

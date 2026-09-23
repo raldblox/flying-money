@@ -2,6 +2,47 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 6: Counting House minimum + agent docs (24 Sep): ✅ locally (e2e on anvil) · ⏸ real-wallet run on Arbitrum Sepolia by a human
+
+**Done**
+- **`/app`, the Counting House** (§12.1–§12.4). wagmi 3 with a browser wallet (D18).
+  - A chain selector from the registry, with mainnets hidden behind "Show mainnets (real money)".
+  - A mode banner: "Test money only" with the Circle faucet on testnets; the capped-mainnet wording otherwise.
+  - A wrong-network prompt with Switch.
+  - **Issue wizard**, three steps:
+    1. **Place:** the demo Oracle is pre-listed; a pasted address is labelled ⚠ unverified and needs a "checked twice" confirmation.
+    2. **Spender:** bring an agent address (recommended, `npx @flying-money/client keygen`), or generate a key in the browser. That key is shown once, downloaded as a `.env` and never stored or sent.
+    3. **Budget and time:** 1, 7 or 30 days; cap-aware and balance-aware.
+    - It blocks spender = your wallet and spender = payee before the contract would. A review sentence ("Give … USDC at … for …") leads to approve, then issue.
+    - On success: a seal stamp, the certificate id, the config snippet, and links to the certificate page and transaction.
+  - **Certificates you issued:** from `CertificateIssued` logs filtered by funder, with remaining, tally, status, payee, spender and expiry.
+  - **Certificates you can redeem:** the same, filtered by payee.
+    - Paste a sealed note. It's checked in the browser (domain, id, ECDSA signer, above redeemed, within face value, not expired) before Redeem is enabled.
+    - Redeeming joins the tally halves and stamps the seal. The page explains that anyone may redeem and money only reaches the payee.
+  - **§12.4 transaction states:** preparing → awaiting wallet → submitted (hash + link) → confirming → confirmed or failed. Nothing is shown as successful before the receipt; once a hash is known, the retry button becomes "Check status".
+  - Loading skeletons, empty states, and errors with a retry.
+- **Agent docs minimum** (§10.7):
+  - `/llms.txt`: links only to pages that exist; no claims beyond Guarantees.
+  - `/.well-known/flying-money.json`: generated from the registry. Chains, contracts, USDC, caps, EIP-712 domain and types, header names, spec version, `audited: false`.
+  - `AGENTS.md` already existed.
+- **Design pass** (`b791e46`), after founder feedback: rice-paper desk and torn-edge sheets; hand-drawn SVG art (ink-wash landscape, Silk Road map, a tally whose seal spans both halves, brush icons); the landing page retold as chapters; ledger-ruled tables; a seal logo; light and dark.
+
+**Verified: browser e2e on anvil** (D19; wagmi mock connector, anvil's public dev accounts):
+1. Connect.
+2. The wizard **blocked spender = own wallet** (a mis-filled field caught it).
+3. Approve 5 USDC: confirmed.
+4. Issue: certificate `0xbc8b…0445`, success screen.
+5. Payee view: pasted a 2.50 USDC note signed by the agent key: "Valid note: redeeming pays 2.50 USDC".
+6. Redeem: confirmed; the tally went from 0.00 to 2.50 of 5.00.
+7. Re-pasting the same note: "Already redeemed", Redeem disabled.
+8. The issued list shows 2.50 of 5.00 left.
+
+`/llms.txt` and the well-known JSON were fetched and checked. Lint clean; `pnpm build` / `typecheck` / `test` all green (17 test tasks).
+
+**Needs a human:** the row's ✅ says "a fresh wallet can issue and redeem on Arbitrum Sepolia". That's a click-through with MetaMask on `/app`: connect, issue about 1 test USDC to the demo Oracle's payee, then redeem a note. The e2e above proves the same code path on anvil.
+
+**Next:** Phase 7, Shop mode minimum (POS price QR → wallet sealed-note QR → Accept → Collect, offline accept with the PWA), then Arbitrum One (capped), for which I will **stop and ask before any mainnet transaction**, plus the README, video and pitch.
+
 ## Phase 5: Web minimum (24 Sep): ✅ local, live on Arbitrum Sepolia · ⏸ public deploy blocked on H5 (Vercel)
 
 **Done** (`apps/web`: Next.js 16 App Router, Tailwind 4, TypeScript)

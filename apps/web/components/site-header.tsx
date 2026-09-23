@@ -3,6 +3,7 @@ import { SITE } from '@/lib/site'
 
 const nav = [
   { href: '/demo', label: 'Live demo' },
+  { href: '/app', label: 'Counting House' },
   { href: '/guarantees', label: 'Guarantees' },
   { href: '/chains', label: 'Deployments' },
   { href: '/hackathons/arbitrum', label: 'Arbitrum' },

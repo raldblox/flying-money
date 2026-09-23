@@ -4,8 +4,27 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@flying-money/web", "start"],
+      "runtimeArgs": [
+        "--filter",
+        "@flying-money/web",
+        "start"
+      ],
       "port": 3000
+    },
+    {
+      "name": "web-e2e",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@flying-money/web",
+        "exec",
+        "next",
+        "dev",
+        "--webpack",
+        "--port",
+        "3100"
+      ],
+      "port": 3100
     }
   ]
 }
