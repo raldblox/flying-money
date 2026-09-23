@@ -12,6 +12,20 @@ export {
   PriceTooHighError,
 } from './client.js'
 export {
+  abandonCounterPayment,
+  type CounterCertificate,
+  type CounterPending,
+  type CounterState,
+  type CounterWalletStore,
+  certificateMatches,
+  confirmCounterPayment,
+  counterBalance,
+  deserializeCounterState,
+  memoryCounterStore,
+  prepareCounterPayment,
+  serializeCounterState,
+} from './counter.js'
+export {
   type ClientCertState,
   type ClientStore,
   fileStore,

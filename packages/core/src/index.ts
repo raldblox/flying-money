@@ -9,6 +9,7 @@ import {
   keccak256,
   type LocalAccount,
   type PublicClient,
+  stringToBytes,
   type TypedDataDomain,
   type WalletClient,
 } from 'viem'
@@ -168,6 +169,11 @@ export function verifyNoteSignature(signed: SignedNote, spender: Hex): boolean {
 
 export function newRequestId(): Hex {
   return bytesToHex(crypto.getRandomValues(new Uint8Array(32)))
+}
+
+/** Counter payments (§6.8 step 2): memo = requestId = keccak256(orderId), so a re-scan is idempotent per order. */
+export function counterRequestId(orderId: string): Hex {
+  return keccak256(stringToBytes(orderId))
 }
 
 // ───────── wire encoding (§6.4, §8.1, DECISIONS D4) ─────────

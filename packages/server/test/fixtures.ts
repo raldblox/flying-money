@@ -2,7 +2,28 @@ import { getChain, setLocalDeployment } from '@flying-money/chains'
 import { type Certificate, certificateId, encodeHeader, type Hex, newRequestId, signNote } from '@flying-money/core'
 import RedisMock from 'ioredis-mock'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { memoryStore, type NoteStore, redisStore, upstashStore } from '../src/index.js'
+import { memoryStore, type NoteStore, redisStore, type StoreSnapshot, upstashStore } from '../src/index.js'
+
+/**
+ * The shop till's store: memoryStore persisted through onCommit (IndexedDB in the browser). To prove nothing lives
+ * only in memory, every call runs on a store freshly re-opened from the last saved JSON (a "restart" per call).
+ */
+export function reopenedStore(): NoteStore {
+  let saved: string | undefined
+  const open = () =>
+    memoryStore({
+      ...(saved ? { initial: JSON.parse(saved) as StoreSnapshot } : {}),
+      onCommit: async (snap) => {
+        saved = JSON.stringify(snap)
+      },
+    })
+  return new Proxy({} as NoteStore, {
+    get:
+      (_t, prop) =>
+      (...args: unknown[]) =>
+        (open() as unknown as Record<string, (...a: unknown[]) => unknown>)[prop as string]!(...args),
+  })
+}
 
 export const CONTRACT: Hex = '0x00000000000000000000000000000000000f1f1f'
 export const USDC: Hex = '0x00000000000000000000000000000000000c0c0c'
@@ -59,6 +80,7 @@ const rand = () => Math.random().toString(36).slice(2)
 export function storeFactories(): Array<[string, () => NoteStore]> {
   const f: Array<[string, () => NoteStore]> = [
     ['memory', () => memoryStore()],
+    ['memory, persisted and re-opened on every call (shop till)', reopenedStore],
     ['redis Lua (ioredis-mock)', () => redisStore(new RedisMock(), { prefix: `t:${rand()}:` })],
   ]
   if (process.env.REDIS_URL) {

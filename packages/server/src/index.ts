@@ -1,5 +1,16 @@
+export {
+  type Counter,
+  type CounterConfig,
+  type CounterKV,
+  type CounterResult,
+  type CounterStatus,
+  createCounter,
+  memoryKV,
+  type RejectReason,
+  type UnverifiedRecord,
+} from './counter.js'
 export { createIdempotency } from './idempotency.js'
-export { memoryStore } from './memory-store.js'
+export { type MemoryStoreOptions, memoryStore, type StoreSnapshot } from './memory-store.js'
 export {
   createRedeemer,
   type RedeemedEvent,
