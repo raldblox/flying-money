@@ -47,6 +47,8 @@ export interface ChainConfig {
    * Added to the §5.4 interface by DECISIONS.md D1 so every constructor argument comes from the registry.
    */
   maxTotalOutstanding: bigint
+  /** Keyless source verification endpoint (Blockscout API), when the chain has one (DECISIONS D16). */
+  blockscoutApi?: string
   flyingMoney?: Hex
   deployedBlock?: bigint
   hackathons: Hackathon[]
@@ -70,6 +72,7 @@ const mainnetCaps = { maxFaceValue: MAINNET_MAX_FACE_VALUE, maxTotalOutstanding:
 export const baseRegistry: Record<ChainKey, Base> = {
   arbitrum: {
     key: 'arbitrum',
+    blockscoutApi: 'https://arbitrum.blockscout.com/api/',
     chain: arbitrum,
     mainnet: true,
     usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
@@ -82,6 +85,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
   },
   'arbitrum-sepolia': {
     key: 'arbitrum-sepolia',
+    blockscoutApi: 'https://arbitrum-sepolia.blockscout.com/api/',
     chain: arbitrumSepolia,
     mainnet: false,
     usdc: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
@@ -142,6 +146,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
   },
   base: {
     key: 'base',
+    blockscoutApi: 'https://base.blockscout.com/api/',
     chain: base,
     mainnet: true,
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -154,6 +159,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
   },
   'base-sepolia': {
     key: 'base-sepolia',
+    blockscoutApi: 'https://base-sepolia.blockscout.com/api/',
     chain: baseSepolia,
     mainnet: false,
     usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',

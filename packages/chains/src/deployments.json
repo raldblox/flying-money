@@ -1,1 +1,6 @@
-{}
+{
+  "arbitrum-sepolia": {
+    "flyingMoney": "0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2",
+    "deployedBlock": "311943442"
+  }
+}

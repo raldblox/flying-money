@@ -129,7 +129,8 @@ describe('no hard-coded chain values outside @flying-money/chains', () => {
   walk(root)
   const allowed = (p: string) => {
     const r = relative(root, p).split(sep).join('/')
-    return r.startsWith('packages/chains/') || r === 'pnpm-lock.yaml'
+    // contracts/deployments/ is git-ignored forge output that echoes registry values back
+    return r.startsWith('packages/chains/') || r.startsWith('contracts/deployments/') || r === 'pnpm-lock.yaml'
   }
   const needles = Object.values(SPEC)
     .map(([, usdc]) => usdc.toLowerCase())

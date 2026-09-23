@@ -20,15 +20,20 @@
     "redis:down": "docker stop fm-redis",
     "deploy:chain": "tsx scripts/deploy.ts",
     "deploy:all": "tsx scripts/deploy.ts --all",
-    "chains:check": "pnpm --filter @flying-money/chains check"
+    "chains:check": "pnpm --filter @flying-money/chains check",
+    "verify:chain": "tsx scripts/deploy.ts --verify-only",
+    "deployment:check": "tsx scripts/check-deployment.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
+    "@flying-money/chains": "workspace:*",
     "@types/node": "^26.6.2",
     "tsx": "^4.23.15",
     "turbo": "^2.11.3",
     "typescript": "7.0.2",
+    "viem": "^2.56.8",
     "vitest": "^5.0.1",
-    "@flying-money/chains": "workspace:*"
+    "@flying-money/abi": "workspace:*",
+    "@flying-money/core": "workspace:*"
   }
 }

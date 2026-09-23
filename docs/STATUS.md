@@ -30,7 +30,7 @@ Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §1
 - A manual `demo:local` run with live weather: 20 served, redeemed in **3 transactions**, best trade printed.
 
 **Blocked:** the row's ✅ ("scripted run on Arbitrum Sepolia: ~20 paid calls, ≥ 1 on-chain redemption") needs:
-- **H1:** a deployer with Arbitrum Sepolia ETH;
+- ~~H1~~ (done: the contract is deployed);
 - **H2:** Circle testnet USDC on the demo funder;
 - **H3:** `PAYEE_ADDRESS` and `REDEEMER_KEY` with Arbitrum Sepolia ETH.
 
@@ -97,7 +97,23 @@ Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §1
 
 **Next:** Phase 4. Build the Silk Road Oracle (Hono, §13.1) and the Merchant agent (§13.2). Run them locally on anvil first, then on Arbitrum Sepolia once H1–H3 arrive.
 
-## Phase 2: Contract + unit tests + invariants + Deploy script (23 Sep): ✅ local · ⏸ deploy blocked on H1/H4
+## Arbitrum Sepolia deployment (23 Sep): ✅ deployed and verified
+
+| | |
+|---|---|
+| Contract | `0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2` |
+| Chain | Arbitrum Sepolia (421614), block 311943442, tx `0x35ea657719cb4c10d3b13855df47c5fd45d795c0b88da293cb6c9008bf6fd215` |
+| Constructor | Circle USDC `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`, caps 0/0 (testnet, from the registry) |
+| Verified | **Blockscout** (keyless, D16): https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2. An Arbiscan badge needs an Etherscan key; add one later and run `pnpm verify:chain arbitrum-sepolia` |
+| Deployer | `0x8dB423F3b8991865030BcE381F7A50EC517c7c50` |
+| Live checks | `pnpm deployment:check arbitrum-sepolia`: on-chain EIP-712 domain, token, caps and `noteDigest` all equal the SDK (4/4 OK) |
+
+- The deploy script now records the deployment **before** verifying, so a verification failure can never lose the address.
+- Verification tries Etherscan (only if a key is set), then Blockscout, then Sourcify. Forge's Sourcify endpoint failed today; Blockscout succeeded.
+- MetaMask-style keys without `0x` are accepted.
+- The Phase 2 row's ✅ is now fully met.
+
+## Phase 2: Contract + unit tests + invariants + Deploy script (23 Sep): ✅
 
 **Done** (tests written before the contract, per §0.3)
 - `contracts/src/FlyingMoney.sol`: **byte-for-byte the §7.2 reference** (checked with `diff` against the spec).
