@@ -159,17 +159,29 @@ export function IssueWizard({
     ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(s.phase),
   )
 
+  // Gas is estimated here through the site's own RPC and handed to the wallet, so a wallet whose own RPC
+  // mis-estimates (seen live: MetaMask reporting an empty "revert" for a valid approve) can still send.
+  const withMargin = (g: bigint) => (g * 13n) / 10n
+
   async function approve() {
-    if (!wallet || !face || !chain.flyingMoney) return
-    const r = await approveTx.run(() =>
-      wallet.writeContract({
+    if (!wallet || !publicClient || !face || !chain.flyingMoney || !address) return
+    const r = await approveTx.run(async () => {
+      const gas = await publicClient.estimateContractGas({
+        account: address,
+        address: chain.usdc,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [chain.flyingMoney!, face!],
+      })
+      return wallet.writeContract({
         chain: chain.chain,
         address: chain.usdc,
         abi: erc20Abi,
         functionName: 'approve',
         args: [chain.flyingMoney!, face!],
-      }),
-    )
+        gas: withMargin(gas),
+      })
+    })
     if (r) await refetchAllowance()
   }
 
@@ -185,7 +197,8 @@ export function IssueWizard({
         functionName: 'issue',
         args: [payee, spender, face!, expiresAt],
       })
-      return wallet.writeContract({ ...request, chain: chain.chain })
+      const gas = await publicClient.estimateContractGas(request)
+      return wallet.writeContract({ ...request, chain: chain.chain, gas: withMargin(gas) })
     })
     if (!receipt) return
     const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
