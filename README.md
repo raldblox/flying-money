@@ -21,7 +21,7 @@ The same certificates work for people: a café tab, an allowance, a gift. The ho
 pnpm install
 pnpm build
 pnpm --filter @flying-money/web exec next dev --webpack --port 3000   # the site, Counting House, demo, till, wallet
-pnpm test                                                              # every package
+pnpm verify                                                            # the full gate: lint, build, types, tests, secret scan
 pnpm contracts:test                                                    # Foundry unit + invariant tests
 pnpm --filter @flying-money/agent demo:local                           # agent ↔ Oracle on a local anvil
 ```

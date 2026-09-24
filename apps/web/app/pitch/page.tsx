@@ -6,16 +6,16 @@ import { SITE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Pitch',
-  description: 'Flying Money for judges: the problem, the solution, what is built, and where to see it working.',
+  description: 'Flying Money on one page: the problem, the solution, what is built, and where to see it working.',
 }
 
-/** /pitch (§10.1, §16.1): a one-pager for judges. */
+/** /pitch (§10.1, §21.2): an event-neutral one-pager. */
 export default function PitchPage() {
   const arb = getChain('arbitrum-sepolia')
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
       <p className="smallcaps text-sm text-seal">
-        <span lang="zh-Hant">飛錢</span> · for judges
+        <span lang="zh-Hant">飛錢</span> · on one page
       </p>
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight text-balance sm:text-6xl">
         Give your AI agent a <em className="text-seal">sealed certificate</em>, not your wallet.

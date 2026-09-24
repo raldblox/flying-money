@@ -2,6 +2,20 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## v1.5 step 1: V1 + V2 (24 Sep): ✅ `pnpm verify` green
+
+- **V1:**
+  - `.github/workflows` is deleted.
+  - `pnpm verify` is the gate: lint, clean build, typecheck, tests (forge invariants included), secret scan, public-surface check; `--e2e` adds Playwright (D23). Last run passed in 52 s.
+  - S4 also runs on Upstash when store env is present (not yet: waiting for the Marketplace install).
+  - Commits are local only; nothing is pushed.
+- **V2:**
+  - `/hackathons/*` and `lib/hackathons.ts` are removed; the footer link is gone and `/pitch` is event-neutral.
+  - The registry's `hackathons` field is replaced by public `notes`.
+  - New `/chains/[chain]` pages for all 8 registry chains, with "Try it" buttons and `?chain=` preselection (D24).
+  - Per-event material moved to `docs/submissions/*.md` (not served).
+  - The denylist check is clean on a fresh production build.
+
 ## Phase 13: Hackathon pages and browser e2e (24 Sep): ✅
 
 - **`/hackathons/[event]`** for arbitrum, colosseum, monad and arc (§16.2), from `lib/hackathons.ts`. Each page has its own framing and track, leads with the door that fits the track, and reads its chains from the registry.

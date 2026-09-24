@@ -1,8 +1,26 @@
 import { getChain, setLocalDeployment } from '@flying-money/chains'
 import { type Certificate, certificateId, encodeHeader, type Hex, newRequestId, signNote } from '@flying-money/core'
+import { Redis as UpstashRedis } from '@upstash/redis'
 import RedisMock from 'ioredis-mock'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { memoryStore, type NoteStore, redisStore, type StoreSnapshot, upstashStore } from '../src/index.js'
+import { afterAll } from 'vitest'
+import { memoryStore, type NoteStore, redisStore, type StoreSnapshot, upstashEnv, upstashStore } from '../src/index.js'
+
+/** Test prefixes created on Upstash in this run; deleted afterwards (§21.1). */
+const upstashPrefixes = new Set<string>()
+afterAll(async () => {
+  const up = upstashEnv()
+  if (!up || upstashPrefixes.size === 0) return
+  const r = new UpstashRedis(up)
+  for (const prefix of upstashPrefixes) {
+    let cursor = '0'
+    do {
+      const [next, keys] = await r.scan(cursor, { match: `${prefix}*`, count: 500 })
+      if (keys.length) await r.del(...keys)
+      cursor = String(next)
+    } while (cursor !== '0')
+  }
+})
 
 /**
  * The shop till's store: memoryStore persisted through onCommit (IndexedDB in the browser). To prove nothing lives
@@ -87,10 +105,16 @@ export function storeFactories(): Array<[string, () => NoteStore]> {
     const url = process.env.REDIS_URL
     f.push(['redis Lua (real Redis, REDIS_URL)', () => redisStore(url, { prefix: `t:${rand()}:` })])
   }
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    const url = process.env.UPSTASH_REDIS_REST_URL
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN
-    f.push(['redis Lua (Upstash)', () => upstashStore({ url, token }, { prefix: `t:${rand()}:` })])
+  const up = upstashEnv()
+  if (up) {
+    f.push([
+      'redis Lua (Upstash)',
+      () => {
+        const prefix = `fm:test:${rand()}:`
+        upstashPrefixes.add(prefix)
+        return upstashStore(up, { prefix })
+      },
+    ])
   }
   return f
 }

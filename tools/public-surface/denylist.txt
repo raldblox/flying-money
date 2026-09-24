@@ -1,0 +1,10 @@
+# Terms that must never appear on a public surface (BUILD_SPEC §21.2). One per line, case-insensitive.
+Colosseum
+World's Fair
+World’s Fair
+Metropolis
+Open House
+Microgrant
+DoraHacks
+hackathon
+buildathon

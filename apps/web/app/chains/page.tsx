@@ -50,7 +50,9 @@ export default function ChainsPage() {
             {chains.map((c) => (
               <tr key={c.key} className="border-t border-line align-middle">
                 <th scope="row" className="px-4 py-3 font-medium">
-                  {c.chain.name}
+                  <a href={`/chains/${c.key}`} className="text-indigo underline">
+                    {c.chain.name}
+                  </a>
                   <span className="block font-mono text-xs font-normal text-ink-2">
                     {c.key} · {c.chain.id}
                   </span>

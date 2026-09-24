@@ -306,3 +306,16 @@ export function upstashStore(
       : new UpstashRedis({ url: target.url, token: target.token, automaticDeserialization: false })
   return redisStoreFromEval(upstashEval(client), opts)
 }
+
+/**
+ * Upstash REST credentials from the environment (BUILD_SPEC §21.5): the Vercel Marketplace integration's
+ * KV_REST_API_URL / KV_REST_API_TOKEN first, then UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN.
+ */
+export function upstashEnv(
+  env: Record<string, string | undefined> = process.env,
+): { url: string; token: string } | null {
+  if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) return { url: env.KV_REST_API_URL, token: env.KV_REST_API_TOKEN }
+  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN)
+    return { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }
+  return null
+}

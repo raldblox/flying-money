@@ -26,6 +26,7 @@ export {
   type RedisStoreOptions,
   redisStore,
   redisStoreFromEval,
+  upstashEnv,
   upstashEval,
   upstashStore,
 } from './redis-store.js'

@@ -27,8 +27,6 @@ export type ChainKey =
   | 'base-sepolia'
   | 'anvil'
 
-export type Hackathon = 'arbitrum-open-house' | 'monad-metropolis' | 'arc-microgrants' | 'colosseum-worlds-fair'
-
 export interface ChainConfig {
   key: ChainKey
   chain: Chain
@@ -51,7 +49,8 @@ export interface ChainConfig {
   blockscoutApi?: string
   flyingMoney?: Hex
   deployedBlock?: bigint
-  hackathons: Hackathon[]
+  /** Public, chain-specific notes for /chains/[chain] (§21.2). Plain facts only; no claims beyond §3.5. */
+  notes: string[]
 }
 
 export const USDC_DECIMALS = 6 as const
@@ -81,7 +80,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [],
     confirmations: 1,
     ...mainnetCaps,
-    hackathons: ['arbitrum-open-house', 'colosseum-worlds-fair'],
+    notes: ['An Ethereum layer 2; gas is paid in ETH.', 'Close to existing agent and DeFi ecosystems.'],
   },
   'arbitrum-sepolia': {
     key: 'arbitrum-sepolia',
@@ -94,7 +93,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [CIRCLE_FAUCET],
     confirmations: 1,
     ...testnetCaps,
-    hackathons: ['arbitrum-open-house', 'colosseum-worlds-fair'],
+    notes: ['The Arbitrum test network: test USDC from the Circle faucet, test ETH for gas.'],
   },
   monad: {
     key: 'monad',
@@ -106,7 +105,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [],
     confirmations: 1,
     ...mainnetCaps,
-    hackathons: ['monad-metropolis'],
+    notes: ['Gas is paid in MON.', 'Fast blocks: a seller’s single collect transaction lands almost at once.'],
   },
   'monad-testnet': {
     key: 'monad-testnet',
@@ -118,7 +117,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [CIRCLE_FAUCET],
     confirmations: 1,
     ...testnetCaps,
-    hackathons: ['monad-metropolis'],
+    notes: ['The Monad test network: test USDC from the Circle faucet, test MON for gas.'],
   },
   arc: {
     key: 'arc',
@@ -130,7 +129,10 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [],
     confirmations: 0,
     ...mainnetCaps,
-    hackathons: ['arc-microgrants'],
+    notes: [
+      'Gas is paid in USDC, so shops and sellers only ever need USDC.',
+      'Sub-second, deterministic finality: a collect is final as soon as it lands.',
+    ],
   },
   'arc-testnet': {
     key: 'arc-testnet',
@@ -142,7 +144,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [CIRCLE_FAUCET],
     confirmations: 0,
     ...testnetCaps,
-    hackathons: ['arc-microgrants'],
+    notes: ['The Arc test network: gas is paid in test USDC from the Circle faucet.'],
   },
   base: {
     key: 'base',
@@ -155,7 +157,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [],
     confirmations: 1,
     ...mainnetCaps,
-    hackathons: ['colosseum-worlds-fair'],
+    notes: ['An Ethereum layer 2; gas is paid in ETH.', 'Close to existing agent-payment ecosystems.'],
   },
   'base-sepolia': {
     key: 'base-sepolia',
@@ -168,7 +170,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [CIRCLE_FAUCET],
     confirmations: 1,
     ...testnetCaps,
-    hackathons: ['colosseum-worlds-fair'],
+    notes: ['The Base test network: test USDC from the Circle faucet, test ETH for gas.'],
   },
   anvil: {
     key: 'anvil',
@@ -180,7 +182,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     faucets: [],
     confirmations: 1,
     ...testnetCaps,
-    hackathons: [],
+    notes: ['A local development chain.'],
   },
 }
 

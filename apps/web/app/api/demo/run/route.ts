@@ -19,7 +19,13 @@ function configured() {
 }
 
 export async function POST(req: Request) {
-  const chainKey = process.env.NEXT_PUBLIC_DEFAULT_CHAIN ?? 'arbitrum-sepolia'
+  // §13.3 scenario toggles (D22) and the chain (?chain=, §21.2): chosen before the run
+  const body = (await req.json().catch(() => ({}))) as { chain?: unknown; cutNetwork?: unknown; stealKey?: unknown }
+  const scenarios = { cutNetwork: body.cutNetwork === true, stealKey: body.stealKey === true }
+  const chainKey =
+    typeof body.chain === 'string' && isChainKey(body.chain)
+      ? body.chain
+      : (process.env.NEXT_PUBLIC_DEFAULT_CHAIN ?? 'arbitrum-sepolia')
   if (!isChainKey(chainKey) || getChain(chainKey).mainnet || !getChain(chainKey).flyingMoney || !configured())
     return Response.json(
       { error: 'Demo paused: the demo runner is not configured on this deployment.' },
@@ -37,9 +43,6 @@ export async function POST(req: Request) {
     )
   if (running)
     return Response.json({ error: 'Another visitor’s demo is running. Try again in a minute.' }, { status: 429 })
-  // §13.3 scenario toggles (D22): chosen before the run, performed live during it
-  const body = (await req.json().catch(() => ({}))) as { cutNetwork?: unknown; stealKey?: unknown }
-  const scenarios = { cutNetwork: body.cutNetwork === true, stealKey: body.stealKey === true }
   running = true
   lastRun.set(ip, Date.now())
 

@@ -1,3 +1,4 @@
+import { isChainKey } from '@flying-money/chains'
 import type { Metadata } from 'next'
 import { IconBowl, IconGift, IconTea, IconWorker } from '@/components/art/ink-icons'
 import { TallyArt } from '@/components/art/tally'
@@ -25,7 +26,9 @@ const USES = [
 ]
 
 /** /shops (§10.1): the second front door, for people and shops. */
-export default function ShopsPage() {
+export default async function ShopsPage({ searchParams }: { searchParams: Promise<{ chain?: string }> }) {
+  const { chain } = await searchParams
+  const q = chain && isChainKey(chain) ? `?chain=${chain}` : ''
   return (
     <>
       <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-10 pt-14 sm:px-6 lg:grid-cols-[1.1fr_1fr]">
@@ -41,8 +44,8 @@ export default function ShopsPage() {
             don’t spend comes back to you.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/app">Give a certificate →</ButtonLink>
-            <ButtonLink href="/shop" variant="secondary">
+            <ButtonLink href={`/app${q}`}>Give a certificate →</ButtonLink>
+            <ButtonLink href={`/shop${q}`} variant="secondary">
               Open a till for your shop
             </ButtonLink>
           </div>

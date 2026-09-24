@@ -12,6 +12,9 @@ Progress is in `docs/STATUS.md`.
 
 ## Commands (cross-platform; run from the repo root)
 - `pnpm install`
+- **`pnpm verify`**: the single gate before any deploy or submission (lint, clean build, typecheck incl. doc samples,
+  all tests incl. forge invariants and S4 on Upstash when configured, secret scan, public-surface denylist).
+  `pnpm verify --e2e` adds the Playwright suite. There is no hosted CI (§21.1).
 - `pnpm build` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (turbo, all packages)
 - `pnpm contracts:test` (runs `forge test`, including invariants at 256 runs × depth 50)
 - `pnpm --filter @flying-money/chains gen`: regenerate `packages/chains/registry/*.json` after editing the registry
@@ -24,6 +27,8 @@ Progress is in `docs/STATUS.md`.
 - Spenders are ECDSA-only (no ERC-1271). The contract has no owner, admin, pause, fee or upgradeability.
 
 ## Never
+- Push, or create remotes, tags or releases, unless the founder asks (§21.1). Commit locally per phase.
+- Put a hackathon or event name on any public surface (§21.2). Event material lives in `docs/submissions/`.
 - Hard-code a chain ID, RPC, USDC address, explorer or cap outside `packages/chains` (a test enforces this).
 - Commit secrets or print private keys. Keys come only from env (`.env` is git-ignored; see `.env.example`).
 - Send a mainnet transaction without explicit human approval.

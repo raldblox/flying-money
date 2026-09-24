@@ -1,9 +1,11 @@
 'use client'
+import type { ChainKey } from '@flying-money/chains'
 import { useRef, useState } from 'react'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
 import { StatusChip } from '@/components/status-chip'
 import { Tally } from '@/components/tally'
+import { usePreferredChain } from '@/lib/chain-param'
 import { short, usdc } from '@/lib/fmt'
 
 type Ev =
@@ -39,7 +41,18 @@ type Ev =
 
 type Phase = 'idle' | 'running' | 'done' | 'error'
 
-export function DemoClient({ chainName }: { chainName: string }) {
+export function DemoClient({
+  chains,
+  defaultChain,
+}: {
+  chains: Array<{ key: ChainKey; name: string }>
+  defaultChain: ChainKey
+}) {
+  const [chainKey, setChainKey] = usePreferredChain(
+    chains.map((c) => c.key),
+    defaultChain,
+  )
+  const chainName = chains.find((c) => c.key === chainKey)?.name ?? chainKey
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [events, setEvents] = useState<Array<Ev & { seq?: number }>>([])
@@ -55,7 +68,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
       const res = await fetch('/api/demo/run', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ cutNetwork, stealKey }),
+        body: JSON.stringify({ chain: chainKey, cutNetwork, stealKey }),
       })
       if (!res.ok || !res.body) {
         const j = (await res.json().catch(() => ({}))) as { error?: string }
@@ -124,8 +137,28 @@ export function DemoClient({ chainName }: { chainName: string }) {
       <div className="sheet grid gap-4 p-4">
         <div className="flex flex-wrap items-center gap-4">
           <p className="text-sm">
-            Chain <strong>{chainName}</strong> · Budget <strong>0.30 USDC</strong> · 20 paid calls · a fresh certificate
-            every run
+            {chains.length > 1 ? (
+              <label className="mr-1">
+                Chain{' '}
+                <select
+                  value={chainKey}
+                  disabled={phase === 'running'}
+                  onChange={(e) => setChainKey(e.target.value as ChainKey)}
+                  className="rounded border border-line bg-paper px-2 py-1 font-semibold"
+                >
+                  {chains.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <>
+                Chain <strong>{chainName}</strong>
+              </>
+            )}{' '}
+            · Budget <strong>0.30 USDC</strong> · 20 paid calls · a fresh certificate every run
           </p>
           <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
             {phase === 'running' ? 'Running…' : phase === 'idle' ? 'Run the demo' : 'Run again'}

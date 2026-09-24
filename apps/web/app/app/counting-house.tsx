@@ -1,11 +1,12 @@
 'use client'
-import { getChain } from '@flying-money/chains'
+import { type ChainKey, getChain } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
 import { useEffect, useState } from 'react'
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { IssuedList, PayeeList } from '@/components/app/certificate-lists'
 import { IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { buttonClass } from '@/components/section'
+import { usePreferredChain } from '@/lib/chain-param'
 import { badgeOf, listPlaces, type PlaceContact } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
 import { SITE } from '@/lib/site'
@@ -17,9 +18,17 @@ export function CountingHouse({ defaultChain, oraclePayee }: { defaultChain: str
   const chains = deployedChains()
   const [showMainnets, setShowMainnets] = useState(false)
   const visible = chains.filter((c) => showMainnets || !c.mainnet)
-  const [chainKey, setChainKey] = useState(
-    visible.find((c) => c.key === defaultChain)?.key ?? visible[0]?.key ?? 'arbitrum-sepolia',
+  const fallback = (visible.find((c) => c.key === defaultChain)?.key ??
+    visible[0]?.key ??
+    'arbitrum-sepolia') as ChainKey
+  // ?chain= preselects (mainnets only when shown), remembered on this device (§21.2)
+  const [chainKey, setChainKey] = usePreferredChain(
+    chains.map((c) => c.key),
+    fallback,
   )
+  useEffect(() => {
+    if (getChain(chainKey).mainnet) setShowMainnets(true)
+  }, [chainKey])
   const chain = getChain(chainKey)
   const [tab, setTab] = useState<Tab>('issue')
   const [refreshKey, setRefreshKey] = useState(0)

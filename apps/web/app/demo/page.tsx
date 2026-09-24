@@ -1,4 +1,4 @@
-import { getChain, isChainKey } from '@flying-money/chains'
+import { allChains, getChain, isChainKey } from '@flying-money/chains'
 import type { Metadata } from 'next'
 import { SilkRoadMap } from '@/components/art/silk-road-map'
 import { SITE } from '@/lib/site'
@@ -12,6 +12,10 @@ export const metadata: Metadata = {
 export default function DemoPage() {
   const key = process.env.NEXT_PUBLIC_DEFAULT_CHAIN ?? 'arbitrum-sepolia'
   const chain = getChain(isChainKey(key) ? key : 'arbitrum-sepolia')
+  // the runner only uses deployed testnets (§13.3); ?chain= picks among them (§21.2)
+  const demoChains = allChains()
+    .filter((c) => !c.mainnet && c.flyingMoney && c.key !== 'anvil')
+    .map((c) => ({ key: c.key, name: c.chain.name }))
   return (
     <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Live demo · {SITE.testnetMode}</p>
@@ -29,7 +33,7 @@ export default function DemoPage() {
         </div>
         <SilkRoadMap className="hidden w-full lg:block" />
       </div>
-      <DemoClient chainName={chain.chain.name} />
+      <DemoClient chains={demoChains} defaultChain={chain.key} />
     </div>
   )
 }

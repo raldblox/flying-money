@@ -22,7 +22,10 @@
     "deploy:all": "tsx scripts/deploy.ts --all",
     "chains:check": "pnpm --filter @flying-money/chains check",
     "verify:chain": "tsx scripts/deploy.ts --verify-only",
-    "deployment:check": "tsx scripts/check-deployment.ts"
+    "deployment:check": "tsx scripts/check-deployment.ts",
+    "verify": "tsx tools/verify/verify.ts",
+    "secrets:scan": "tsx tools/verify/secrets.ts",
+    "surface:check": "tsx tools/public-surface/check.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",

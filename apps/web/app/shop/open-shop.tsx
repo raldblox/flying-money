@@ -1,14 +1,18 @@
 'use client'
-import { chainKeys, getChain } from '@flying-money/chains'
+import { type ChainKey, chainKeys, getChain } from '@flying-money/chains'
 import { useEffect, useId, useState } from 'react'
 import { isAddress } from 'viem'
 import { useAccount } from 'wagmi'
 import { WalletButton } from '@/components/app/wallet-button'
 import { buttonClass } from '@/components/section'
+import { usePreferredChain } from '@/lib/chain-param'
 
 export function OpenShop() {
   const chains = chainKeys.map(getChain).filter((c) => c.flyingMoney && c.key !== 'anvil')
-  const [chainKey, setChainKey] = useState(chains.find((c) => !c.mainnet)?.key ?? chains[0]?.key)
+  const [chainKey, setChainKey] = usePreferredChain(
+    chains.map((c) => c.key),
+    (chains.find((c) => !c.mainnet)?.key ?? chains[0]?.key ?? 'arbitrum-sepolia') as ChainKey,
+  )
   const [name, setName] = useState('Lantern Café')
   const [payee, setPayee] = useState('')
   const { address } = useAccount()
@@ -17,7 +21,7 @@ export function OpenShop() {
     if (address && !payee) setPayee(address)
   }, [address, payee])
 
-  const chain = chainKey ? getChain(chainKey) : undefined
+  const chain = chains.length ? getChain(chainKey) : undefined
   if (!chain) return <p className="mt-8 text-ink-2">Flying Money is not deployed on any network yet.</p>
 
   const ok = isAddress(payee) && name.trim().length > 0
@@ -47,7 +51,7 @@ export function OpenShop() {
         <select
           id={`${ids}-c`}
           value={chain.key}
-          onChange={(e) => setChainKey(e.target.value as typeof chainKey)}
+          onChange={(e) => setChainKey(e.target.value as ChainKey)}
           className="min-h-11 rounded border border-line bg-paper px-3"
         >
           {chains.map((c) => (

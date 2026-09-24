@@ -2,7 +2,7 @@
 
 **Sealed certificates for AI agents. Money that flies, since 804 CE.**
 
-*Version 1.4.1 (sealed build target), 23 September 2026. History:*
+*Version 1.5 (build target), 24 September 2026. **v1.5 adds §21** (founder directives: no GitHub Actions, no event names on the site, the taxonomy/UX, spending requests, Upstash on Vercel, and the hosted seller). §21 overrides earlier sections where they conflict. The protocol, the contract and the invariants are unchanged. History:*
 - *v1.1 added multi-chain EVM and the four-submission plan (§5.4, §16, §17).*
 - *v1.2 made the product holder-agnostic, with two front doors (§3.7), Shop mode (§12.5, §13.5) and the agent docs kit (§8.4, §10.7).*
 - *v1.3 added Contacts and control (§3.8), keys, privacy and what's on-chain (§3.9), no-wallet recipients (§3.10), and the Contacts UI (§12.6).*
@@ -452,7 +452,7 @@ flying-money/
 │  │   └─ public/llms.txt, llms-full.txt, .well-known/flying-money.json (§10.7)
 │  ├─ oracle/                   # Hono demo seller API ("Silk Road Oracle")
 │  └─ agent/                    # demo buyer agent (CLI + streamed to web demo)
-└─ .github/workflows/ci.yml     # contracts tests, TS tests, lint, build
+└─ (no .github/workflows: the local `pnpm verify` gate replaces CI, §21.1)
 ```
 
 ### 5.3 Technology choices
@@ -1261,7 +1261,7 @@ A single Next.js app serves the marketing site, docs, the Counting House app and
 | `/app/places` | Places | Verified and unverified places (§12.6) |
 | `/c/[chain]/[id]` | Certificate | Public view of one certificate on one chain (`chain` = registry key): terms, notes redeemed, events, explorer links |
 | `/chains` | Deployments | Every chain, contract address (with explorer link), USDC address, cap, status (testnet/mainnet). Pulled from `@flying-money/chains` |
-| `/hackathons/[event]` | Event page | `arbitrum`, `colosseum`, `monad`, `arc`: a one-pager per submission with that chain as the default, its track framing, video, addresses and links (§16.2) |
+| ~~`/hackathons/[event]`~~ | **Removed in v1.5** | Replaced by `/chains/[chain]` + `?chain=` preselection (§21.2). Event materials live only in `docs/submissions/` |
 | `/guarantees` | Guarantees | What is and isn't guaranteed; threat table; "why we removed offline cash" |
 | `/docs` | Docs home | Quickstart for buyers (agents) and sellers (APIs) |
 | `/docs/protocol` | Spec | §6 rendered |
@@ -1764,7 +1764,7 @@ Sealed spending certificates for AI agents. Money that flies, since 804 CE.
 | **Track / framing** | "Novel financial products": one primitive, two doors. Lead with **Shop mode** (tabs, allowances, gift certificates), and show agents as the second door. Emphasise the founder story and the path to Founder House (Nov) | General pool: product quality. Base: the agent-payments ecosystem. Lead with **agents** (MCP + Claude/Hermes paying live), then 20 s of Shop mode to show breadth | Track 4 "Trust, Identity & AI Infrastructure" → lead with **agents + MCP**. Or Track 2 "Consumer Products & Payments" → lead with **Shop mode**. Pick one track and one lead | "USDC-native payments for shops and agents": shops and sellers need only USDC, even for gas; sub-second finality. Lead with **the Lantern Café on Arc mainnet** |
 | **Prize context** | $70K open category + $15K promising products + grants; Founder House Singapore with up to $300K (USDG) | Global top 20 + track prizes; accelerator ($250K pre-seed per accepted team) | $30K per track (3 winners) + $25K grand champion | 20 × 500 USDC |
 | **Must-have artifact** | Working demo + repo + short pitch | Product-quality demo + video + pitch; the strongest polish goes here | Demo + short write-up + code link (their stated requirement) | **Deployable link + public repo + running on Arc mainnet** |
-| **Event page** | `/hackathons/arbitrum` | `/hackathons/colosseum` | `/hackathons/monad` | `/hackathons/arc` |
+| **Public page (v1.5)** | `/chains/arbitrum-sepolia`, `/chains/arbitrum` | `/chains/base` (or arbitrum) | `/chains/monad` | `/chains/arc` |
 
 **Rules across submissions:**
 - **One repo, one product.** Each event page and video intro changes only the default chain and the framing sentence.
@@ -1853,7 +1853,22 @@ REDIS_URL=                    # optional; memory store if empty
 DEMO_FUNDER_KEY=              # holds testnet USDC per chain; mainnet use ≤ 5 USDC total
 DEMO_AGENT_KEY=
 ORACLE_URL=https://oracle.flyingmoney.xyz
-NEXT_PUBLIC_DEFAULT_CHAIN=arbitrum-sepolia   # overridden per /hackathons/[event]
+NEXT_PUBLIC_DEFAULT_CHAIN=arbitrum-sepolia   # fallback; ?chain=<key> preselects (§21.2)
+
+# Database (§21.5): injected by the Vercel Marketplace Upstash integration
+KV_REST_API_URL=
+KV_REST_API_TOKEN=
+# fallback for local use (Upstash console)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+FM_ENV=testnet                # testnet | mainnet
+FM_REDIS_PREFIX=fm:v1:testnet:
+CRON_SECRET=                  # authorises /api/cron/* (§21.6)
+
+# Agent spending requests (§21.4)
+FM_OWNER=
+FM_OWNER_GRANT=
+FM_RELAY_URL=https://flyingmoney.xyz/api/requests
 
 # Optional LLM mode
 ANTHROPIC_API_KEY=
@@ -1885,7 +1900,7 @@ OPENAI_API_KEY=
 - [ ] Contract implements §7 exactly (including the immutable `maxFaceValue`). All unit and invariant tests pass.
 - [ ] Deployed and verified on: Arbitrum Sepolia, Arbitrum One (capped), Base Sepolia, Base (capped), Monad Testnet, Monad 143 (capped), Arc Testnet, **Arc mainnet 5042 (capped)**. The `/chains` page lists them all.
 - [ ] Per-chain smoke test passes on every testnet (Arc tested on Arc Testnet, not anvil).
-- [ ] Four `/hackathons/[event]` pages, and four submissions made before 4, 12, 13 and 14 Oct respectively.
+- [ ] Four submissions made before 4, 12, 13 and 14 Oct respectively, with materials in `docs/submissions/` (not public). The public site uses `/chains/[chain]` pages only (§21.2).
 - [ ] Core/client/server SDKs implement §6 and §8. The integration tests from Phase 3 pass.
 - [ ] Oracle and Merchant agent run end-to-end on every registered testnet, and on Arc mainnet with a small amount.
 - [ ] Website: all §10.1 routes exist. Landing copy per §10.2. Story sources linked. Guarantees page accurate.
@@ -1921,6 +1936,266 @@ OPENAI_API_KEY=
 - [Arc Microgrants (DoraHacks)](https://dorahacks.io/hackathon/arc-microgrants) · [PANews: Arc microgrants](https://panews.io/articles/01a0affb-c2f8-719d-9661-cef1573d6abb) · [Connect to Arc](https://docs.arc.io/arc/references/connect-to-arc) · [USDC on Arc: two interfaces](https://www.arc.io/blog/building-with-usdc-on-arc-one-token-two-interfaces) · [Arc EVM compatibility guide](https://www.arc.io/blog/arc-compatibility-guide-for-existing-evm-apps)
 - [Circle USDC contract addresses](https://developers.circle.com/stablecoins/usdc-contract-addresses)
 - Rediscovery report: `claude/flying-money-discovery-report.md` (project)
+
+---
+
+## 21. v1.5 change set (founder directives, 24 Sep 2026): NORMATIVE
+
+> **For the implementing agent:** this section amends v1.4.1. It was written *after* Phase 13 and is aligned with the existing implementation decisions (D1–D22, especially D11 Upstash and D17 the in-route demo Oracle). Where §21 conflicts with an earlier section, **§21 wins**. The protocol (§6), the contract (§7) and all invariants (I1–I7, C1, S1–S4) are **unchanged**. Everything here is UX, SDK, infrastructure and the site. Record your implementation choices as new D-numbers in `docs/DECISIONS.md`.
+
+| # | Change | Where it lands |
+|---|---|---|
+| V1 | Remove GitHub Actions; use a local `pnpm verify` gate | §21.1 |
+| V2 | No hackathon or event names on any public surface; pages keyed by **chain** | §21.2 |
+| V3 | Unified taxonomy and UX for people, shops and agents | §21.3 |
+| V4 | **Spending requests**: agent → owner, holder → giver, shop → giver (tab offers) | §21.4 |
+| V5 | Database: **Upstash Redis via the Vercel Marketplace** (finalised); env vars and key schema | §21.5 |
+| V6 | A **hosted, durable 402 seller** on Vercel, with a redeemer that works within Vercel cron limits | §21.6 |
+
+### 21.1 V1: No GitHub Actions
+
+- Delete `.github/workflows/` entirely. There are no hosted CI runners.
+- Add a root script **`pnpm verify`**. It is the single gate, run locally before every deploy and before every submission:
+  1. Lint and format check (biome).
+  2. Typecheck (including `tools/doc-samples`).
+  3. Unit, property and store tests: C1, S1–S4, the sweeper, redemption policy and recovery. S4 runs against the memory store **and** against Upstash when `KV_REST_API_URL` or `UPSTASH_REDIS_REST_URL` is set, with a dedicated test prefix that is deleted afterwards.
+  4. `forge test`, with invariants at ≥256 runs × depth 50.
+  5. **Secret scan**: gitleaks CLI if installed, otherwise a bundled regex scanner for 64-hex private keys and API-token patterns across tracked and untracked, non-ignored files.
+  6. The public-surface check from §21.2.
+  7. Optional: `pnpm verify --e2e` for the Playwright suite.
+- Vercel's own build runs typecheck and build as usual. **That is not a substitute for `pnpm verify`.**
+- Every place in the spec that says "in CI" now means **"in `pnpm verify`"**.
+- **Git:** local commits per phase continue as before. **Never push, and never create remotes, tags or GitHub releases**, unless the founder asks. *(If the founder's "no git actions" meant "no git commits at all", they will say so; then stop committing and only write `docs/STATUS.md`.)*
+
+### 21.2 V2: Chain pages instead of event pages
+
+- **Remove** `/hackathons/[event]`, `lib/hackathons.ts`, and every public mention of event names. That covers the footer, `/pitch`, docs, `/llms.txt`, `/llms-full.txt`, OG images, the manifest and page metadata.
+- **Add `/chains/[chain]`** (registry key, e.g. `/chains/arc`, `/chains/arbitrum-sepolia`). Each page shows:
+  - the chain's name, testnet/mainnet status, contract address (explorer + Sourcify links), USDC address, gas token and caps;
+  - chain-specific notes from the registry (e.g. Arc: "gas is paid in USDC, so shops and sellers only ever need USDC"; sub-second finality);
+  - **"Try it on <chain>" buttons**: `/demo?chain=…`, `/app?chain=…`, `/shops?chain=…`;
+  - honest state: "deployed" or "not yet deployed".
+
+  `/chains` remains the index.
+- **Chain preselection** is always the `?chain=<key>` query parameter (remembered in localStorage). It is **never** an event route. `NEXT_PUBLIC_DEFAULT_CHAIN` stays the fallback.
+- `/pitch` stays, but is event-neutral: problem, solution, demo video, links.
+- **Submission materials** (per-event framing, track choice and checklists from §16) move to `docs/submissions/<event>.md`. They are **not deployed, not linked and not included in llms files**.
+- **Public-surface check (in `pnpm verify`):** build the site and fail if any served HTML, markdown, llms file, OG metadata or manifest contains a denylisted event term. Store the list in `tools/public-surface/denylist.txt` (e.g. "Colosseum", "World's Fair", "Metropolis", "Open House", "Microgrant", "DoraHacks", "hackathon").
+
+### 21.3 V3: Taxonomy and UX for people, shops and agents
+
+**One concept, one word per door.** Never mix the two columns on one screen. The code names stay as they are.
+
+| Concept | People & shops | Agents | Code |
+|---|---|---|---|
+| Who pays in | **Giver** | **Owner** | `funder` |
+| Who spends | **Holder** | **Agent** | `spender` |
+| Where it's spent | **Place** | **Service** | `payee` |
+| The locked budget | **Certificate** | **Budget** (certificate) | `Certificate` |
+| One payment | **Sealed note** | **Sealed note** | `Note` |
+| Create | **Give** | **Fund** | `issue` |
+| Add more | **Top up** | **Top up** | `topUp` |
+| Make longer | **Extend** | **Extend** | `extend` |
+| Seller takes payment on-chain | **Collect** | **Collect** | `redeem` |
+| Giver takes back leftovers after expiry | **Take back leftovers** | **Take back leftovers** | `reclaim` |
+| Ask for money | **Ask** | **Budget request** | `SpendRequest` (§21.4) |
+| Shop invites funding | **Open a tab here** | — | `TabOffer` (§21.4) |
+
+**Counting House navigation** (it replaces loose links): **Give · Holders · Places · Requests (badge count) · Collect.**
+- *Holders* merges People & agents. An agent row shows its budgets per service, spend this week (from paired receipts, §12.6), pending requests, and **Fund again**.
+- *Collect* is the payee view (§12.3), merged with the hosted seller's `/fm/redeemable` feed.
+
+**Agent-facing UX (machine readable):**
+- Every 402 from `@flying-money/server` adds a JSON **body** field `hint`. The `Flying-Money-Offer` header and the wire formats are unchanged, so this is additive, in the same spirit as D14:
+  ```json
+  { "hint": { "reason": "no_certificate" | "insufficient" | "expiring" | "wrong-payee",
+              "nextActions": ["request_budget", "top_up", "choose_other_chain"],
+              "suggestedAmount": "500000", "service": { "name": "Silk Road Oracle", "origin": "https://…" } } }
+  ```
+- `fm_paid_fetch` (MCP) and `fm.fetch` (client) surface this as a **structured error**: `{ error: "no_certificate", service, chain, suggestedAmount, canRequest }`. The tool description tells the model: *"If canRequest is true, you may call fm_request_budget once, then wait. Never retry payment in a loop."*
+
+**People-facing UX:**
+- On each certificate in the wallet: **Ask for more** (a top-up request) and **Ask for a new place** (scan a shop QR → a request).
+- When a till rejects a note with "insufficient", the wallet offers **Ask your giver** in one tap.
+
+**Shop-facing UX:**
+- The shop page and the till offer **Open a tab here**, which produces a `TabOffer` QR/link (§21.4.4).
+- The till's "insufficient" screen shows the same offer, so the customer's giver can fund on the spot.
+
+**Consistency rules:**
+- **Status words.** Only *Sealed → Accepted (GUARANTEED) / Unverified · merchant risk → Collected*, and for requests *Asked → Approved / Declined / Expired*.
+- **Money.** Always show the chain name next to amounts (e.g. "5.00 USDC · Arc").
+- **Untrusted text.** Any text written by an agent or another person (reasons, names in links) is shown in a quoted, labelled block: *"Written by the agent, not verified"*.
+
+### 21.4 V4: Spending requests (off-chain, no protocol change)
+
+A request **never moves money**. Only the owner's own on-chain `issue` or `topUp` does. Requests make the owner's decision fast and safe.
+
+#### 21.4.1 Objects (EIP-712, off-chain)
+
+**Domain for all request objects:** `{ name: "FlyingMoneyRequest", version: "1", chainId }`. There is no `verifyingContract`, and the name is deliberately distinct from the Note domain, so no request signature can ever be a valid Note.
+
+```
+SpendRequest(
+  address requester,      // the spender key that will receive the budget (signs this request)
+  address owner,          // who is asked (funder)
+  address payee,          // the service/place
+  uint256 amount,         // USDC base units
+  uint64  validFor,       // requested lifetime in seconds (≥ 86400)
+  bytes32 certificateId,  // 0x0 = new certificate; otherwise a top-up of this certificate
+  bytes32 requestId,      // 32 random bytes
+  uint64  createdAt,
+  string  reason,         // ≤ 280 chars, untrusted display text
+  string  origin          // e.g. the service URL or place name, untrusted display text
+)
+
+RequestGrant(             // signed by the OWNER: "I accept budget requests from this key"
+  address owner,
+  address requester,
+  uint256 maxAmountPerRequest,
+  uint64  expiresAt,
+  bytes32 grantId
+)
+
+TabOffer(                 // signed by the PAYEE's address: "open a tab with us"
+  address payee,
+  uint256 suggestedAmount,
+  uint64  validFor,
+  string  placeName,
+  uint64  createdAt
+)
+```
+
+Encoding on the wire and in links: `fm1.` + base64url(JSON), as in §6.4. Parsers are strict (as in §8.1).
+
+#### 21.4.2 Channels
+
+1. **Link/QR, no server (default for people):** `https://<domain>/app/requests/new#fm1.<{request, sig}>` (in the fragment, never sent to a server). Share it by any messenger. The owner opens it and sees the review card.
+2. **Relay inbox (default for agents; needs a grant):** a Vercel API on Upstash (§21.5).
+   - `POST /api/requests` with `{ request, sig, grant, grantSig }`. The relay verifies **both** signatures; checks that the grant is unexpired and not revoked; checks `amount ≤ maxAmountPerRequest`, `validFor ≥ 1 day`, `reason ≤ 280` and payload ≤ 4 KB; and applies rate limits: per requester, 1 pending per `(payee, chainId)` and 10 per day; per owner, ≤ 100 pending. It stores the request with a TTL of 7 days.
+   - `GET /api/requests/{requestId}` returns public minimal status: `{ status: asked|approved|declined|expired, certificateId?, decidedAt? }`. The `requestId` is unguessable.
+   - `GET /api/requests?owner=0x…` requires an **owner session**. The owner signs `InboxAccess(address owner, uint64 issuedAt)` (EIP-712, same request domain). It's valid for 10 minutes and exchanged for an HttpOnly session cookie (24 h). No other auth exists.
+   - `POST /api/requests/{requestId}/decision` (owner session) takes `{ approved: { certificateId, txHash } }` or `{ declined: { note? } }`. **The relay marks a request approved only after verifying on-chain** that a `CertificateIssued` exists (or a `CertificateToppedUp` for top-ups) with `funder == owner`, `spender == requester`, `payee == request.payee`, and that `faceValue` (or the top-up amount) is > 0. The owner may approve **less** than asked.
+   - `POST /api/grants/{grantId}/revoke` (owner session). After that, the relay rejects requests carrying that grant.
+
+#### 21.4.3 Owner approval UX (Counting House → Requests)
+
+- **Request card:**
+  - **Who:** the local contact name if the requester address is in Holders; otherwise the address and an "unknown" label.
+  - **Where:** the place badge if saved (✓ Scanned / ✓ domain / ✓ Signed by shop) or ⚠ Unverified.
+  - **Amount, days,** and the **reason** in the untrusted block.
+  - **Chain.**
+- **Approve** opens the Give/Fund wizard **prefilled** (payee, spender = requester, amount, days). The owner can edit it, signs `issue` (or `topUp`) with their wallet, and the app posts the decision after confirmation.
+- **Decline** takes an optional note.
+- **Create a grant for an agent** (on the agent's Holder page): max per request and expiry (default 30 days). The result is an `FM_OWNER_GRANT` value to paste into the agent's config, shown once with a copy button. Grants are listed there with **Revoke**.
+
+#### 21.4.4 Shop tab offers
+
+- The shop signs a `TabOffer` with its payee wallet (it's already connected in "Open a shop").
+- The QR/link opens `/app/give#fm1.…`, prefilled.
+- The place gets the new badge **✓ Signed by shop**, verified by signature recovery equal to `payee`. It ranks with ✓ Scanned.
+
+#### 21.4.5 SDK and MCP
+
+- **Client:**
+  - `fm.requestBudget({ offer | payee, chain, amount, days, reason })` uses the relay if an owner grant is configured, and otherwise returns a shareable link.
+  - `fm.requestStatus(requestId)`.
+  - On approval: **verify on-chain** that `spender == own key` and the payee matches, then add the `certificateId` to the persisted allowed list.
+- **MCP** (§8.4 gains two tools, making six in total):
+  - `fm_request_budget(url | payee, chain?, amount, days, reason)` returns `{ requestId, status, link? }`.
+  - `fm_request_status(requestId)`.
+  - **There is still no tool that approves, issues, tops up or reveals a key.**
+- **Agent config:** `FM_OWNER` (owner address), `FM_OWNER_GRANT` (fm1 value), `FM_RELAY_URL` (default `https://<domain>/api/requests`).
+
+#### 21.4.6 Request invariants and tests (MUST)
+
+- **R1:** A request or grant never moves funds. Only an owner-signed on-chain transaction does. The relay holds no keys.
+- **R2:** Approval binds `spender = requester` and `payee = request.payee`. The relay's "approved" state requires on-chain verification.
+- **R3:** No agent-side path can approve. The relay requires an owner session for decisions.
+- **R4:** Request text is untrusted. It is rendered escaped, labelled, and never auto-executed. The LLM-facing docs warn about prompt injection via `reason`/`origin`.
+- **R5:** Spam is bounded by grants, rate limits, size limits and TTLs. Grants are revocable.
+- **Tests:**
+  - Signature parsing and verification, including the domain-separation proof that a SpendRequest signature is never a valid Note.
+  - The relay rejects requests with no grant, an expired grant, a revoked grant, an amount over the grant max, or oversized input.
+  - Rate limits.
+  - Decision verification against anvil events, including the rejection of a wrong spender, wrong payee or wrong funder.
+  - Escaping.
+  - **The end-to-end flow on anvil:**
+    1. The agent gets 402 `no_certificate`.
+    2. It calls `fm_request_budget`.
+    3. The owner approves (Playwright, mock wallet).
+    4. The agent sees `approved`, verifies it, and pays successfully.
+
+### 21.5 V5: Database: Upstash Redis via the Vercel Marketplace (FINAL)
+
+- **Provider:** Upstash for Redis, installed from the Vercel Marketplace into the Vercel project(s). Vercel KV no longer exists, and Upstash is Vercel's Redis path. It supports Lua `EVAL` (used for the atomic `begin`/`finish`, D11) and is durable.
+- **Two databases, so mainnet never shares storage with previews:**
+  - `flying-money-testnet`: all testnet surfaces (web previews and production testnet features, the hosted testnet seller, the request relay, rate limits, demo locks).
+  - `flying-money-mainnet`: only the mainnet seller instance (§21.6).
+- **Environment variables** (read in this order; the first pair found wins):
+
+| Var | Source | Used for |
+|---|---|---|
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | **Injected automatically** by the Vercel Marketplace Upstash integration | Primary |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Manual / local `.env` (Upstash console) | Fallback |
+| `REDIS_URL` | Any TCP Redis (local tests only) | `redisStore(url)` |
+| `FM_REDIS_PREFIX` | Set manually | Key namespace, default `fm:v1:${FM_ENV}:` |
+| `FM_ENV` | Set manually | `testnet` or `mainnet`. A mainnet seller refuses to start if `FM_ENV ≠ mainnet` or the prefix lacks `mainnet` |
+| `CRON_SECRET` | Set manually (Vercel standard) | Authorises `/api/cron/*` |
+
+  No store variables → the memory store (local development only). **The hosted seller and the relay MUST refuse to start without a durable store.**
+- **Key schema** (all under `FM_REDIS_PREFIX`; `{p}` below):
+
+| Key | Type | Content | TTL |
+|---|---|---|---|
+| `{p}s:{payee}:{chainId}:{certId}:state` | hash | `accepted, consumed, reserved, status` | none |
+| `{p}s:{payee}:{chainId}:{certId}:notes` | zset (score = cumulative) | SignedNote JSON | prune ≤ redeemed |
+| `{p}s:{payee}:{chainId}:{certId}:out:{requestId}` | hash | Outcome (§6.5) | 30 d after final |
+| `{p}s:{payee}:{chainId}:sub` | hash | In-flight redeem submission | until cleared |
+| `{p}req:{requestId}` | hash | SpendRequest + status | 7 d |
+| `{p}inbox:{owner}` | zset (score = createdAt) | requestIds | 7 d |
+| `{p}grant:revoked:{grantId}` | string | `1` | grant expiry + 1 d |
+| `{p}rl:{scope}:{id}` | counter | Rate limits | window |
+| `{p}lock:{name}` | string (SET NX PX) | Redeemer, sweeper and demo locks | ≤ 5 min |
+| `{p}sess:{token}` | hash | Owner inbox session | 24 h |
+
+- **Backups:** the Upstash daily backup (plan permitting) plus `pnpm db:export` (a JSON dump of the seller namespaces) before every mainnet action. Seller state is authoritative (§6.5), so treat the mainnet database as production data.
+
+### 21.6 V6: Hosted, durable 402 seller on Vercel
+
+- **`apps/oracle`** (Hono) is deployed as its **own Vercel project**, `oracle.<domain>`, using the Hono Vercel adapter and the Node runtime. It keeps the §13.1 endpoints, plus:
+  - `/.well-known/flying-money.json` and `/openapi.json`;
+  - `/fm/redeemable/:certId` (the §12.3 payee feed);
+  - the §21.3 `hint` bodies.
+  - The in-route demo Oracle from D17 may remain for `/demo`, but **external agents (the MCP, Claude, Hermes) use the hosted one.**
+- **Instances:**
+  - Testnet: `ORACLE_ACCEPTS=arbitrum-sepolia,base-sepolia,monad-testnet,arc-testnet`, the `flying-money-testnet` database.
+  - Mainnet: a separate Vercel project or environment with `ORACLE_MAINNET_ACCEPTS`, tiny prices, the `flying-money-mainnet` database and `FM_ENV=mainnet`. Deploying it requires founder approval (§0.1).
+- **Redeemer and sweeper under Vercel limits.** Hobby cron runs **at most once per day with ±59 min precision**; Pro can run every minute.
+  1. **Opportunistic:** after serving, `waitUntil(maybeRedeemAndSweep())`, guarded by `{p}lock:redeemer`. It applies the §8.3 policy and the §6.5 sweeper.
+  2. **Cron** `/api/cron/redeem` (Bearer `CRON_SECRET`): daily on Hobby (`0 3 * * *`), every 10 minutes on Pro.
+  3. **Manual:** **Collect** in the Counting House.
+
+  **Consequence (MUST): on Hobby, set `safetyBeforeExpiry ≥ 36 h`, and use seller-facing certificate lifetimes of ≥ 3 days** (the demo and agent budgets), so a daily run always lands before expiry. Record the plan in DECISIONS.
+- The seller refuses to serve if its store is not durable (§21.5).
+
+### 21.7 Schedule impact (fits the existing sprints)
+
+| When | Work | ✅ |
+|---|---|---|
+| Now (≤ 0.5 d) | V1 (remove workflows; `pnpm verify`), V2 (remove event pages and names; `/chains/[chain]`; denylist check) | `pnpm verify` green; denylist check passes on a production build |
+| Before 3 Oct | V5 + V6 minimum: Upstash testnet database, hosted testnet Oracle with a durable store, opportunistic + daily cron redeemer | An external MCP session pays `oracle.<domain>` on Arbitrum Sepolia and a redemption lands |
+| 5–11 Oct (Sprint B) | V4 (requests, grants, relay, tab offers, MCP tools, Requests tab) and V3 UX polish | The §21.4.6 end-to-end test passes; a real agent requests, the owner approves, and the agent pays |
+| Cut-lines (append after "domain-verified places") | Tab offers → people "Ask" links → relay inbox. **Never cut:** R1–R5 when any part of requests ships |
+
+### 21.8 Acceptance additions to §20
+
+- [ ] No `.github/workflows`. `pnpm verify` covers everything listed in §21.1, and it passes.
+- [ ] No event names on any public surface (denylist check). `/chains/[chain]` pages exist with `?chain=` preselection.
+- [ ] Taxonomy table §21.3 applied. Counting House tabs: Give · Holders · Places · Requests · Collect.
+- [ ] Spending requests: link channel + relay + grants + decision verification + two MCP tools. R1–R5 tests pass.
+- [ ] Upstash via the Vercel Marketplace (`KV_REST_API_*`), two databases, the key schema, and refusal to start without a durable store.
+- [ ] Hosted Oracle on Vercel with the redeemer strategy for the plan in use, and `safetyBeforeExpiry` set accordingly.
 
 
 ---

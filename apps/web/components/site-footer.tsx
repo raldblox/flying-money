@@ -38,7 +38,6 @@ export function SiteFooter() {
                 ['/how-it-works', 'How it works'],
                 ['/story', 'The 804 CE story'],
                 ['/pitch', 'Pitch'],
-                ['/hackathons/arbitrum', 'Arbitrum Open House'],
                 ['/llms.txt', 'llms.txt'],
               ] as const
             ).map(([href, label]) => (
