@@ -378,6 +378,10 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     expect(req.link).toMatch(/^https:\/\/site\.test\/app\/requests\/new#fm1\./)
     expect(verifySpendRequest(decodeSpendRequest(req.link.split('#')[1]!))).toBe(true)
     expect((await client.requestStatus(req.requestId)).status).toBe('asked')
+    // an agent restarted while waiting still knows its request
+    const waiting = make()
+    await waiting.ready
+    expect((await waiting.requestStatus(req.requestId)).status).toBe('asked')
 
     // 3. decoys (R2): right owner but another spender; right spender but another payee; another funder entirely
     await issue(100_000n, privateKeyToAccount(generatePrivateKey()).address)

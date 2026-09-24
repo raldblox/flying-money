@@ -5,6 +5,7 @@ import {
   certKey,
   decodeOffer,
   decodeReceipt,
+  decodeSpendRequest,
   encodeHeader,
   encodeSpendRequest,
   type Hex,
@@ -22,6 +23,7 @@ import {
   sameAddress,
   signNote,
   signSpendRequest,
+  verifySpendRequest,
   ZERO_ID,
 } from '@flying-money/core'
 import { createPublicClient, http, type LocalAccount, type PublicClient } from 'viem'
@@ -272,9 +274,31 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
         if (await adopt(chainKey, id)) break
       }
     }
-    // budgets approved through requests (§21.4.5) are used after a restart too
-    for (const r of (await config.requestStore?.load()) ?? [])
-      if (r.status === 'approved' && r.certificateId) await adopt(r.chain as ChainKey, r.certificateId)
+    // requests survive restarts (§21.4.5): the saved link carries the signed request itself; approved budgets
+    // are used again, pending ones can still be checked
+    for (const rec of (await config.requestStore?.load()) ?? []) {
+      let signed: ReturnType<typeof decodeSpendRequest>
+      try {
+        signed = decodeSpendRequest(rec.link.split('#')[1] ?? '')
+      } catch {
+        continue
+      }
+      if (!verifySpendRequest(signed) || !sameAddress(signed.request.requester, config.spender.address)) continue
+      const r: BudgetRequest & { fromBlock: bigint } = {
+        requestId: signed.request.requestId,
+        chain: rec.chain as ChainKey,
+        status: rec.status,
+        link: rec.link,
+        request: signed.request,
+        fromBlock: BigInt(rec.fromBlock),
+        ...(rec.certificateId ? { certificateId: rec.certificateId } : {}),
+      }
+      reqs.set(r.requestId.toLowerCase(), r)
+      if (rec.status === 'approved' && rec.certificateId) {
+        const h = await adopt(r.chain, rec.certificateId)
+        if (h) Object.assign(r, { faceValue: h.cert.faceValue, expiresAt: h.cert.expiresAt })
+      }
+    }
   }
 
   async function refreshOne(h: Held) {
