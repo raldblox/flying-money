@@ -2,6 +2,12 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## V4 link channel (25 Sep): ✅ `pnpm verify` green (D35)
+
+- The agent asks for a budget through a signed link; the owner reviews it and funds it from their wallet; the agent verifies the funding on-chain and pays. This passes end to end on anvil, and budgets meant as decoys (wrong spender, wrong payee, wrong funder) never count.
+- The MCP server has six tools. The review page is at `/app/requests/new`. The budget page is live and shows the service's record.
+- **Still open for V4:** the relay inbox with grants and owner sessions, top-up approval, a Requests tab, and tab offers (Sprint B).
+
 ## Visual pass (25 Sep): ✅ `pnpm verify` green
 
 - **`/demo`:** an animated stage driven by the real event stream (`lib/demo-story.ts`, unit-tested).

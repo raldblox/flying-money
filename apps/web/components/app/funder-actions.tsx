@@ -19,7 +19,7 @@ const EXTENSIONS = [
 type Panel = null | 'topup' | 'extend'
 
 /**
- * §12.2 list actions for the funder: Top up, Extend (while open) and Reclaim (after expiry). The UI mirrors the
+ * §12.2 list actions for the funder: Top up, Extend (while open) and Take back leftovers (after expiry, `reclaim`). The UI mirrors the
  * contract's rules (caps, lifetime ≤ 365 days, funder only) so a doomed transaction is never offered.
  */
 export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cert: Certificate; onDone: () => void }) {
@@ -89,7 +89,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
           disabled={busy || !wallet}
           onClick={() => void send('reclaim', [cert.id])}
         >
-          Reclaim {usdc(left)} USDC
+          Take back {usdc(left)} USDC
         </button>
         <TxStatus state={tx.state} explorer={chain.explorer} onCheck={(h) => void tx.watch(h)} />
       </div>

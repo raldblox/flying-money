@@ -1,0 +1,30 @@
+import type { Hex } from '@flying-money/core'
+import type { Metadata } from 'next'
+import { Providers } from '../../providers'
+import { RequestReview } from './request-review'
+
+export const metadata: Metadata = {
+  title: 'Budget request',
+  description: 'Review a budget request from your agent, and fund it from your own wallet if you agree.',
+  robots: { index: false },
+}
+
+/** /app/requests/new#fm1.… (§21.4.2 link channel): the request lives in the fragment and never reaches a server. */
+export default function NewRequestPage() {
+  const payee = process.env.PAYEE_ADDRESS
+  const oraclePayee = payee && /^0x[0-9a-fA-F]{40}$/.test(payee) ? (payee as Hex) : undefined
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-14">
+      <p className="smallcaps text-sm text-seal">Counting House · Requests</p>
+      <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">Your agent is asking.</h1>
+      <p className="mt-3 max-w-2xl text-lg text-ink-2">
+        Nothing moves unless you fund it from your own wallet. Check who can be paid, then decide how much.
+      </p>
+      <div className="mt-8">
+        <Providers>
+          <RequestReview oraclePayee={oraclePayee} />
+        </Providers>
+      </div>
+    </div>
+  )
+}

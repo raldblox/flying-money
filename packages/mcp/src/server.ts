@@ -7,7 +7,7 @@ import {
   PendingUnresolvedError,
   PriceTooHighError,
 } from '@flying-money/client'
-import { decodeOffer, OFFER_HEADER } from '@flying-money/core'
+import { decodeOffer, type Hex, OFFER_HEADER, type Offer, parseOffer } from '@flying-money/core'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { formatUnits, parseUnits } from 'viem'
 import { z } from 'zod'
@@ -19,6 +19,8 @@ export interface FlyingMoneyMcpConfig {
   maxPricePerRequest: bigint
   /** Response bodies are truncated to this many characters. */
   maxBodyChars?: number
+  /** An owner is configured: the agent may ask for budgets (§21.4). */
+  canRequest?: boolean
   fetch?: typeof fetch
 }
 
@@ -41,9 +43,9 @@ function httpUrl(u: string): URL {
 }
 
 /**
- * The Flying Money MCP server (BUILD_SPEC §8.4): lets any MCP agent (Claude, Hermes, …) pay APIs with its
- * certificate. Four tools; none can issue or top up a certificate (that is the funder's job in the Counting House),
- * and none returns the spending key.
+ * The Flying Money MCP server (BUILD_SPEC §8.4, §21.4.5): lets any MCP agent (Claude, Hermes, …) pay APIs from a
+ * budget, and ask its owner for one. Six tools; none can approve, issue or top up a budget (that is the owner's own
+ * on-chain action in the Counting House, R3), and none returns the spending key.
  */
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   const fm = cfg.client
@@ -203,7 +205,114 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
                   : e instanceof PendingUnresolvedError
                     ? 'A previous payment is still being confirmed; it will be resent, never re-signed. Try again shortly.'
                     : `Request failed: ${(e as Error).message}`
+        if (e instanceof NoCertificateError) return noCertificate(e.offer, target(url))
         return text(msg, true)
+      }
+    },
+  )
+
+  const target = (u: string) => {
+    try {
+      return new URL(u).origin
+    } catch {
+      return u
+    }
+  }
+
+  /** §21.3: a structured error the model can act on, instead of prose. */
+  function noCertificate(offer: Offer, service: string) {
+    const acc = offer.accepts[0]
+    return json(
+      {
+        error: 'no_certificate',
+        service,
+        chain: acc ? (getChainById(acc.chainId)?.key ?? String(acc.chainId)) : undefined,
+        payee: acc?.payee,
+        price: usdc(offer.price),
+        suggestedAmount: offer.suggestedFaceValue !== undefined ? usdc(offer.suggestedFaceValue) : undefined,
+        canRequest: Boolean(cfg.canRequest),
+        next: cfg.canRequest
+          ? 'You may call fm_request_budget once for this service, then wait for your owner. Never retry payment in a loop.'
+          : 'No owner is configured. Tell the user this service needs a Flying Money budget.',
+      },
+      true,
+    )
+  }
+
+  const describe = (r: Awaited<ReturnType<FlyingMoneyClient['requestStatus']>>) => ({
+    requestId: r.requestId,
+    status: r.status,
+    chain: r.chain,
+    service: r.request.origin || r.request.payee,
+    amount: usdc(r.request.amount),
+    days: Number(r.request.validFor / 86_400n),
+    ...(r.status === 'asked'
+      ? {
+          link: r.link,
+          next: 'Give this link to your owner (the human). They review it and fund the budget with their own wallet. Then call fm_request_status. Do not ask again.',
+        }
+      : {}),
+    ...(r.status === 'approved'
+      ? {
+          certificateId: r.certificateId,
+          granted: r.faceValue !== undefined ? usdc(r.faceValue) : undefined,
+          expiresAt: r.expiresAt !== undefined ? new Date(Number(r.expiresAt) * 1000).toISOString() : undefined,
+          next: 'Verified on the blockchain. You can pay this service now with fm_paid_fetch.',
+        }
+      : {}),
+  })
+
+  server.registerTool(
+    'fm_request_budget',
+    {
+      title: 'Flying Money: ask your owner for a budget',
+      description:
+        'Ask your owner (the human who funds you) for a budget for one paid service. Signs a request with your spending key and returns a link your owner opens to review and approve it. Moves no money: only the owner can fund it, from their own wallet. Call it once per service, only after fm_paid_fetch returned no_certificate with canRequest true, then wait. The reason you give is shown to the owner as unverified text.',
+      inputSchema: {
+        url: z.string().describe('A URL of the paid service (its 402 offer tells the seller and chain)'),
+        amount: z.string().describe('USDC to ask for, e.g. "0.50"'),
+        days: z
+          .number()
+          .min(1)
+          .max(365)
+          .describe('How long the budget should last, in days (at least 1; 3 or more recommended)'),
+        reason: z.string().max(280).describe('One short sentence for your owner: what you need it for'),
+      },
+    },
+    async ({ url, amount, days, reason }) => {
+      if (!cfg.canRequest) return text('No owner is configured (FM_OWNER), so no budget can be requested.', true)
+      try {
+        const probe = await doFetch(httpUrl(url), { method: 'GET' })
+        if (probe.status !== 402) return text(`That URL did not ask for payment (HTTP ${probe.status}).`, true)
+        const h = probe.headers.get(OFFER_HEADER)
+        const offer = h ? decodeOffer(h) : parseOffer((await probe.json()) as Record<string, unknown>)
+        const r = await fm.requestBudget({
+          offer,
+          amount: parseUnits(amount, 6),
+          days,
+          reason,
+          origin: target(url),
+        })
+        return json(describe(r))
+      } catch (e) {
+        return text(`Could not create the request: ${(e as Error).message}`, true)
+      }
+    },
+  )
+
+  server.registerTool(
+    'fm_request_status',
+    {
+      title: 'Flying Money: check a budget request',
+      description:
+        'Check whether your owner funded a budget you asked for. Approval is verified on the blockchain (funded by your owner, spendable by your key, payable to that service); once approved you can pay right away.',
+      inputSchema: { requestId: z.string().describe('The requestId from fm_request_budget') },
+    },
+    async ({ requestId }) => {
+      try {
+        return json(describe(await fm.requestStatus(requestId as Hex)))
+      } catch (e) {
+        return text(`Could not check the request: ${(e as Error).message}`, true)
       }
     },
   )

@@ -6,6 +6,7 @@ import {
   decodeOffer,
   decodeReceipt,
   encodeHeader,
+  encodeSpendRequest,
   type Hex,
   maxBig,
   NOTE_HEADER,
@@ -14,16 +15,27 @@ import {
   type Offer,
   parseOffer,
   RECEIPT_HEADER,
+  REQUEST_MIN_VALID_FOR,
   type Receipt,
   readCertificate,
+  type SpendRequest,
   sameAddress,
   signNote,
+  signSpendRequest,
+  ZERO_ID,
 } from '@flying-money/core'
 import { createPublicClient, http, type LocalAccount, type PublicClient } from 'viem'
 
 const minBig = (a: bigint, b: bigint) => (a < b ? a : b)
 
-import type { ClientCertState, ClientStore, PendingRecord, PendingRequest } from './store.js'
+import type {
+  BudgetRequestRecord,
+  ClientCertState,
+  ClientStore,
+  PendingRecord,
+  PendingRequest,
+  RequestStore,
+} from './store.js'
 
 export class NoCertificateError extends Error {
   constructor(public offer: Offer) {
@@ -114,7 +126,30 @@ export interface FlyingMoneyClientConfig {
   retry?: { attempts?: number; backoffMs?: number }
   /** Test hooks (crash injection). */
   hooks?: { point?: (name: 'afterSign' | 'afterSave' | 'afterSend') => void }
+  /** Who to ask for budgets (§21.4, FM_OWNER). Without it, requestBudget is unavailable. */
+  owner?: Hex
+  /** Where approval links open, e.g. https://useflyingmoney.vercel.app (§21.4.2 link channel). */
+  requestLinkBase?: string
+  /** Durable list of this agent's budget requests (so approvals survive restarts). */
+  requestStore?: RequestStore
 }
+
+/** A budget request made by this agent (§21.4). It never moves money: only the owner's own issue does (R1). */
+export interface BudgetRequest {
+  requestId: Hex
+  chain: ChainKey
+  status: 'asked' | 'approved' | 'expired'
+  /** open this to review and approve (link channel) */
+  link: string
+  request: SpendRequest
+  /** set once approved and verified on-chain */
+  certificateId?: Hex
+  faceValue?: bigint
+  expiresAt?: bigint
+}
+
+/** Requests are kept 7 days (§21.4.2), then reported as expired. */
+const REQUEST_TTL_SECONDS = 7n * 86_400n
 
 interface Held {
   key: CertKey
@@ -147,6 +182,28 @@ export interface FlyingMoneyClient {
   refresh(): Promise<void>
   /** Resolves after certificates are loaded and pending notes resolved (runs automatically). */
   ready: Promise<void>
+  /**
+   * Asks the owner for a budget (§21.4.5), signed with this agent's key. Returns a link for the owner to review and
+   * approve. Nothing moves until the owner funds it on-chain (R1).
+   */
+  requestBudget(o: {
+    /** the 402 offer (from NoCertificateError): payee and chain come from it */
+    offer?: Offer
+    payee?: Hex
+    chain?: ChainKey
+    amount: bigint
+    days: number
+    reason: string
+    origin?: string
+    /** top up this certificate instead of asking for a new one */
+    certificateId?: Hex
+  }): Promise<BudgetRequest>
+  /**
+   * Checks the chain for the owner's answer. Approved only when a certificate funded by the owner, spendable by this
+   * key and payable to the requested payee exists on-chain (R2); it is then used for payments right away.
+   */
+  requestStatus(requestId: Hex): Promise<BudgetRequest>
+  requests(): BudgetRequest[]
 }
 
 export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): FlyingMoneyClient {
@@ -162,15 +219,31 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
   const locks = new Map<CertKey, Promise<unknown>>()
 
   const clients = new Map<ChainKey, PublicClient>()
-  const read = async (chainKey: ChainKey, contract: Hex, id: Hex) => {
-    const chainId = getChain(chainKey).chain.id
-    if (config.readCertificate) return config.readCertificate(chainId, contract, id)
+  const pubFor = (chainKey: ChainKey) => {
     let c = clients.get(chainKey)
     if (!c) {
       c = createPublicClient({ transport: http(rpcUrl(chainKey, config.env ?? {})) }) as PublicClient
       clients.set(chainKey, c)
     }
-    return readCertificate(c, contract, id)
+    return c
+  }
+  const read = async (chainKey: ChainKey, contract: Hex, id: Hex) => {
+    const chainId = getChain(chainKey).chain.id
+    if (config.readCertificate) return config.readCertificate(chainId, contract, id)
+    return readCertificate(pubFor(chainKey), contract, id)
+  }
+
+  /** Starts using one certificate if (and only if) it is spendable by this key. */
+  async function adopt(chainKey: ChainKey, id: Hex): Promise<Held | null> {
+    const ch = getChain(chainKey)
+    if (!ch.flyingMoney) return null
+    const c = await read(chainKey, ch.flyingMoney, id).catch(() => null)
+    if (!c || !sameAddress(c.spender, config.spender.address)) return null
+    const key = certKey(ch.chain.id, id)
+    const h: Held = { key, chainKey, chainId: ch.chain.id, contract: ch.flyingMoney, cert: c }
+    held.set(key, h)
+    await load(key)
+    return h
   }
 
   async function load(key: CertKey): Promise<ClientCertState> {
@@ -196,21 +269,12 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
   async function discover() {
     for (const id of config.certificates) {
       for (const chainKey of config.chains) {
-        const ch = getChain(chainKey)
-        if (!ch.flyingMoney) continue
-        let c: Certificate | null = null
-        try {
-          c = await read(chainKey, ch.flyingMoney, id)
-        } catch {
-          continue
-        }
-        if (!c || !sameAddress(c.spender, config.spender.address)) continue
-        const key = certKey(ch.chain.id, id)
-        held.set(key, { key, chainKey, chainId: ch.chain.id, contract: ch.flyingMoney, cert: c })
-        await load(key)
-        break
+        if (await adopt(chainKey, id)) break
       }
     }
+    // budgets approved through requests (§21.4.5) are used after a restart too
+    for (const r of (await config.requestStore?.load()) ?? [])
+      if (r.status === 'approved' && r.certificateId) await adopt(r.chain as ChainKey, r.certificateId)
   }
 
   async function refreshOne(h: Held) {
@@ -433,5 +497,132 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     for (const h of held.values()) await refreshOne(h)
   }
 
-  return { fetch: fetchPaid, status, resolvePending, refresh, ready }
+  // ───────── budget requests (§21.4, link channel) ─────────
+  const reqs = new Map<string, BudgetRequest & { fromBlock: bigint }>()
+  const toRecord = (r: BudgetRequest & { fromBlock: bigint }): BudgetRequestRecord => ({
+    requestId: r.requestId,
+    chain: r.chain,
+    status: r.status,
+    link: r.link,
+    fromBlock: r.fromBlock.toString(),
+    ...(r.certificateId ? { certificateId: r.certificateId } : {}),
+  })
+  const persist = async () => {
+    await config.requestStore?.save([...reqs.values()].map(toRecord))
+  }
+
+  async function requestBudget(o: Parameters<FlyingMoneyClient['requestBudget']>[0]): Promise<BudgetRequest> {
+    if (!config.owner) throw new Error('no owner configured (FM_OWNER): cannot ask for a budget')
+    // chain + payee: from the offer when given, else explicit
+    let chainKey = o.chain
+    let payee = o.payee
+    if (o.offer) {
+      const prefs = [...(config.preferredChains ?? []), ...config.chains]
+      const acc = prefs
+        .map((k) => o.offer!.accepts.find((a) => a.chainId === getChain(k).chain.id))
+        .find((a) => a !== undefined)
+      if (!acc) throw new Error('the offer accepts none of the configured chains')
+      chainKey = config.chains.find((k) => getChain(k).chain.id === acc.chainId)!
+      payee = acc.payee
+    }
+    if (!chainKey || !payee) throw new Error('requestBudget needs an offer, or a payee and a chain')
+    const validFor = BigInt(Math.round(o.days * 86_400))
+    if (validFor < REQUEST_MIN_VALID_FOR) throw new Error('a budget request must be for at least one day')
+    const ch = getChain(chainKey)
+    const signed = await signSpendRequest(config.spender, ch.chain.id, {
+      owner: config.owner,
+      payee,
+      amount: o.amount,
+      validFor,
+      certificateId: o.certificateId ?? ZERO_ID,
+      requestId: newRequestId(),
+      createdAt: nowS(),
+      reason: o.reason,
+      origin: o.origin ?? '',
+    })
+    const fromBlock = config.readCertificate ? 0n : await pubFor(chainKey).getBlockNumber()
+    const base = (config.requestLinkBase ?? '').replace(/\/$/, '')
+    const r = {
+      requestId: signed.request.requestId,
+      chain: chainKey,
+      status: 'asked' as const,
+      link: `${base}/app/requests/new#${encodeSpendRequest(signed)}`,
+      request: signed.request,
+      fromBlock,
+    }
+    reqs.set(r.requestId.toLowerCase(), r)
+    await persist()
+    return r
+  }
+
+  async function requestStatus(requestId: Hex): Promise<BudgetRequest> {
+    const r = reqs.get(requestId.toLowerCase())
+    if (!r) throw new Error(`unknown request ${requestId}`)
+    if (r.status !== 'asked') return r
+    const ch = getChain(r.chain)
+    const pub = pubFor(r.chain)
+    let found: Held | null = null
+    if (r.request.certificateId !== ZERO_ID) {
+      // a top-up request: approved once the certificate is funded above what it was when we asked
+      found = await adopt(r.chain, r.request.certificateId)
+      if (found && !sameAddress(found.cert.payee, r.request.payee)) found = null
+    } else {
+      const logs = await pub.getLogs({
+        address: ch.flyingMoney,
+        event: {
+          type: 'event',
+          name: 'CertificateIssued',
+          inputs: [
+            { name: 'id', type: 'bytes32', indexed: true },
+            { name: 'funder', type: 'address', indexed: true },
+            { name: 'payee', type: 'address', indexed: true },
+            { name: 'spender', type: 'address', indexed: false },
+            { name: 'faceValue', type: 'uint256', indexed: false },
+            { name: 'expiresAt', type: 'uint64', indexed: false },
+          ],
+        },
+        args: { funder: r.request.owner, payee: r.request.payee },
+        fromBlock: r.fromBlock,
+      })
+      for (const log of logs) {
+        const a = log.args as { id: Hex; spender: Hex; faceValue: bigint }
+        if (!sameAddress(a.spender, config.spender.address) || a.faceValue <= 0n) continue
+        // R2: re-read the certificate itself; the log alone is not trusted
+        const h = await adopt(r.chain, a.id)
+        if (
+          h &&
+          sameAddress(h.cert.payee, r.request.payee) &&
+          sameAddress(h.cert.funder, r.request.owner) &&
+          !h.cert.closed
+        ) {
+          found = h
+          break
+        }
+      }
+    }
+    if (found) {
+      Object.assign(r, {
+        status: 'approved',
+        certificateId: found.cert.id,
+        faceValue: found.cert.faceValue,
+        expiresAt: found.cert.expiresAt,
+      })
+      await persist()
+    } else if (nowS() > r.request.createdAt + REQUEST_TTL_SECONDS) {
+      r.status = 'expired'
+      await persist()
+    }
+    return r
+  }
+
+  return {
+    fetch: fetchPaid,
+    status,
+    resolvePending,
+    refresh,
+    ready,
+    requestBudget,
+    requestStatus,
+    requests: () => [...reqs.values()],
+  }
 }

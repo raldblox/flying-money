@@ -3,6 +3,7 @@ import type { Hex } from '@flying-money/core'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AddressPill } from '@/components/address-pill'
+import { AutoRefresh } from '@/components/auto-refresh'
 import { Seal } from '@/components/seal'
 import { StatusChip } from '@/components/status-chip'
 import { Tally } from '@/components/tally'
@@ -40,6 +41,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
     timeline = null
   }
 
+  const served = await sellerRecord(cert.payee, id as Hex)
   const now = BigInt(Math.floor(Date.now() / 1000))
   const status = cert.closed ? 'closed' : now > cert.expiresAt ? 'expired' : 'open'
   const ex = (path: string) => `${chain.explorer}/${path}`
@@ -56,20 +58,36 @@ export default async function CertificatePage({ params }: { params: Params }) {
         </h1>
         <StatusChip kind={status}>{status[0]!.toUpperCase() + status.slice(1)}</StatusChip>
         <Seal size={40} label="Issued on-chain" />
+        {status === 'open' && <AutoRefresh />}
       </div>
+
+      {served && status !== 'closed' && (
+        <section aria-labelledby="spend" className="mt-8 sheet grid gap-4 p-6 sm:grid-cols-3">
+          <h2 id="spend" className="sr-only">
+            Spending so far
+          </h2>
+          <Stat big={usdc(served.consumed)} small="spent so far, by the service’s own record" />
+          <Stat big={usdc(cert.redeemed)} small="collected on the blockchain (final)" />
+          <Stat big={usdc(cert.faceValue - served.consumed)} small="left to spend" />
+          <p className="text-xs text-ink-2 sm:col-span-3">
+            Payments are signed slips checked by the service instantly; it collects them on the blockchain in batches.
+            Only the collected amount is on-chain; the rest is what the service reports it has accepted.
+          </p>
+        </section>
+      )}
 
       <section aria-labelledby="terms" className="mt-10 sheet p-6">
         <h2 id="terms" className="font-display text-2xl font-semibold">
           Terms
         </h2>
         <dl className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-          <Row label="Funder">
+          <Row label="Funded by">
             <AddressPill value={cert.funder} href={ex(`address/${cert.funder}`)} label="funder" />
           </Row>
-          <Row label="Payee (the only one who can be paid)">
+          <Row label="Can be paid (the only one)">
             <AddressPill value={cert.payee} href={ex(`address/${cert.payee}`)} label="payee" />
           </Row>
-          <Row label="Spender key (holds no money)">
+          <Row label="Can spend (a key holding no money)">
             <AddressPill value={cert.spender} href={ex(`address/${cert.spender}`)} label="spender" />
           </Row>
           <Row label="Token">
@@ -79,7 +97,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
           <Row label="Face value">
             <span className="font-mono tabular-nums">{usdc(cert.faceValue)} USDC</span>
           </Row>
-          <Row label={cert.closed ? 'Returned to funder' : 'Remaining'}>
+          <Row label={cert.closed ? 'Leftovers returned' : 'Not collected yet'}>
             <span className="font-mono tabular-nums">{usdc(remaining)} USDC</span>
           </Row>
           <Row label="Expires">
@@ -92,11 +110,12 @@ export default async function CertificatePage({ params }: { params: Params }) {
           </Row>
         </dl>
         <div className="mt-6">
-          <Tally used={cert.redeemed} face={cert.faceValue} />
+          <Tally used={cert.redeemed} face={cert.faceValue} label="collected" />
         </div>
         {status !== 'closed' && (
           <p className="mt-3 text-sm text-ink-2">
-            Whatever isn’t collected returns to the giver after the end date. Nobody can cancel this certificate early.
+            Whatever isn’t collected goes back to whoever funded it after the end date: they take it back from their
+            Dashboard. Nobody can cancel it early.
           </p>
         )}
       </section>
@@ -121,7 +140,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
               <li key={`${e.txHash}-${e.kind}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <StatusChip kind={e.kind === 'Redeemed' ? 'redeemed' : e.kind === 'Reclaimed' ? 'closed' : 'open'}>
-                    {e.kind}
+                    {LABEL[e.kind]}
                   </StatusChip>
                   <span className="font-mono text-sm tabular-nums">{describe(e)}</span>
                 </div>
@@ -175,6 +194,41 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
+const LABEL: Record<TimelineEvent['kind'], string> = {
+  Issued: 'Funded',
+  'Topped up': 'Topped up',
+  Extended: 'Extended',
+  Redeemed: 'Collected',
+  Reclaimed: 'Leftovers taken back',
+}
+
+function Stat({ big, small }: { big: string; small: string }) {
+  return (
+    <div>
+      <p className="font-display text-4xl font-semibold tabular-nums lining-nums">{big}</p>
+      <p className="text-sm text-ink-2">{small} (USDC)</p>
+    </div>
+  )
+}
+
+/**
+ * The service's own record of what it accepted (its public payee feed, §12.3), for the hosted demo service only.
+ * Display only: the collected amount on-chain is the fact.
+ */
+async function sellerRecord(payee: Hex, id: Hex): Promise<{ consumed: bigint } | null> {
+  const known = process.env.PAYEE_ADDRESS
+  const base = process.env.ORACLE_URL ?? 'https://flying-money-oracle.vercel.app'
+  if (!known || known.toLowerCase() !== payee.toLowerCase()) return null
+  try {
+    const r = await fetch(`${base}/fm/redeemable/${id}`, { cache: 'no-store', signal: AbortSignal.timeout(4000) })
+    if (!r.ok) return { consumed: 0n }
+    const j = (await r.json()) as { state?: { consumed?: string } }
+    return { consumed: BigInt(j.state?.consumed ?? '0') }
+  } catch {
+    return null
+  }
+}
+
 function describe(e: TimelineEvent): string {
   const d = e.detail
   switch (e.kind) {
@@ -187,7 +241,7 @@ function describe(e: TimelineEvent): string {
     case 'Redeemed':
       return `paid ${usdc(d.paid as bigint)} USDC (total ${usdc(d.cumulative as bigint)})`
     case 'Reclaimed':
-      return `${usdc(d.refunded as bigint)} USDC returned to the funder`
+      return `${usdc(d.refunded as bigint)} USDC taken back by the funder`
   }
 }
 

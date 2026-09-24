@@ -27,6 +27,10 @@ export interface IssuePreset {
   amount?: string
   durationIdx?: number
   holderName?: string
+  /** an exact lifetime asked for in a budget request (§21.4): offered first */
+  durationSeconds?: bigint
+  /** funding an agent's budget request (§21.4.3): payee and spender are fixed by the request */
+  request?: { agent: string; placeName: string }
 }
 
 export interface IssuedInfo {
@@ -77,9 +81,16 @@ export function IssueWizard({
   const [pastedSpender, setPastedSpender] = useState<string>(preset?.spender ?? '')
   const [generated, setGenerated] = useState<{ key: Hex; address: Hex } | null>(null)
   const [keySaved, setKeySaved] = useState(false)
-  // Step 3: budget and time
+  // Step 3: budget and time (a request's exact lifetime is offered first)
+  const asked = preset?.durationSeconds
+  const durations =
+    asked && !DURATIONS.some((d) => d.seconds === asked)
+      ? [{ label: `${Number(asked / 86_400n)} days (asked)`, seconds: asked }, ...DURATIONS]
+      : DURATIONS
   const [amount, setAmount] = useState(preset?.amount ?? '5')
-  const [durationIdx, setDurationIdx] = useState(preset?.durationIdx ?? 1)
+  const [durationIdx, setDurationIdx] = useState(
+    asked ? durations.findIndex((d) => d.seconds === asked) : (preset?.durationIdx ?? 1),
+  )
   const [issued, setIssued] = useState<{ id: Hex; hash: Hex } | null>(null)
 
   // Forget a generated key when leaving the page (it is never stored).
@@ -152,7 +163,7 @@ export function IssueWizard({
   async function issue() {
     if (!wallet || !publicClient || !face || !payee || !spender || !chain.flyingMoney || !address) return
     const { timestamp } = await publicClient.getBlock()
-    const expiresAt = timestamp + DURATIONS[durationIdx]!.seconds
+    const expiresAt = timestamp + durations[durationIdx]!.seconds
     const receipt = await issueTx.run(async () => {
       const { request } = await publicClient.simulateContract({
         account: address,
@@ -179,6 +190,35 @@ export function IssueWizard({
     a.download = 'flying-money-agent.env'
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  if (issued && preset?.request) {
+    return (
+      <div className="sheet p-8 text-center">
+        <div className="mx-auto w-fit">
+          <Seal size={72} animate label="Budget funded on-chain" />
+        </div>
+        <h3 className="mt-5 font-display text-3xl font-semibold">Approved. The budget is locked.</h3>
+        <p className="mx-auto mt-3 max-w-xl text-ink-2">
+          {preset.request.agent} can now pay {preset.request.placeName}, up to {face ? usdc(face) : ''} USDC. It finds
+          the budget on the blockchain by itself: there is nothing to send back. Whatever it doesn’t spend comes back to
+          you after the end date.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <a className={buttonClass('primary')} href={`/c/${chain.key}/${issued.id}`}>
+            Watch the budget
+          </a>
+          <a
+            className={buttonClass('secondary')}
+            href={`${chain.explorer}/tx/${issued.hash}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            See the transaction ↗
+          </a>
+        </div>
+      </div>
+    )
   }
 
   if (issued) {
@@ -248,9 +288,32 @@ export function IssueWizard({
     )
   }
 
+  const locked = Boolean(preset?.request)
   return (
-    <form className="grid gap-8" onSubmit={(e) => e.preventDefault()} aria-label="Issue a certificate">
-      <fieldset className="sheet p-6">
+    <form
+      className="grid gap-8"
+      onSubmit={(e) => e.preventDefault()}
+      aria-label={locked ? 'Fund the budget' : 'Issue a certificate'}
+    >
+      {locked && preset?.request && (
+        <div className="sheet grid gap-3 p-6 sm:grid-cols-2">
+          <div>
+            <p className="smallcaps text-sm text-seal">Can be paid</p>
+            <p className="mt-1 font-display text-2xl font-semibold">{preset.request.placeName}</p>
+            <p className="font-mono text-xs text-ink-2">{payee}</p>
+          </div>
+          <div>
+            <p className="smallcaps text-sm text-seal">Can spend</p>
+            <p className="mt-1 font-display text-2xl font-semibold">{preset.request.agent}</p>
+            <p className="font-mono text-xs text-ink-2">{spender}</p>
+          </div>
+          <p className="text-sm text-ink-2 sm:col-span-2">
+            Fixed by the request: your agent only accepts a budget for its own key and this service. You can change the
+            amount and the time below.
+          </p>
+        </div>
+      )}
+      <fieldset className={`sheet p-6 ${locked ? 'hidden' : ''}`}>
         <legend className="sr-only">Step 1: who can be paid?</legend>
         <p className="smallcaps text-sm text-seal">Step 1</p>
         <h3 className="font-display text-2xl font-semibold">Who can be paid?</h3>
@@ -347,7 +410,7 @@ export function IssueWizard({
         )}
       </fieldset>
 
-      <fieldset className="sheet p-6">
+      <fieldset className={`sheet p-6 ${locked ? 'hidden' : ''}`}>
         <legend className="sr-only">Step 2: who can spend?</legend>
         <p className="smallcaps text-sm text-seal">Step 2</p>
         <h3 className="font-display text-2xl font-semibold">Who can spend?</h3>
@@ -455,12 +518,14 @@ export function IssueWizard({
 
       <fieldset className="sheet p-6">
         <legend className="sr-only">Step 3: budget and time</legend>
-        <p className="smallcaps text-sm text-seal">Step 3</p>
-        <h3 className="font-display text-2xl font-semibold">Budget and time</h3>
+        <p className="smallcaps text-sm text-seal">{locked ? 'Your decision' : 'Step 3'}</p>
+        <h3 className="font-display text-2xl font-semibold">
+          {locked ? 'How much, and for how long' : 'Budget and time'}
+        </h3>
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor={`${ids}-amount`} className="text-sm font-medium">
-              Face value (USDC)
+              {locked ? 'Amount (USDC): you can give less than asked' : 'Face value (USDC)'}
             </label>
             <input
               id={`${ids}-amount`}
@@ -481,7 +546,7 @@ export function IssueWizard({
           <fieldset>
             <legend className="text-sm font-medium">Valid for</legend>
             <div className="mt-1 flex gap-2">
-              {DURATIONS.map((d, i) => (
+              {durations.map((d, i) => (
                 <button
                   key={d.label}
                   type="button"
@@ -508,7 +573,7 @@ export function IssueWizard({
           Give <strong>{spender ? short(spender) : '…'}</strong>{' '}
           <strong>{face ? formatUnits(face, 6) : '…'} USDC</strong> at{' '}
           <strong>{place?.name ?? (payee ? short(payee) : '…')}</strong> for{' '}
-          <strong>{DURATIONS[durationIdx]!.label}</strong>.
+          <strong>{durations[durationIdx]!.label}</strong>.
         </p>
         {problems.length > 0 && (
           <ul className="mt-3 list-disc pl-5 text-sm text-ink-2">
@@ -534,7 +599,7 @@ export function IssueWizard({
               disabled={problems.length > 0 || busy || !wallet}
               onClick={issue}
             >
-              Issue certificate
+              {locked ? 'Fund the budget' : 'Issue certificate'}
             </button>
           )}
         </div>

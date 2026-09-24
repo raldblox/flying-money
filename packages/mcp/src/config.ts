@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type ChainKey, isChainKey } from '@flying-money/chains'
-import { createFlyingMoneyClient, type FlyingMoneyClient, fileStore } from '@flying-money/client'
+import { createFlyingMoneyClient, type FlyingMoneyClient, fileRequestStore, fileStore } from '@flying-money/client'
 import type { Hex } from '@flying-money/core'
 import { parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -9,7 +9,12 @@ import { privateKeyToAccount } from 'viem/accounts'
 export interface McpEnvConfig {
   client: FlyingMoneyClient
   maxPricePerRequest: bigint
+  /** An owner is configured, so the agent may ask for budgets (§21.4). */
+  canRequest: boolean
 }
+
+/** Where approval links open by default (§21.4.2 link channel). */
+export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
 
 /**
  * Configuration from the environment (§8.4). The key is read once into the client and never exposed.
@@ -17,7 +22,9 @@ export interface McpEnvConfig {
  *   AGENT_CERTIFICATES   comma-separated certificate ids issued to that key
  *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN or arbitrum-sepolia)
  *   FM_MAX_PRICE         per-request cap in USDC (default 0.05)
- *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json)
+ *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json); requests go next to it
+ *   FM_OWNER             owner address to ask for budgets (§21.4); optional
+ *   FM_REQUEST_LINK_BASE where approval links open (default https://useflyingmoney.vercel.app)
  *   RPC_<CHAIN>          optional RPC overrides
  */
 export function configFromEnv(env: Record<string, string | undefined> = process.env): McpEnvConfig {
@@ -30,18 +37,30 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
-  if (certificates.length === 0 || certificates.some((c) => !/^0x[0-9a-fA-F]{64}$/.test(c)))
+  const owner = env.FM_OWNER?.trim()
+  if (owner && !/^0x[0-9a-fA-F]{40}$/.test(owner)) throw new Error('FM_OWNER must be an address (0x + 40 hex)')
+  if (certificates.some((c) => !/^0x[0-9a-fA-F]{64}$/.test(c)))
     throw new Error('AGENT_CERTIFICATES must list certificate ids (0x + 64 hex), comma-separated')
+  if (certificates.length === 0 && !owner)
+    throw new Error('set AGENT_CERTIFICATES (budgets to use), or FM_OWNER so the agent can ask its owner for one')
   const chains = (env.AGENT_CHAINS ?? env.AGENT_CHAIN ?? 'arbitrum-sepolia').split(',').map((s) => s.trim())
   for (const c of chains) if (!isChainKey(c)) throw new Error(`unknown chain in AGENT_CHAINS: ${c}`)
   const maxPricePerRequest = parseUnits(env.FM_MAX_PRICE ?? '0.05', 6)
+  const storePath = env.FM_STORE ?? join(homedir(), '.flying-money', 'outbox.json')
   const client = createFlyingMoneyClient({
     chains: chains as ChainKey[],
     spender: privateKeyToAccount(key as Hex),
-    store: fileStore(env.FM_STORE ?? join(homedir(), '.flying-money', 'outbox.json')),
+    store: fileStore(storePath),
     certificates: certificates as Hex[],
     maxPricePerRequest,
     env,
+    ...(owner
+      ? {
+          owner: owner as Hex,
+          requestLinkBase: env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE,
+          requestStore: fileRequestStore(storePath.replace(/\.json$/, '') + '.requests.json'),
+        }
+      : {}),
   })
-  return { client, maxPricePerRequest }
+  return { client, maxPricePerRequest, canRequest: Boolean(owner) }
 }

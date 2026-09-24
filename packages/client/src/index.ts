@@ -1,4 +1,5 @@
 export {
+  type BudgetRequest,
   type CertificateStatus,
   type ClientEvent,
   createFlyingMoneyClient,
@@ -26,11 +27,15 @@ export {
   serializeCounterState,
 } from './counter.js'
 export {
+  type BudgetRequestRecord,
   type ClientCertState,
   type ClientStore,
+  fileRequestStore,
   fileStore,
+  memoryRequestStore,
   memoryStore,
   type PendingRecord,
   type PendingRequest,
+  type RequestStore,
 } from './store.js'
 export { paidFetchTool } from './tool.js'

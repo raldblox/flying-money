@@ -139,3 +139,57 @@ export function fileStore(path: string): ClientStore {
     keys: () => serial(async () => Object.keys(await readAll()) as CertKey[]),
   }
 }
+
+/** A budget request as persisted by the agent (§21.4.5). */
+export interface BudgetRequestRecord {
+  requestId: Hex
+  chain: string
+  status: 'asked' | 'approved' | 'expired'
+  link: string
+  fromBlock: string
+  certificateId?: Hex
+}
+
+export interface RequestStore {
+  load(): Promise<BudgetRequestRecord[]>
+  save(list: BudgetRequestRecord[]): Promise<void>
+}
+
+export function memoryRequestStore(): RequestStore {
+  let list: BudgetRequestRecord[] = []
+  return {
+    async load() {
+      return list.map((r) => ({ ...r }))
+    },
+    async save(l) {
+      list = l.map((r) => ({ ...r }))
+    },
+  }
+}
+
+/** Budget requests in a JSON file, written atomically (fsync + rename), like the outbox. */
+export function fileRequestStore(path: string): RequestStore {
+  const fs = () => import('node:fs/promises')
+  return {
+    async load() {
+      try {
+        return JSON.parse(await (await fs()).readFile(path, 'utf8')) as BudgetRequestRecord[]
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') return []
+        throw e
+      }
+    },
+    async save(list) {
+      const f = await fs()
+      const tmp = `${path}.${process.pid}.tmp`
+      const h = await f.open(tmp, 'w', 0o600)
+      try {
+        await h.writeFile(JSON.stringify(list, null, 2))
+        await h.sync()
+      } finally {
+        await h.close()
+      }
+      await f.rename(tmp, path)
+    },
+  }
+}

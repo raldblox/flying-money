@@ -146,15 +146,19 @@ const HALF_N = secp256k1.CURVE.n >> 1n
  * 65-byte signature, v ∈ {27, 28}, low-s required, r/s in range. Never consults chain state.
  */
 export function recoverNoteSigner(signed: SignedNote): Hex | null {
+  return recoverDigestSigner(hashNote(signed.chainId, signed.contract, signed), signed.sig)
+}
+
+/** Pure ECDSA recovery of an EIP-712 digest with the same strict rules as notes (v ∈ {27, 28}, low-s, r/s in range). */
+function recoverDigestSigner(digestHex: Hex, sig: Hex): Hex | null {
   try {
-    if (!/^0x[0-9a-fA-F]{130}$/.test(signed.sig)) return null
-    const r = BigInt(`0x${signed.sig.slice(2, 66)}`)
-    const s = BigInt(`0x${signed.sig.slice(66, 130)}`)
-    const v = Number.parseInt(signed.sig.slice(130, 132), 16)
+    if (!/^0x[0-9a-fA-F]{130}$/.test(sig)) return null
+    const r = BigInt(`0x${sig.slice(2, 66)}`)
+    const s = BigInt(`0x${sig.slice(66, 130)}`)
+    const v = Number.parseInt(sig.slice(130, 132), 16)
     if (v !== 27 && v !== 28) return null
     if (r === 0n || s === 0n || r >= secp256k1.CURVE.n || s > HALF_N) return null
-    const digest = hashNote(signed.chainId, signed.contract, signed).slice(2)
-    const pub = new secp256k1.Signature(r, s).addRecoveryBit(v - 27).recoverPublicKey(digest)
+    const pub = new secp256k1.Signature(r, s).addRecoveryBit(v - 27).recoverPublicKey(digestHex.slice(2))
     const uncompressed = pub.toRawBytes(false)
     return getAddress(`0x${keccak256(bytesToHex(uncompressed.slice(1))).slice(-40)}`)
   } catch {
@@ -198,9 +202,9 @@ function fromB64url(s: string): string {
 
 const wrap = (json: unknown) => HEADER_PREFIX + toB64url(JSON.stringify(json))
 
-function unwrap(header: string): Record<string, unknown> {
+function unwrap(header: string, maxBytes = MAX_HEADER_BYTES): Record<string, unknown> {
   if (typeof header !== 'string') throw new Error('fm1: header must be a string')
-  if (header.length > MAX_HEADER_BYTES) throw new Error('fm1: header exceeds 2 KB')
+  if (header.length > maxBytes) throw new Error(`fm1: exceeds ${maxBytes / 1024} KB`)
   if (!header.startsWith(HEADER_PREFIX)) throw new Error('fm1: bad prefix')
   const parsed: unknown = JSON.parse(fromB64url(header.slice(HEADER_PREFIX.length)))
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('fm1: not an object')
@@ -399,3 +403,185 @@ export async function readCertificate(client: PublicClient, contract: Hex, id: H
 
 export const sameAddress = (a: Hex, b: Hex) => a.toLowerCase() === b.toLowerCase()
 export const maxBig = (a: bigint, b: bigint) => (a > b ? a : b)
+
+// ───────── spending requests (§21.4): off-chain objects that never move money (R1) ─────────
+
+/** A budget request signed by the agent's own spending key (§21.4.1). */
+export interface SpendRequest {
+  /** the spending key that will receive the budget; it signs this request */
+  requester: Hex
+  /** who is asked (the funder) */
+  owner: Hex
+  /** the service or place */
+  payee: Hex
+  /** USDC base units */
+  amount: bigint
+  /** requested lifetime in seconds (≥ 1 day) */
+  validFor: bigint
+  /** 0x0 = a new certificate; otherwise a top-up of this certificate */
+  certificateId: Hex
+  requestId: Hex
+  /** unix seconds */
+  createdAt: bigint
+  /** untrusted display text, ≤ 280 characters (R4) */
+  reason: string
+  /** untrusted display text, e.g. the service URL (R4) */
+  origin: string
+}
+
+export interface SignedSpendRequest {
+  request: SpendRequest
+  chainId: number
+  sig: Hex
+}
+
+export const REQUEST_MIN_VALID_FOR = 86_400n
+export const REQUEST_MAX_REASON = 280
+export const REQUEST_MAX_ORIGIN = 200
+/** Links and relay payloads: at most 4 KB (§21.4.2). */
+export const MAX_REQUEST_BYTES = 4096
+export const ZERO_ID: Hex = `0x${'0'.repeat(64)}`
+
+export const requestTypes = {
+  SpendRequest: [
+    { name: 'requester', type: 'address' },
+    { name: 'owner', type: 'address' },
+    { name: 'payee', type: 'address' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'validFor', type: 'uint64' },
+    { name: 'certificateId', type: 'bytes32' },
+    { name: 'requestId', type: 'bytes32' },
+    { name: 'createdAt', type: 'uint64' },
+    { name: 'reason', type: 'string' },
+    { name: 'origin', type: 'string' },
+  ],
+} as const
+
+/**
+ * The request domain (§21.4.1): no verifyingContract and a different name from the Note domain, so no request
+ * signature can ever be a valid Note.
+ */
+export function requestDomain(chainId: number): TypedDataDomain & { chainId: number } {
+  return { name: 'FlyingMoneyRequest', version: '1', chainId }
+}
+
+const requestMessage = (r: SpendRequest) => ({
+  requester: r.requester,
+  owner: r.owner,
+  payee: r.payee,
+  amount: r.amount,
+  validFor: r.validFor,
+  certificateId: r.certificateId,
+  requestId: r.requestId,
+  createdAt: r.createdAt,
+  reason: r.reason,
+  origin: r.origin,
+})
+
+export function hashSpendRequest(chainId: number, r: SpendRequest): Hex {
+  return hashTypedData({
+    domain: requestDomain(chainId),
+    types: requestTypes,
+    primaryType: 'SpendRequest',
+    message: requestMessage(r),
+  })
+}
+
+function checkRequest(r: SpendRequest): void {
+  if (r.amount <= 0n) throw new Error('request: amount must be positive')
+  if (r.validFor < REQUEST_MIN_VALID_FOR) throw new Error('request: validFor must be at least one day')
+  if (r.validFor >= 2n ** 64n || r.createdAt >= 2n ** 64n) throw new Error('request: uint64 overflow')
+  if ([...r.reason].length > REQUEST_MAX_REASON)
+    throw new Error(`request: reason is over ${REQUEST_MAX_REASON} characters`)
+  if ([...r.origin].length > REQUEST_MAX_ORIGIN)
+    throw new Error(`request: origin is over ${REQUEST_MAX_ORIGIN} characters`)
+  if (r.requester.toLowerCase() === r.owner.toLowerCase()) throw new Error('request: the owner cannot be the requester')
+  if (r.requester.toLowerCase() === r.payee.toLowerCase()) throw new Error('request: the payee cannot be the requester')
+}
+
+/** Signs a budget request with the agent's own spending key (a LocalAccount: the key never leaves the agent). */
+export async function signSpendRequest(
+  account: LocalAccount,
+  chainId: number,
+  request: Omit<SpendRequest, 'requester'>,
+): Promise<SignedSpendRequest> {
+  const r: SpendRequest = { ...request, requester: account.address }
+  checkRequest(r)
+  const sig = await account.signTypedData({
+    domain: requestDomain(chainId),
+    types: requestTypes,
+    primaryType: 'SpendRequest',
+    message: requestMessage(r),
+  })
+  return { request: r, chainId, sig }
+}
+
+/** True only if the requester itself signed exactly this request on this chain (pure ECDSA, offline). */
+export function verifySpendRequest(s: SignedSpendRequest): boolean {
+  const who = recoverDigestSigner(hashSpendRequest(s.chainId, s.request), s.sig)
+  return who !== null && who.toLowerCase() === s.request.requester.toLowerCase()
+}
+
+/** 'fm1.' + base64url(JSON), for links and QR codes (§21.4.1). */
+export function encodeSpendRequest(s: SignedSpendRequest): string {
+  const r = s.request
+  return wrap({
+    v: 1,
+    type: 'SpendRequest',
+    chainId: String(s.chainId),
+    request: {
+      requester: r.requester,
+      owner: r.owner,
+      payee: r.payee,
+      amount: r.amount.toString(),
+      validFor: r.validFor.toString(),
+      certificateId: r.certificateId,
+      requestId: r.requestId,
+      createdAt: r.createdAt.toString(),
+      reason: r.reason,
+      origin: r.origin,
+    },
+    sig: s.sig,
+  })
+}
+
+/** Strict parser (§8.1 rules). It does not check the signature: call verifySpendRequest. */
+export function decodeSpendRequest(value: string): SignedSpendRequest {
+  const o = unwrap(value, MAX_REQUEST_BYTES)
+  exactKeys(o, ['v', 'type', 'chainId', 'request', 'sig'])
+  if (o.v !== 1) throw new Error('fm1: v must be 1')
+  if (o.type !== 'SpendRequest') throw new Error('fm1: not a SpendRequest')
+  if (typeof o.request !== 'object' || o.request === null || Array.isArray(o.request))
+    throw new Error('fm1: bad request')
+  const q = o.request as Record<string, unknown>
+  exactKeys(q, [
+    'requester',
+    'owner',
+    'payee',
+    'amount',
+    'validFor',
+    'certificateId',
+    'requestId',
+    'createdAt',
+    'reason',
+    'origin',
+  ])
+  const text = (v: unknown, field: string) => {
+    if (typeof v !== 'string') throw new Error(`fm1: ${field} must be a string`)
+    return v
+  }
+  const request: SpendRequest = {
+    requester: hexN(q.requester, 20, 'requester'),
+    owner: hexN(q.owner, 20, 'owner'),
+    payee: hexN(q.payee, 20, 'payee'),
+    amount: uint(q.amount, 'amount'),
+    validFor: uint(q.validFor, 'validFor'),
+    certificateId: hexN(q.certificateId, 32, 'certificateId'),
+    requestId: hexN(q.requestId, 32, 'requestId'),
+    createdAt: uint(q.createdAt, 'createdAt'),
+    reason: text(q.reason, 'reason'),
+    origin: text(q.origin, 'origin'),
+  }
+  checkRequest(request)
+  return { request, chainId: chainIdOf(o.chainId), sig: hexN(o.sig, 65, 'sig') }
+}

@@ -3,12 +3,14 @@ import { flyingMoneyAbi, flyingMoneyBytecode, mockUsdcAbi, mockUsdcBytecode } fr
 import { setLocalDeployment } from '@flying-money/chains'
 import {
   certKey,
+  decodeSpendRequest,
   encodeHeader,
   type Hex,
   NOTE_HEADER,
   newRequestId,
   readCertificate,
   signNote,
+  verifySpendRequest,
 } from '@flying-money/core'
 import {
   createIdempotency,
@@ -24,7 +26,7 @@ import { createPublicClient, createWalletClient, http, type PublicClient } from 
 import { generatePrivateKey, mnemonicToAccount, privateKeyToAccount } from 'viem/accounts'
 import { anvil as anvilChain } from 'viem/chains'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createFlyingMoneyClient, memoryStore, NoCertificateError } from '../src/index.js'
+import { createFlyingMoneyClient, memoryRequestStore, memoryStore, NoCertificateError } from '../src/index.js'
 import { ANVIL_MNEMONIC, anvilAvailable, startAnvil } from './anvil.js'
 
 const PRICE = 10_000n // 0.01 USDC
@@ -338,5 +340,77 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     expect(sellerLoss).toBeGreaterThanOrEqual(0n)
     expect(sellerLoss).toBeLessThanOrEqual(atWipe.consumed - redeemedAtWipe) // ≤ redemption lag at wipe time
     expect(paid).toBeLessThanOrEqual(served) // the buyer never pays for anything not served
+  }, 120_000)
+  it('§21.4.6: 402 → request budget → owner funds → the agent verifies on-chain and pays; decoys never count (R2)', async () => {
+    const agentKey = generatePrivateKey()
+    const agent = privateKeyToAccount(agentKey)
+    const { app } = seller(sellerStore())
+    const requestStore = memoryRequestStore()
+    const make = () =>
+      createFlyingMoneyClient({
+        chains: ['anvil'],
+        spender: agent,
+        store: sharedStore,
+        certificates: [], // a brand-new agent: no budget yet
+        maxPricePerRequest: 50_000n,
+        env,
+        owner: funder.address,
+        requestLinkBase: 'https://site.test',
+        requestStore,
+        fetch: ((u: RequestInfo | URL, init?: RequestInit) => app.request(String(u), init)) as typeof fetch,
+      })
+    const sharedStore = memoryStore()
+    const client = make()
+
+    // 1. no budget: the 402 comes back as NoCertificateError with the offer
+    const err = await client.fetch('http://oracle.test/v1/tea').catch((e) => e)
+    expect(err).toBeInstanceOf(NoCertificateError)
+
+    // 2. the agent asks: a signed link, nothing moves
+    const req = await client.requestBudget({
+      offer: (err as NoCertificateError).offer,
+      amount: 100_000n,
+      days: 3,
+      reason: 'Tea prices for the Luoyang trip',
+      origin: 'http://oracle.test',
+    })
+    expect(req.status).toBe('asked')
+    expect(req.link).toMatch(/^https:\/\/site\.test\/app\/requests\/new#fm1\./)
+    expect(verifySpendRequest(decodeSpendRequest(req.link.split('#')[1]!))).toBe(true)
+    expect((await client.requestStatus(req.requestId)).status).toBe('asked')
+
+    // 3. decoys (R2): right owner but another spender; right spender but another payee; another funder entirely
+    await issue(100_000n, privateKeyToAccount(generatePrivateKey()).address)
+    await issue(100_000n, agent.address, otherPayee.address)
+    const stranger = acct(5)
+    const sw = createWalletClient({ account: stranger, chain: anvilChain, transport: http(env.RPC_ANVIL) })
+    await wait(await sw.writeContract({ address: usdc, abi: mockUsdcAbi, functionName: 'faucet' }))
+    await wait(
+      await sw.writeContract({ address: usdc, abi: mockUsdcAbi, functionName: 'approve', args: [fm, 2n ** 255n] }),
+    )
+    const { timestamp } = await pub.getBlock()
+    await wait(
+      await sw.writeContract({
+        address: fm,
+        abi: flyingMoneyAbi,
+        functionName: 'issue',
+        args: [payee.address, agent.address, 100_000n, timestamp + 7n * 86_400n],
+      }),
+    )
+    expect((await client.requestStatus(req.requestId)).status).toBe('asked')
+
+    // 4. the owner approves (for less than asked, which is allowed)
+    const id = await issue(60_000n, agent.address)
+    const approved = await client.requestStatus(req.requestId)
+    expect(approved).toMatchObject({ status: 'approved', certificateId: id, faceValue: 60_000n })
+
+    // 5. the agent pays right away
+    expect((await client.fetch('http://oracle.test/v1/tea?city=Luoyang')).status).toBe(200)
+
+    // 6. after a restart, the approved budget is found again from the request store
+    const again = make()
+    await again.ready
+    expect(again.status().map((s) => s.id)).toEqual([id])
+    expect((await again.fetch('http://oracle.test/v1/tea?city=Kaifeng')).status).toBe(200)
   }, 120_000)
 })
