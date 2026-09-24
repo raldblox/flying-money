@@ -23,8 +23,35 @@ import { createOracle, type WeatherNow } from './app.js'
 export const HOBBY_SAFETY_SECONDS = 36 * 3600
 /** Pro runs the cron every 10 minutes (§21.6), so two hours of margin is plenty. */
 export const PRO_SAFETY_SECONDS = 2 * 3600
-/** At most one opportunistic sweep/redeem per instance per this many ms (after serving, via waitUntil). */
-const AFTER_SERVE_EVERY_MS = 30_000
+/**
+ * Runs `fn` at most once at a time. A call that arrives while it runs asks for exactly one more run afterwards, so a
+ * burst of paid requests always ends with a check that sees the latest state (never dropped, never piled up). Errors
+ * go to `onError`: this runs after the response, so it must never throw.
+ */
+export function coalesce(fn: () => Promise<unknown>, onError: (e: Error) => void = () => {}) {
+  let running: Promise<void> | null = null
+  let again = false
+  const run = (): Promise<void> => {
+    if (running) {
+      again = true
+      return running
+    }
+    running = (async () => {
+      do {
+        again = false
+        try {
+          await fn()
+        } catch (e) {
+          onError(e as Error)
+        }
+      } while (again)
+    })().finally(() => {
+      running = null
+    })
+    return running
+  }
+  return Object.assign(run, { idle: () => running ?? Promise.resolve() })
+}
 
 export interface HostedOracleOptions {
   accepts: ChainKey[]
@@ -68,13 +95,15 @@ export function buildHostedOracle(o: HostedOracleOptions) {
     return { swept: swept.resolved, running: swept.running, redeemer: Boolean(oracle.redeemer) }
   }
 
-  let lastAfterServe = 0
-  /** Opportunistic maintenance after serving (§21.6 step 1). Never throws: it runs after the response. */
-  async function afterServe() {
-    if (Date.now() - lastAfterServe < AFTER_SERVE_EVERY_MS) return
-    lastAfterServe = Date.now()
-    await maintain().catch((e) => oracle.events.emit('error', { message: (e as Error).message }))
-  }
+  // Visible in the hosting logs (Vercel): collections and redeemer alerts. An 'error' listener must exist anyway,
+  // since an EventEmitter throws on an unheard 'error'.
+  oracle.events.on('redeemed', (e) => console.log(`collected ${e.paid} on chain ${e.chainId}: ${e.txHash}`))
+  oracle.events.on('error', (e: { chainId?: number; message: string }) =>
+    console.error(`redeemer${e.chainId ? ` (chain ${e.chainId})` : ''}: ${e.message}`),
+  )
+
+  /** Opportunistic maintenance after serving (§21.6 step 1), coalesced per instance. Never throws. */
+  const afterServe = coalesce(maintain, (e) => console.error(`maintenance failed: ${e.message}`))
 
   const secretOk = (header: string | undefined) => {
     if (!o.cronSecret || !header?.startsWith('Bearer ')) return false

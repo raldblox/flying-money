@@ -15,8 +15,7 @@ console.log(
 )
 const { oracle } = h
 oracle.events.on('note', (e) => console.log(`note ${e.status} ${e.path} cumulative ${e.accepted}`))
-oracle.events.on('redeemed', (e) => console.log(`redeemed ${e.paid} on chain ${e.chainId}: ${e.txHash}`))
-oracle.events.on('error', (e) => console.error('redeemer:', e))
+// collections and redeemer alerts are logged by the builder (hosted.ts)
 oracle.server.startSweeper(60_000)
 if (oracle.redeemer) oracle.redeemer.start(10_000)
 else console.warn('no REDEEMER_KEY: notes are accepted but not redeemed by this process')

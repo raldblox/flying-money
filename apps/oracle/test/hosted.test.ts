@@ -14,7 +14,7 @@ import { DurableStoreRequiredError, ioredisEval, redisStore, type SellerStore } 
 import RedisMock from 'ioredis-mock'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { describe, expect, it } from 'vitest'
-import { buildHostedOracle, HOBBY_SAFETY_SECONDS, hostedOracleFromEnv } from '../src/hosted.js'
+import { buildHostedOracle, coalesce, HOBBY_SAFETY_SECONDS, hostedOracleFromEnv } from '../src/hosted.js'
 
 const CONTRACT: Hex = '0x00000000000000000000000000000000000f1f1f'
 setLocalDeployment({ usdc: '0x00000000000000000000000000000000000c0c0c', flyingMoney: CONTRACT })
@@ -119,5 +119,42 @@ describe('hosted Oracle', () => {
     const keys = await redis.keys(`${seller.prefix}s:${payee.toLowerCase()}:${CHAIN_ID}:${id.toLowerCase()}:*`)
     expect(keys.some((k: string) => k.endsWith(':state'))).toBe(true)
     await h.afterServe() // opportunistic sweep/redeem never throws, even without a redeemer
+  })
+})
+
+describe('coalesce (opportunistic maintenance after serving)', () => {
+  it('a burst during a run never drops the last check: exactly one more run follows, seeing the latest state', async () => {
+    let state = 0
+    const seen: number[] = []
+    let release!: () => void
+    let gate = new Promise<void>((r) => {
+      release = r
+    })
+    const run = coalesce(async () => {
+      await gate
+      seen.push(state)
+    })
+    const first = run()
+    for (let i = 1; i <= 4; i++) {
+      state = i // requests keep arriving while the first check runs
+      void run()
+    }
+    gate = Promise.resolve()
+    release()
+    await first
+    await run.idle()
+    expect(seen).toEqual([4, 4]) // the first run, then exactly one more, which saw the final state
+  })
+
+  it('a failing run is reported, never thrown (it runs after the response)', async () => {
+    const errors: string[] = []
+    const run = coalesce(
+      async () => {
+        throw new Error('rpc down')
+      },
+      (e) => errors.push(e.message),
+    )
+    await expect(run()).resolves.toBeUndefined()
+    expect(errors).toEqual(['rpc down'])
   })
 })

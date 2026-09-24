@@ -33,3 +33,6 @@ apps/web/next-env.d.ts
 .vercel
 test-results/
 playwright-report/
+
+.vercel
+.env*.local
