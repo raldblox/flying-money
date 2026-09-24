@@ -136,8 +136,8 @@ export default function GuaranteesPage() {
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">What’s guaranteed, and what isn’t.</h1>
 
       <p className="mt-6 sheet p-5 text-ink-2">
-        <strong className="text-ink">Audit status: not audited.</strong> Invariant- and property-tested. Testnets, plus
-        mainnets with immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide).
+        <strong className="text-ink">Audit status: not audited.</strong> Invariant- and property-tested. Testnets only
+        for now. Mainnets will launch with immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide).
       </p>
 
       <h2 className="mt-12 font-display text-3xl font-semibold">The three claims we make, and no stronger ones</h2>

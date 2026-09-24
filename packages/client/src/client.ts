@@ -20,6 +20,9 @@ import {
   signNote,
 } from '@flying-money/core'
 import { createPublicClient, http, type LocalAccount, type PublicClient } from 'viem'
+
+const minBig = (a: bigint, b: bigint) => (a < b ? a : b)
+
 import type { ClientCertState, ClientStore, PendingRecord, PendingRequest } from './store.js'
 
 export class NoCertificateError extends Error {
@@ -82,6 +85,13 @@ export type ClientEvent =
   | { type: 'retry'; url: string; requestId: Hex; attempt: number; error: string }
   | { type: 'receipt'; url: string; receipt: Receipt }
   | { type: 'rejected'; url: string; status: number; reason: string | null }
+  /** The receipt claimed more than this client ever signed; only the signed amounts were kept (D33). */
+  | {
+      type: 'suspicious-receipt'
+      url: string
+      receipt: Receipt
+      kept: { accepted: bigint; consumed: bigint; reserved: bigint }
+    }
 
 export interface FlyingMoneyClientConfig {
   chains: ChainKey[]
@@ -240,14 +250,29 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
         const receipt = decodeReceipt(rh)
         if (receipt.requestId.toLowerCase() !== pending.requestId.toLowerCase())
           throw new Error('receipt does not match the pending requestId')
+        if (receipt.certificateId.toLowerCase() !== h.cert.id.toLowerCase())
+          throw new Error('receipt is for a different certificate than the pending note')
+        // D33: a receipt is trusted only up to what this client signed, so a lying seller (or a man in the middle)
+        // can't inflate the next note: accepted ≤ highest signed, consumed ≤ accepted, consumed + reserved ≤ accepted.
+        const cur = local.get(h.key) ?? (await load(h.key))
+        const accepted = minBig(receipt.accepted, maxBig(cur.accepted, pending.cumulative))
+        const consumed = minBig(receipt.consumed, accepted)
+        const reserved = minBig(receipt.reserved, accepted - consumed)
+        if (accepted !== receipt.accepted || consumed !== receipt.consumed || reserved !== receipt.reserved)
+          emit({
+            type: 'suspicious-receipt',
+            url: pending.request.url,
+            receipt,
+            kept: { accepted, consumed, reserved },
+          })
         // final: update from the receipt and clear pending atomically (§6.6 step 6)
-        const consumedBefore = local.get(h.key)?.consumed ?? 0n
-        await save(h.key, { accepted: receipt.accepted, consumed: receipt.consumed, reserved: receipt.reserved })
+        const consumedBefore = cur.consumed
+        await save(h.key, { accepted, consumed, reserved })
         emit({ type: 'receipt', url: pending.request.url, receipt })
         if (receipt.status === 'SERVED')
           config.onPayment?.({
             url: pending.request.url,
-            price: receipt.consumed - consumedBefore,
+            price: consumed > consumedBefore ? consumed - consumedBefore : 0n,
             cumulative: pending.cumulative,
             certificateId: h.cert.id,
             chainId: h.chainId,

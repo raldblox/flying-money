@@ -21,7 +21,8 @@ import type { NoteStore } from './store.js'
  * - GUARANTEED: the certificate was read on-chain by this till (now or earlier, cached durably) and the note
  *   passed §6.5 against the till's authoritative local state.
  * - UNVERIFIED · merchant risk: offline, certificate never seen by this till. NOT a Flying Money guarantee; capped
- *   per certificate by the shop's first-visit limit, kept out of the guaranteed ledger, re-checked on reconnect.
+ *   per certificate by the shop's first-visit limit and till-wide by the offline float (D34), kept out of the
+ *   guaranteed ledger, re-checked on reconnect.
  * - REJECTED: with a reason.
  */
 export type CounterStatus = 'GUARANTEED' | 'UNVERIFIED' | 'REJECTED'
@@ -33,6 +34,7 @@ export type RejectReason =
   | 'bad-signature'
   | 'different-order'
   | 'over-first-visit-limit'
+  | 'over-offline-float'
   | 'flagged'
 
 export interface CounterResult {
@@ -47,6 +49,8 @@ export interface CounterResult {
   expiresAt?: bigint
   /** UNVERIFIED: the most this till can lose on this certificate. */
   riskLimit?: bigint
+  /** Offline acceptance (UNVERIFIED, or refused for the float): how much of the till's offline float is left. */
+  floatLeft?: bigint
   reason?: RejectReason
 }
 
@@ -91,6 +95,12 @@ export interface CounterConfig {
   kv: CounterKV
   /** Shop-set cap on unverified value per certificate (default 5 USDC in the UI). */
   firstVisitLimit: bigint
+  /**
+   * Per-device offline float (§6.8, §12.5; D34): the most this till accepts UNVERIFIED in total, across all
+   * certificates, until reconnecting resolves them. Certificate ids can be made up offline, so the per-certificate
+   * limit alone doesn't bound the loss.
+   */
+  offlineFloat: bigint
   env?: Record<string, string | undefined>
   readCertificate?: CertificateReader
   now?: () => number
@@ -228,10 +238,12 @@ export function createCounter(cfg: CounterConfig) {
     const r = fromHandle(await server.handle({ noteHeader: noteQr.trim(), price }, handOver), price, note)
     if (r !== 'offline') return r
 
-    // Offline and never verified by this till: the shop's own credit decision, capped per certificate.
-    const open = (await unverified()).filter(
-      (u) => u.state === 'UNVERIFIED' && u.certificateId.toLowerCase() === note.certificateId.toLowerCase(),
-    )
+    // Offline and never verified by this till: the shop's own credit decision, capped per certificate and till-wide.
+    const openAll = (await unverified()).filter((u) => u.state === 'UNVERIFIED')
+    const tillExposure = openAll.reduce((s, u) => s + BigInt(u.price), 0n)
+    const floatLeft = cfg.offlineFloat > tillExposure ? cfg.offlineFloat - tillExposure : 0n
+    if (price > floatLeft) return { ...reject(price, 'over-offline-float', note), floatLeft }
+    const open = openAll.filter((u) => u.certificateId.toLowerCase() === note.certificateId.toLowerCase())
     const exposure = open.reduce((s, u) => s + BigInt(u.price), 0n) + price
     if (exposure > cfg.firstVisitLimit || note.cumulative < exposure)
       return reject(price, exposure > cfg.firstVisitLimit ? 'over-first-visit-limit' : 'insufficient', note)
@@ -252,6 +264,7 @@ export function createCounter(cfg: CounterConfig) {
       requestId: note.memo,
       certificateId: note.certificateId,
       riskLimit: cfg.firstVisitLimit,
+      floatLeft: floatLeft - price,
     }
   }
 

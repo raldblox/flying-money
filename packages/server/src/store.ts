@@ -16,6 +16,8 @@ export interface Outcome {
   status: OutcomeStatus
   price: bigint
   responseRef?: string
+  /** Hash of the request the requestId was admitted for (D32). Absent when begin was called without one. */
+  requestHash?: Hex
 }
 
 export interface Submission {
@@ -49,6 +51,8 @@ export interface NoteStore {
     price: bigint,
     note: SignedNote,
     faceValue: bigint,
+    /** Binds the requestId to one request (D32); stored with the outcome in the same transaction. */
+    requestHash?: Hex,
   ): Promise<'ADMITTED' | 'DUPLICATE' | 'INSUFFICIENT'>
   /** Atomic §6.5 step 9; valid only from PENDING. */
   finish(key: CertKey, requestId: Hex, ok: boolean, responseRef?: string): Promise<'DONE' | 'NOT_PENDING'>

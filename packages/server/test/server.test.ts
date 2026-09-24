@@ -351,6 +351,69 @@ for (const [name, make] of storeFactories()) {
       expect(await store.state(key)).toMatchObject({ consumed: 10n, reserved: 0n })
     })
 
+    it('F1 (D32): a requestId is bound to its request; a replay for a different request is refused, never run', async () => {
+      const store = make()
+      const { server, cert, spenderKey, key } = setup(store)
+      const n = await note(spenderKey, cert.id, 10n)
+      const A = `0x${'a'.repeat(64)}` as Hex
+      const B = `0x${'b'.repeat(64)}` as Hex
+      let calls = 0
+      const exec = async () => {
+        calls++
+        return ok()
+      }
+      // admitted for request A, then stuck PENDING (slow handler)
+      void server.handle({ noteHeader: n.header, price: 10n, requestHash: A }, () => new Promise<ExecResult>(() => {}))
+      await until(async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING')
+      // the same note replayed for request B while PENDING: refused, the handler does not run
+      for (let i = 0; i < 5; i++)
+        expect(await server.handle({ noteHeader: n.header, price: 10n, requestHash: B }, exec)).toMatchObject({
+          kind: 'error',
+          status: 409,
+        })
+      expect(calls).toBe(0)
+      // resuming request A itself is still allowed (§6.5 step 4)
+      expect(await server.handle({ noteHeader: n.header, price: 10n, requestHash: A }, exec)).toMatchObject({
+        kind: 'served',
+      })
+      expect(calls).toBe(1)
+      // once SERVED, a replay for request B is refused too (no stored response, no re-run)
+      expect(await server.handle({ noteHeader: n.header, price: 10n, requestHash: B }, exec)).toMatchObject({
+        status: 409,
+      })
+      expect(calls).toBe(1)
+      expect(await store.state(key)).toMatchObject({ consumed: 10n, reserved: 0n })
+    })
+
+    it('F1 (D32, property): random replays across requests never run a handler for a request that was not admitted', async () => {
+      const store = make()
+      const { server, cert, spenderKey } = setup(store, { face: 1_000_000n })
+      const hashes = Array.from({ length: 4 }, (_, i) => `0x${String(i + 1).repeat(64)}` as Hex)
+      const admitted = new Map<Hex, Hex>() // memo → the request it was admitted for
+      const ran: Array<[Hex, Hex]> = []
+      const notes: Array<{ header: string; memo: Hex }> = []
+      let cum = 0n
+      for (let step = 0; step < 40; step++) {
+        const reuse = notes.length > 0 && Math.random() < 0.6
+        let pick: { header: string; memo: Hex }
+        if (reuse) pick = notes[Math.floor(Math.random() * notes.length)]!
+        else {
+          cum += 10n
+          const n = await note(spenderKey, cert.id, cum)
+          pick = { header: n.header, memo: n.signed.memo.toLowerCase() as Hex }
+          notes.push(pick)
+        }
+        const h = hashes[Math.floor(Math.random() * hashes.length)]!
+        const r = await server.handle({ noteHeader: pick.header, price: 10n, requestHash: h }, async (ctx) => {
+          ran.push([ctx.requestId, h])
+          return ok()
+        })
+        if (!admitted.has(pick.memo) && r.kind === 'served') admitted.set(pick.memo, h)
+        if (admitted.has(pick.memo) && admitted.get(pick.memo) !== h) expect(r).toMatchObject({ status: 409 })
+      }
+      for (const [rid, h] of ran) expect(admitted.get(rid.toLowerCase() as Hex)).toBe(h)
+    })
+
     it('D3: stored outcomes are returned before the lifetime check; forged notes with a known memo get 401', async () => {
       const { server, cert, spenderKey, clock } = setup(make(), { life: 2n * 3600n })
       const n = await note(spenderKey, cert.id, 10n)

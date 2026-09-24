@@ -45,7 +45,7 @@ export type OfferReason =
 
 export type HandleResult =
   | { kind: 'offer'; status: 402; offer: Offer; reason: OfferReason }
-  | { kind: 'error'; status: 400 | 401 | 503; error: string }
+  | { kind: 'error'; status: 400 | 401 | 409 | 503; error: string }
   | { kind: 'served'; status: 200; receipt: Receipt; result: ExecResult; replay: boolean; ctx: PaymentContext }
   | { kind: 'failed'; status: 502; receipt: Receipt; replay: boolean; ctx: PaymentContext }
 
@@ -79,7 +79,12 @@ export interface FlyingMoneyServerConfig {
 export interface FlyingMoneyServer {
   offer(price: bigint, memoHint?: string): Offer
   handle(
-    input: { noteHeader: string | null | undefined; price: bigint },
+    input: {
+      noteHeader: string | null | undefined
+      price: bigint
+      /** Hash of this request (see `requestHash`). A requestId admitted for one request never serves another (D32). */
+      requestHash?: Hex
+    },
     execute: (ctx: PaymentContext) => Promise<ExecResult>,
   ): Promise<HandleResult>
   sweep(): Promise<{ resolved: number; running: number }>
@@ -220,8 +225,14 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
       : { kind: 'failed', status: 502, receipt: r, replay: false, ctx }
   }
 
+  // D32: a stored outcome belongs to the request it was admitted for; any other request replaying its note is refused
+  const mismatch = (o: Outcome, hash: Hex | undefined): HandleResult | null =>
+    o.requestHash !== undefined && o.requestHash.toLowerCase() !== hash?.toLowerCase()
+      ? { kind: 'error', status: 409, error: 'memo-reused: this note was already used for a different request' }
+      : null
+
   async function handle(
-    input: { noteHeader: string | null | undefined; price: bigint },
+    input: { noteHeader: string | null | undefined; price: bigint; requestHash?: Hex },
     execute: (ctx: PaymentContext) => Promise<ExecResult>,
   ): Promise<HandleResult> {
     const price = input.price
@@ -260,7 +271,7 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
     const existing = await store.outcome(key, requestId)
     if (existing) {
       if (!verifyNoteSignature(note, cert.spender)) return { kind: 'error', status: 401, error: 'bad signature' }
-      return fromOutcome(existing, ctx, cert, execute)
+      return mismatch(existing, input.requestHash) ?? fromOutcome(existing, ctx, cert, execute)
     }
 
     // 3. certificate checks
@@ -299,17 +310,17 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
     // 7. begin (atomic)
     let b: Awaited<ReturnType<NoteStore['begin']>>
     try {
-      b = await store.begin(key, requestId, price, note, cert.faceValue)
+      b = await store.begin(key, requestId, price, note, cert.faceValue, input.requestHash)
     } catch (e) {
       if (!(e instanceof NoStateError)) throw e
       await store.recover(key, (await certificate(note.chainId, note.certificateId, true))?.redeemed ?? 0n)
-      b = await store.begin(key, requestId, price, note, cert.faceValue)
+      b = await store.begin(key, requestId, price, note, cert.faceValue, input.requestHash)
     }
     if (b === 'INSUFFICIENT') return offerResult(price, 'insufficient')
     if (b === 'DUPLICATE') {
       const o = await store.outcome(key, requestId)
       if (!o) throw new Error('duplicate without outcome')
-      return fromOutcome(o, ctx, cert, execute)
+      return mismatch(o, input.requestHash) ?? fromOutcome(o, ctx, cert, execute)
     }
     return run(ctx, cert, execute)
   }

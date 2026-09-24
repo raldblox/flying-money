@@ -25,6 +25,8 @@ const REASON: Record<RejectReason, string> = {
   malformed: 'That isn’t a Flying Money payment code.',
   'different-order': 'This code was made for a different order. Ask the customer to scan the current price.',
   'over-first-visit-limit': 'You’re offline, and this new customer is over your first-visit limit.',
+  'over-offline-float':
+    'You’re offline, and new customers have used up your offline float. Ask for another way to pay.',
   'wrong-chain': 'This code is for a different network.',
   flagged: 'This payment failed its check once you were back online. Don’t accept it.',
 }
@@ -291,8 +293,9 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
         <p className="smallcaps text-sm font-semibold text-amber">Unverified · merchant risk</p>
         <p className="mt-2 font-display text-3xl font-semibold lining-nums">{usdc(result.price)} not guaranteed</p>
         <p className="mt-2 text-ink-2">
-          New customer while you’re offline. If this payment is bad, you lose up to {usdc(result.riskLimit ?? 0n)} USDC.
-          We’ll check it when you’re back online.
+          New customer while you’re offline. If this payment is bad, you lose it ({usdc(result.price)} USDC). We’ll
+          check it when you’re back online.
+          {result.floatLeft !== undefined && <> Offline float left for new customers: {usdc(result.floatLeft)} USDC.</>}
         </p>
         <button type="button" className={`${buttonClass('primary')} mt-6`} onClick={onNext}>
           Next customer
@@ -303,6 +306,9 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
     <div className="mt-3 rounded-md border border-line bg-paper-2 p-6 text-center">
       <p className="smallcaps text-sm font-semibold text-ink-2">Rejected</p>
       <p className="mt-2 text-lg">{REASON[result.reason ?? 'malformed']}</p>
+      {result.reason === 'over-offline-float' && result.floatLeft !== undefined && (
+        <p className="mt-1 text-sm text-ink-2">Float left: {usdc(result.floatLeft)} USDC.</p>
+      )}
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button type="button" className={buttonClass('primary')} onClick={onAgain}>
           Scan again
@@ -502,9 +508,11 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
 function Settings({ till }: { till: Till }) {
   const [s, setS] = useState<TillSettings>(till.settings)
   const [limit, setLimit] = useState(usdc(BigInt(till.settings.firstVisitLimit)))
+  const [float, setFloat] = useState(usdc(BigInt(till.settings.offlineFloat)))
   const [saved, setSaved] = useState(false)
   const ids = useId()
-  const limitOk = /^\d+(\.\d{1,6})?$/.test(limit)
+  const amountOk = (v: string) => /^\d+(\.\d{1,6})?$/.test(v)
+  const limitOk = amountOk(limit) && amountOk(float)
 
   return (
     <form
@@ -512,9 +520,13 @@ function Settings({ till }: { till: Till }) {
       onSubmit={async (e) => {
         e.preventDefault()
         if (!limitOk) return
-        await till.saveSettings({ ...s, firstVisitLimit: parseUnits(limit, 6).toString() })
+        await till.saveSettings({
+          ...s,
+          firstVisitLimit: parseUnits(limit, 6).toString(),
+          offlineFloat: parseUnits(float, 6).toString(),
+        })
         setSaved(true)
-        // the first-visit limit is fixed when the till opens: reopen with the new settings
+        // the limits are fixed when the till opens: reopen with the new settings
         setTimeout(() => window.location.reload(), 600)
       }}
     >
@@ -545,6 +557,23 @@ function Settings({ till }: { till: Till }) {
         <p id={`${ids}-lh`} className="text-sm text-ink-2">
           When you are offline, a customer this till has never seen can pay up to this much per certificate, at your own
           risk. It is checked when you reconnect.
+        </p>
+      </div>
+      <div className="grid gap-1">
+        <label htmlFor={`${ids}-f`} className="text-sm font-medium">
+          Offline float (USDC)
+        </label>
+        <input
+          id={`${ids}-f`}
+          inputMode="decimal"
+          value={float}
+          onChange={(e) => setFloat(e.target.value.replace(',', '.'))}
+          className="min-h-11 rounded border border-line bg-paper px-3 font-mono"
+          aria-describedby={`${ids}-fh`}
+        />
+        <p id={`${ids}-fh`} className="text-sm text-ink-2">
+          The most this till accepts from new customers in total while offline. This is the most you can lose before you
+          reconnect.
         </p>
       </div>
       <div className="grid gap-1">

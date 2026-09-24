@@ -9,5 +9,4 @@ export const SITE = {
   /** The status line every page that handles funds must state (§20). */
   testnetMode: 'Testnet · test money · unaudited',
   mainnetMode: 'Mainnet · real USDC · unaudited · capped at 100 USDC',
-  footerStatus: 'Testnets + capped mainnets · unaudited',
 } as const

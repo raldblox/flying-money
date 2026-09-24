@@ -1,5 +1,6 @@
 import { encodeHeader, NOTE_HEADER, OFFER_HEADER, offerJson, RECEIPT_HEADER } from '@flying-money/core'
 import type { Context, MiddlewareHandler } from 'hono'
+import { requestHash } from './request-hash.js'
 import {
   createFlyingMoneyServer,
   type ExecResult,
@@ -78,7 +79,10 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
         case 'error':
           return new Response(JSON.stringify({ error: r.error }), {
             status: r.status,
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              ...(r.status === 409 ? { [REASON_HEADER]: 'memo-reused' } : {}),
+            },
           })
         case 'served': {
           if (!r.replay && fresh) return withReceipt(fresh, r)
@@ -100,7 +104,10 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
       }
     }
 
-    const r = await server.handle({ noteHeader: c.req.header(NOTE_HEADER), price }, execute)
+    // D32: bind the note's requestId to this exact request (method, path, sorted query, body)
+    const body = new Uint8Array(await c.req.raw.clone().arrayBuffer())
+    const hash = requestHash(c.req.method, new URL(c.req.url), body)
+    const r = await server.handle({ noteHeader: c.req.header(NOTE_HEADER), price, requestHash: hash }, execute)
     // After next() has run, Hono only honours a response assigned to c.res (a returned one is ignored).
     const out = await respond(r)
     c.res = out

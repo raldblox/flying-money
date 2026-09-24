@@ -9,6 +9,8 @@ export interface TillSettings {
   name: string
   /** USDC base units, as a decimal string. Default 5 USDC. */
   firstVisitLimit: string
+  /** USDC base units. The most this till accepts unverified in total while offline (D34). Default 20 USDC. */
+  offlineFloat: string
   /** "Tea 3.50" per line. */
   priceList: string
   primary: boolean
@@ -16,6 +18,7 @@ export interface TillSettings {
 export const DEFAULT_SETTINGS: TillSettings = {
   name: 'My shop',
   firstVisitLimit: '5000000',
+  offlineFloat: '20000000',
   priceList: 'Tea 3.50\nDumplings 6.00\nMooncake 2.25',
   primary: true,
 }
@@ -52,6 +55,7 @@ export async function openTill(chain: ChainKey, payee: Hex, name?: string): Prom
     store,
     kv: { get: kv.get, set: kv.set, keys: kv.keys },
     firstVisitLimit: BigInt(settings.firstVisitLimit),
+    offlineFloat: BigInt(settings.offlineFloat),
   })
   return {
     counter,

@@ -26,7 +26,7 @@ describe('counter (shop till) §6.8', () => {
   const spender = generatePrivateKey()
   const spenderAddr = privateKeyToAccount(spender).address
 
-  const till = (firstVisitLimit = 5n * USDC) =>
+  const till = (firstVisitLimit = 5n * USDC, offlineFloat = 20n * USDC) =>
     createCounter({
       chain: 'anvil',
       payee: payee.address,
@@ -38,6 +38,7 @@ describe('counter (shop till) §6.8', () => {
       }),
       kv,
       firstVisitLimit,
+      offlineFloat,
       readCertificate: chain.reader,
       now: clock.now,
     })
@@ -137,6 +138,36 @@ describe('counter (shop till) §6.8', () => {
     // nothing unverified ever enters the guaranteed ledger
     expect(await t.store.state(certKey(CHAIN_ID, c.id))).toBeNull()
     expect(await t.unverified()).toHaveLength(1)
+  })
+
+  it('F3 (D34): made-up certificates offline are capped till-wide by the offline float, not per certificate', async () => {
+    chain.down = true
+    const t = till(5n * USDC, 10n * USDC)
+    const results = []
+    for (let i = 0; i < 20; i++) {
+      const fake = `0x${(i + 1).toString(16).padStart(64, '0')}` as Hex // never issued: anyone can make these up
+      const qr = await sealed(generatePrivateKey(), fake, 3n * USDC, `f${i}`)
+      results.push(await t.accept(qr, 3n * USDC, `f${i}`))
+    }
+    const accepted = results.filter((r) => r.status === 'UNVERIFIED')
+    expect(accepted).toHaveLength(3) // 3 × 3 = 9 ≤ 10; the 4th would be 12
+    expect(accepted.at(-1)).toMatchObject({ floatLeft: 1n * USDC })
+    expect(results[3]).toMatchObject({ status: 'REJECTED', reason: 'over-offline-float', floatLeft: 1n * USDC })
+    const open = (await t.unverified()).filter((u) => u.state === 'UNVERIFIED')
+    expect(open.reduce((s, u) => s + BigInt(u.price), 0n)).toBeLessThanOrEqual(10n * USDC)
+  })
+
+  it('F3 (D34, property): the open UNVERIFIED total never exceeds the float, across random sales and restarts', async () => {
+    chain.down = true
+    const float = 25n * USDC
+    for (let i = 0; i < 60; i++) {
+      const t = till(5n * USDC, float) // a new till instance each time: the float survives restarts (kv is durable)
+      const fake = `0x${(1 + Math.floor(Math.random() * 8)).toString(16).padStart(64, '0')}` as Hex
+      const price = BigInt(1 + Math.floor(Math.random() * 5)) * USDC
+      await t.accept(await sealed(generatePrivateKey(), fake, 5n * USDC, `p${i}`), price, `p${i}`)
+      const open = (await t.unverified()).filter((u) => u.state === 'UNVERIFIED')
+      expect(open.reduce((s, u) => s + BigInt(u.price), 0n)).toBeLessThanOrEqual(float)
+    }
   })
 
   it('reconnect: genuine UNVERIFIED notes are promoted to GUARANTEED; fabricated ones are flagged', async () => {

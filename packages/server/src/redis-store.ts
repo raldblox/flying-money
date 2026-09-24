@@ -65,7 +65,8 @@ local function sub(a, b)
 end
 `
 
-// KEYS: out, st, notes, pending, certs   ARGV: price, cumulative, noteHeader, faceValue, nowMs, pendingMember, certKey
+// KEYS: out, st, notes, pending, certs
+// ARGV: price, cumulative, noteHeader, faceValue, nowMs, pendingMember, certKey, requestHash ('' = none)
 const BEGIN =
   LUA_PRELUDE +
   `
@@ -78,6 +79,7 @@ local budget = st[1]
 if cmp(cum, budget) > 0 then budget = cum end
 if cmp(add(add(st[2], st[3]), price), budget) > 0 then return 'INSUFFICIENT' end
 redis.call('HSET', KEYS[1], 'status', 'PENDING', 'price', price, 'admittedAt', ARGV[5])
+if ARGV[8] ~= '' then redis.call('HSET', KEYS[1], 'requestHash', ARGV[8]) end
 redis.call('HSET', KEYS[2], 'accepted', budget, 'reserved', add(st[3], price))
 local p = pad(cum)
 local existing = redis.call('ZRANGEBYLEX', KEYS[3], '[' .. p .. '|', '[' .. p .. '|~', 'LIMIT', 0, 1)
@@ -134,7 +136,7 @@ return 1
 `
 
 const STATE = `return redis.call('HMGET', KEYS[1], 'accepted', 'consumed', 'reserved', 'status', 'redeemed', 'oldest')`
-const OUTCOME = `return redis.call('HMGET', KEYS[1], 'status', 'price', 'responseRef')`
+const OUTCOME = `return redis.call('HMGET', KEYS[1], 'status', 'price', 'responseRef', 'requestHash')`
 // KEYS: notes   ARGV: paddedMax
 const BEST = `return redis.call('ZREVRANGEBYLEX', KEYS[1], '[' .. ARGV[1] .. '|~', '-', 'LIMIT', 0, 1)`
 const STALE = `return redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])`
@@ -191,15 +193,16 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
     bestNote,
     async outcome(key, requestId) {
       const a = (await r.eval(OUTCOME, [k.out(key, requestId)], [])) as Bulk[]
-      const [status, price, ref] = [0, 1, 2].map((i) => str(a[i]))
+      const [status, price, ref, hash] = [0, 1, 2, 3].map((i) => str(a[i]))
       if (status == null || price == null) return null
       return {
         status: status as 'PENDING' | 'SERVED' | 'FAILED_CREDITED',
         price: BigInt(price),
         ...(ref != null ? { responseRef: ref } : {}),
+        ...(hash != null ? { requestHash: hash as Hex } : {}),
       }
     },
-    async begin(key, requestId, price, note, faceValue) {
+    async begin(key, requestId, price, note, faceValue, requestHash) {
       const res = str(
         await r.eval(
           BEGIN,
@@ -212,6 +215,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
             String(Date.now()),
             member(key, requestId),
             normKey(key),
+            requestHash?.toLowerCase() ?? '',
           ],
         ),
       )

@@ -30,6 +30,7 @@ export {
   upstashEval,
   upstashStore,
 } from './redis-store.js'
+export { requestHash } from './request-hash.js'
 export {
   type AppStatus,
   type CertificateReader,

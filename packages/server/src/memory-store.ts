@@ -36,7 +36,9 @@ export interface StoreSnapshot {
       },
     ]
   >
-  outcomes: Array<[string, { status: Outcome['status']; price: string; responseRef?: string; admittedAt: number }]>
+  outcomes: Array<
+    [string, { status: Outcome['status']; price: string; responseRef?: string; requestHash?: Hex; admittedAt: number }]
+  >
   pending: Array<[string, { key: CertKey; requestId: Hex; at: number }]>
   submissions: Array<[number, { txHash: Hex; keys: CertKey[]; nonce?: number }]>
 }
@@ -87,6 +89,7 @@ export function memoryStore(opts: MemoryStoreOptions = {}): NoteStore & { snapsh
         price: BigInt(o.price),
         admittedAt: o.admittedAt,
         ...(o.responseRef !== undefined ? { responseRef: o.responseRef } : {}),
+        ...(o.requestHash !== undefined ? { requestHash: o.requestHash } : {}),
       })
     for (const [id, p] of s.pending) pending.set(id, { ...p })
     for (const [c, sub] of s.submissions) submissions.set(c, { ...sub, keys: [...sub.keys] })
@@ -114,6 +117,7 @@ export function memoryStore(opts: MemoryStoreOptions = {}): NoteStore & { snapsh
           price: o.price.toString(),
           admittedAt: o.admittedAt,
           ...(o.responseRef !== undefined ? { responseRef: o.responseRef } : {}),
+          ...(o.requestHash !== undefined ? { requestHash: o.requestHash } : {}),
         },
       ]),
       pending: [...pending].map(([id, p]) => [id, { ...p }]),
@@ -151,9 +155,10 @@ export function memoryStore(opts: MemoryStoreOptions = {}): NoteStore & { snapsh
         status: o.status,
         price: o.price,
         ...(o.responseRef !== undefined ? { responseRef: o.responseRef } : {}),
+        ...(o.requestHash !== undefined ? { requestHash: o.requestHash } : {}),
       }
     },
-    async begin(key, requestId, price, note, faceValue) {
+    async begin(key, requestId, price, note, faceValue, requestHash) {
       const k = normKey(key)
       const id = oid(k, requestId)
       if (outcomes.has(id)) return 'DUPLICATE'
@@ -163,7 +168,12 @@ export function memoryStore(opts: MemoryStoreOptions = {}): NoteStore & { snapsh
       const budget = note.cumulative > r.accepted ? note.cumulative : r.accepted
       if (r.consumed + r.reserved + price > budget) return 'INSUFFICIENT'
       const now = Date.now()
-      outcomes.set(id, { status: 'PENDING', price, admittedAt: now })
+      outcomes.set(id, {
+        status: 'PENDING',
+        price,
+        admittedAt: now,
+        ...(requestHash !== undefined ? { requestHash: requestHash.toLowerCase() as Hex } : {}),
+      })
       r.accepted = budget
       r.reserved += price
       if (!r.notes.has(note.cumulative)) r.notes.set(note.cumulative, note)

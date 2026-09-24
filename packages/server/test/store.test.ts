@@ -48,6 +48,22 @@ for (const [name, make] of storeFactories()) {
       expect(await s.begin(key, old.signed.memo, 1n, old.signed, 100n)).toBe('INSUFFICIENT')
     })
 
+    it('F1 (D32): begin records the request hash with the outcome, and it survives finish', async () => {
+      const s = make()
+      await s.recover(key, 0n)
+      const n = await note(spenderKey, cid, 10n)
+      const h = `0x${'c'.repeat(64)}` as Hex
+      expect(await s.begin(key, n.signed.memo, 10n, n.signed, 100n, h)).toBe('ADMITTED')
+      expect(await s.outcome(key, n.signed.memo)).toEqual({ status: 'PENDING', price: 10n, requestHash: h })
+      await s.finish(key, n.signed.memo, true, 'r')
+      expect(await s.outcome(key, n.signed.memo)).toEqual({
+        status: 'SERVED',
+        price: 10n,
+        responseRef: 'r',
+        requestHash: h,
+      })
+    })
+
     it('finish: only from PENDING; success → consumed, failure → credit (S3)', async () => {
       const s = make()
       await s.recover(key, 0n)

@@ -1,6 +1,15 @@
 # Build status
 
-Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
+Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
+
+## Audit 2026-09-25 fixes (25 Sep): ✅ locally
+
+- **F1** request binding (D32), **F2** receipt clamping (D33), **F3** till-wide offline float (D34). Each had failing tests first, then the fix.
+- **P1:** the header banner and `llms.txt` now state what the registry says is deployed. "Capped mainnets" is gone from `/guarantees`, `llms.txt` and the site constants, and the README says "no protocol fees (only network gas)".
+- **Kept after checking:** "41 Foundry tests" (forge reports 41 passed: the invariant suite runs in two contracts) and "0.25 USDC for 20 calls" (8×0.01 + 4×0.01 + 6×0.02 + 2×0.005).
+- **Already done before the audit snapshot:** `KV_REST_API_*` is read (`upstashEnv`, af6d397).
+- **Next (per the audit's order and §21.7):** V5/V6 with F8 (redeemer lock) and F9 (shared demo limits), then F4, F5, F11, F6 and F7.
+- **Stale:** the Phase 13 notes below mention `/hackathons` pages and CI jobs. Both were removed in v1.5 V1 + V2.
 
 ## Copy + mobile pass (24 Sep): ✅ locally
 

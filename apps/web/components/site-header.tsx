@@ -3,6 +3,7 @@ import { BrandMark } from '@/components/brand-mark'
 import { MobileMenu } from '@/components/mobile-menu'
 import { buttonClass } from '@/components/section'
 import { SITE } from '@/lib/site'
+import { deployedChains } from '@/lib/wagmi'
 
 const nav = [
   { href: '/docs/agents', label: 'Agents' },
@@ -16,10 +17,21 @@ const link =
   'smallcaps inline-block rounded px-3 py-2.5 text-[0.95rem] text-ink-2 underline-offset-8 hover:text-ink hover:underline hover:decoration-seal focus-visible:outline-2 focus-visible:outline-indigo'
 
 export function SiteHeader() {
+  // the banner states what is actually deployed, from the registry (no mainnet is live until one is deployed)
+  const live = deployedChains()
+  const mainnets = live.filter((c) => c.mainnet)
+  const testnets = live.filter((c) => !c.mainnet)
   return (
     <header>
       <p className="border-b border-seal/30 bg-seal/10 px-4 py-1.5 text-center text-xs text-ink">
-        <span className="smallcaps">{SITE.testnetMode}</span> · Arbitrum Sepolia
+        <span className="smallcaps">{mainnets.length ? SITE.mainnetMode : SITE.testnetMode}</span>
+        {live.length > 0 && (
+          <>
+            {' · '}
+            <span className="hidden sm:inline">Live on </span>
+            {(mainnets.length ? mainnets : testnets).map((c) => c.chain.name).join(', ')}
+          </>
+        )}
       </p>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:py-5">
         <Link
