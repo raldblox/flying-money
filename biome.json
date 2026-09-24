@@ -7,6 +7,7 @@
       "!**/dist",
       "!**/.next",
       "!**/next-env.d.ts",
+      "!tools/doc-samples/samples",
       "!contracts/lib",
       "!contracts/out",
       "!contracts/cache",

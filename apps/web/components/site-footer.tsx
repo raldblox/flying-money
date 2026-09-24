@@ -32,11 +32,22 @@ export function SiteFooter() {
                 Guarantees
               </Link>
             </li>
-            <li>
-              <Link className="hover:text-seal" href="/hackathons/arbitrum">
-                Arbitrum Open House
-              </Link>
-            </li>
+            {(
+              [
+                ['/docs', 'Docs'],
+                ['/how-it-works', 'How it works'],
+                ['/story', 'The 804 CE story'],
+                ['/pitch', 'Pitch'],
+                ['/hackathons/arbitrum', 'Arbitrum Open House'],
+                ['/llms.txt', 'llms.txt'],
+              ] as const
+            ).map(([href, label]) => (
+              <li key={href}>
+                <Link className="hover:text-seal" href={href}>
+                  {label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>

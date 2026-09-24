@@ -5,11 +5,11 @@ import { SITE } from '@/lib/site'
 const nav = [
   { href: '/demo', label: 'Live demo' },
   { href: '/app', label: 'Counting House' },
-  { href: '/shop', label: 'Shops' },
+  { href: '/shops', label: 'Shops' },
   { href: '/wallet', label: 'Wallet' },
+  { href: '/docs', label: 'Docs' },
   { href: '/guarantees', label: 'Guarantees' },
   { href: '/chains', label: 'Deployments' },
-  { href: '/hackathons/arbitrum', label: 'Arbitrum' },
 ]
 
 export function SiteHeader() {

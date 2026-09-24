@@ -86,9 +86,9 @@ export default function Home() {
           <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
             <div className="text-lg leading-relaxed">
               <p className="first-letter:float-left first-letter:mr-3 first-letter:font-display first-letter:text-7xl first-letter:leading-[0.8] first-letter:text-seal">
-                Tea merchants in Tang-dynasty China faced a shortage of copper coin and dangerous roads. So they
-                deposited coin with an official office and carried a certificate instead, made of matching halves and
-                redeemed in another city.
+                Tea merchants in Tang-dynasty China faced a shortage of copper coin and heavy strings of cash to carry.
+                So they deposited coin with an official office and carried a certificate instead, paid out when its
+                tallies matched.
               </p>
               <p className="mt-5">
                 People called it{' '}

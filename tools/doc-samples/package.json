@@ -1,0 +1,19 @@
+{
+  "name": "@flying-money/doc-samples",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Typechecks every TypeScript sample in docs/site/*.md and README.md against the real packages (§10.7).",
+  "scripts": {
+    "typecheck": "tsx extract.ts && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@flying-money/chains": "workspace:*",
+    "@flying-money/client": "workspace:*",
+    "@flying-money/core": "workspace:*",
+    "@flying-money/server": "workspace:*",
+    "hono": "^4.12.0",
+    "viem": "^2.56.8"
+  }
+}

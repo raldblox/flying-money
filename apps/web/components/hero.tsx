@@ -65,7 +65,7 @@ export function Hero() {
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">{d.sub}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>
-            <ButtonLink href="#story" variant="secondary">
+            <ButtonLink href="/story" variant="secondary">
               Read the 804 CE story
             </ButtonLink>
           </div>

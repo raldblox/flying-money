@@ -5,7 +5,7 @@ export const dynamic = 'force-static'
 
 /** /llms.txt (§10.7): a concise index for agents. Only links to pages that exist; no claims beyond /guarantees. */
 export function GET() {
-  const base = `https://${SITE.domain}`
+  const base = SITE.url
   const chains = deployedChains()
     .map((c) => `${c.chain.name} (${c.chain.id}${c.mainnet ? ', mainnet, capped' : ', testnet'})`)
     .join(', ')
@@ -21,13 +21,24 @@ Key rules for agents:
 - Never sign a cumulative above face value. Never ask the user for their main wallet key.
 
 ## Docs
+- [Quickstart for agents](${base}/docs/agents.md): pay a Flying Money API in a few lines
+- [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
+- [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
+- [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox
+- [Sellers](${base}/docs/server.md): accept notes with middleware; the redeemer
+- [People & shops](${base}/docs/shops.md): the QR counter flow
 - [Live demo](${base}/demo): an agent paying a Flying Money API, with real testnet transactions
-- [Protocol and SDK (source)](${SITE.github}): packages core, client (buyers), server (sellers), and the normative spec in docs/BUILD_SPEC.md
+- [Everything in one file](${base}/llms-full.txt)
 
 ## Reference
 - [Deployments (JSON)](${base}/.well-known/flying-money.json)
 - [Deployments (page)](${base}/chains)
-- [Guarantees & threat model](${base}/guarantees)
+- [Guarantees & threat model](${base}/docs/guarantees.md)
+
+## Optional
+- [Story: flying money, 804 CE](${base}/docs/story.md)
+- [FAQ](${base}/docs/faq.md)
+- [Source](${SITE.github})
 `
   return new Response(body, { headers: { 'content-type': 'text/plain; charset=utf-8' } })
 }

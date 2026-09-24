@@ -2,6 +2,27 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 8: Arbitrum submission kit, part 1 (24 Sep): ✅ built and checked locally
+
+**Done**
+- **Docs (§10.1, §10.7):**
+  - One Markdown source per page in `docs/site/`: agents, shops, protocol, contract, client, server, guarantees, faq, story.
+  - Rendered at `/docs/<page>`, served raw at `/docs/<page>.md`, and concatenated into `/llms-full.txt` with the deployment table.
+  - `/llms.txt` now links the `.md` twins.
+- **Every TypeScript sample in the docs and README is typechecked** against the real packages (`tools/doc-samples`, part of `pnpm typecheck` in CI). It caught one broken sample on the first run.
+- **Pages:**
+  - `/story` (chapters from `story.md`, with the map and tally art);
+  - `/how-it-works` (issue → seal → serve → redeem → reclaim, with a Plain words / Technical toggle);
+  - `/pitch` (for judges);
+  - `/shops` (the second front door);
+  - `/gift` (forwards the `#add=` fragment to the wallet).
+- **Header** now links Docs and Shops; the **footer** links Docs, How it works, the story, Pitch and llms.txt. The hero CTA goes to `/story` (§10.2).
+- **README** per §14.3.
+- **Historical accuracy (§10.3, "no invented details"):** checked against Wikipedia. "Dangerous roads" and "two halves" were not in the source, so the story and landing now say heavy strings of coin and matching tallies. Britannica refused the automated fetch, so it is still linked but unchecked (H8 review).
+- **Brand:** the 騎縫 tally seal is now the mark, favicon, app icon and the seal stamp (commit 7b64ea0).
+
+**Still open for §16.1:** the 2-minute video and deck PDF (human). The Arbitrum One capped deployment is on hold at the founder's request.
+
 ## Phase 7: Shop mode minimum (24 Sep): ✅ locally (e2e on anvil, offline shell verified) · ⏸ phone + camera run on Arbitrum Sepolia by a human
 
 **Done**
