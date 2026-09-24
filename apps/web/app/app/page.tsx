@@ -4,6 +4,9 @@ import { ContactsNav } from '@/components/app/contacts-nav'
 import { CountingHouse } from './counting-house'
 import { Providers } from './providers'
 
+// PAYEE_ADDRESS is read when the page is opened: the build step does not receive server env (turbo strict env)
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Counting House',
   description: 'Everything you’ve given, and everything you can collect.',

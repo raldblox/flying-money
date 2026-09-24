@@ -4,7 +4,7 @@ import { flyingMoneyAbi, sameAddress } from '@flying-money/core'
 import { useEffect, useId, useState } from 'react'
 import { erc20Abi, formatUnits, type Hex, isAddress, parseEventLogs, parseUnits } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
+import { useAccount, useChainId, usePublicClient, useReadContract, useSwitchChain, useWalletClient } from 'wagmi'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
 import { short, usdc } from '@/lib/fmt'
@@ -65,6 +65,9 @@ export function IssueWizard({
   const { address } = useAccount()
   const publicClient = usePublicClient({ chainId: chain.chain.id })
   const { data: wallet } = useWalletClient({ chainId: chain.chain.id })
+  const walletChainId = useChainId()
+  const { switchChain, isPending: switching } = useSwitchChain()
+  const wrongNetwork = Boolean(address) && walletChainId !== chain.chain.id
   const approveTx = useTx(publicClient)
   const issueTx = useTx(publicClient)
   const ids = useId()
@@ -134,6 +137,10 @@ export function IssueWizard({
   })
 
   const problems: string[] = []
+  // say why the button is disabled: the wallet must be connected and on this network to sign
+  if (!address) problems.push('Connect your wallet first.')
+  else if (wrongNetwork) problems.push(`Your wallet is on another network: switch it to ${chain.chain.name}.`)
+  else if (!wallet) problems.push('Waiting for your wallet… If this stays, disconnect and connect it again.')
   if (!payeeOk) problems.push('Choose who can be paid.')
   if (!spender) problems.push('Choose who can spend.')
   if (spender && address && sameAddress(spender, address))
@@ -580,6 +587,16 @@ export function IssueWizard({
           <strong>{place?.name ?? (payee ? short(payee) : '…')}</strong> for{' '}
           <strong>{durations[durationIdx]!.label}</strong>.
         </p>
+        {wrongNetwork && (
+          <button
+            type="button"
+            className={`${buttonClass('secondary')} mt-4`}
+            disabled={switching}
+            onClick={() => switchChain({ chainId: chain.chain.id })}
+          >
+            {switching ? 'Switching…' : `Switch wallet to ${chain.chain.name}`}
+          </button>
+        )}
         {problems.length > 0 && (
           <ul className="mt-3 list-disc pl-5 text-sm text-ink-2">
             {problems.map((p) => (

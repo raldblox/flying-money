@@ -3,6 +3,9 @@ import type { Metadata } from 'next'
 import { Providers } from '../../providers'
 import { RequestReview } from './request-review'
 
+// PAYEE_ADDRESS is read when the page is opened: the build step does not receive server env (turbo strict env)
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Budget request',
   description: 'Review a budget request from your agent, and fund it from your own wallet if you agree.',
