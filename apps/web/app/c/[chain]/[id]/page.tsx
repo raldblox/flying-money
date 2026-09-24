@@ -79,7 +79,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
           <Row label="Face value">
             <span className="font-mono tabular-nums">{usdc(cert.faceValue)} USDC</span>
           </Row>
-          <Row label="Remaining">
+          <Row label={cert.closed ? 'Returned to funder' : 'Remaining'}>
             <span className="font-mono tabular-nums">{usdc(remaining)} USDC</span>
           </Row>
           <Row label="Expires">

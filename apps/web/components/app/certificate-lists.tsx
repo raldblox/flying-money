@@ -19,6 +19,7 @@ import { buttonClass } from '@/components/section'
 import { StatusChip } from '@/components/status-chip'
 import { Tally } from '@/components/tally'
 import { relTime, short, usdc } from '@/lib/fmt'
+import { FunderActions } from './funder-actions'
 import { TxStatus, useTx } from './tx'
 
 type Role = 'funder' | 'payee'
@@ -102,8 +103,19 @@ export function IssuedList({ chain, refreshKey }: { chain: ChainConfig; refreshK
               <StatusChip kind={st}>{st[0]!.toUpperCase() + st.slice(1)}</StatusChip>
             </div>
             <p className="mt-3 font-display text-3xl font-semibold lining-nums tabular-nums">
-              {usdc(c.faceValue - c.redeemed)}{' '}
-              <span className="text-base font-normal text-ink-2">of {usdc(c.faceValue)} USDC left</span>
+              {c.closed ? (
+                <>
+                  {usdc(c.redeemed)}{' '}
+                  <span className="text-base font-normal text-ink-2">
+                    of {usdc(c.faceValue)} USDC spent · {usdc(c.faceValue - c.redeemed)} returned to you
+                  </span>
+                </>
+              ) : (
+                <>
+                  {usdc(c.faceValue - c.redeemed)}{' '}
+                  <span className="text-base font-normal text-ink-2">of {usdc(c.faceValue)} USDC left</span>
+                </>
+              )}
             </p>
             <div className="mt-3">
               <Tally used={c.redeemed} face={c.faceValue} />
@@ -116,11 +128,7 @@ export function IssuedList({ chain, refreshKey }: { chain: ChainConfig; refreshK
               <dt className="text-ink-2">Expires</dt>
               <dd>{relTime(c.expiresAt)}</dd>
             </dl>
-            {st === 'expired' && (
-              <p className="mt-3 text-sm text-ink-2">
-                Expired: you can reclaim the remainder (reclaim button coming next).
-              </p>
-            )}
+            <FunderActions chain={chain} cert={c} onDone={() => void q.refetch()} />
           </li>
         )
       })}

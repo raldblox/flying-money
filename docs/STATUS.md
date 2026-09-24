@@ -2,6 +2,14 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 9: Counting House funder actions (24 Sep): ✅ locally (anvil)
+
+- **Top up** (approve if needed → `topUp`), **Extend** (+1, +7 or +30 days; never shorter, at most 365 days from now), **Reclaim** (only after expiry). Also **Open page** on every issued certificate (§12.2).
+- The UI mirrors the contract's rules, so a transaction that would revert is never offered: caps, balance, lifetime, and funder-only actions (the list only shows your own certificates).
+- A closed certificate now says "X spent · Y returned to you" instead of "left". The certificate page labels it "Returned to funder".
+- **Verified on anvil:** 5 → 7 USDC after a top up; 7 → 14 days after extending; after moving the chain clock forward 15 days, reclaim returned all 7 USDC (funder balance back to 100) and the card shows Closed.
+- Still open from §12.3: a payee "note feed" from a live seller (`NOTE_FEED_URL`). It needs a standalone, durable Oracle deployment (the demo Oracle runs inside the `/demo` route). Pasting a note works today.
+
 ## Phase 8: Arbitrum submission kit, part 1 (24 Sep): ✅ built and checked locally
 
 **Done**
