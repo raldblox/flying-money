@@ -10,10 +10,10 @@ import {
   IconWorker,
 } from '@/components/art/ink-icons'
 import { SilkRoadMap } from '@/components/art/silk-road-map'
+import { BrandMark } from '@/components/brand-mark'
 import { CodeTabs } from '@/components/code-tabs'
 import { Hero } from '@/components/hero'
 import { ButtonLink, Chapter, Sheet } from '@/components/section'
-import { SealLogo } from '@/components/site-header'
 
 const BUY = `import { createFlyingMoneyClient, fileStore } from '@flying-money/client'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -270,7 +270,7 @@ export default function Home() {
 
       <section aria-labelledby="honest-title" className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
         <div className="mx-auto w-fit">
-          <SealLogo size={72} />
+          <BrandMark size={96} />
         </div>
         <h2
           id="honest-title"

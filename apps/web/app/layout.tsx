@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     'Give your AI agent a sealed certificate, not your wallet. Lock a budget for one seller; the holder pays with signed notes the seller verifies instantly.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
+  icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' } },
 }
 
 export const viewport: Viewport = {

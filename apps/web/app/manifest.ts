@@ -10,7 +10,10 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     background_color: '#f4ede0',
     theme_color: '#b7322c',
-    icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+    icons: [
+      { src: '/brand/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'monochrome' },
+    ],
     shortcuts: [
       { name: 'Wallet', url: '/wallet', description: 'Pay at a shop with a certificate' },
       { name: 'Open a till', url: '/shop', description: 'Take certificate payments at the counter' },

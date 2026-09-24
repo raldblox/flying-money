@@ -1,6 +1,8 @@
+import { BrandMark } from './brand-mark'
+
 /**
  * The vermilion seal (§11.1): shown ONLY when something is actually signed or verified. Never decoration.
- * The character is 飛 ("to fly"); Chinese text awaits native-reader review (H8).
+ * It is the brand's 騎縫 tally seal, stamped in (180 ms) when `animate` is set.
  */
 export function Seal({
   size = 40,
@@ -12,14 +14,8 @@ export function Seal({
   label?: string
 }) {
   return (
-    <span
-      role="img"
-      aria-label={label}
-      lang="zh-Hant"
-      className={`inline-grid shrink-0 place-items-center rounded-md border-2 border-seal bg-paper font-han leading-none text-seal ${animate ? 'stamp-in' : '-rotate-2'}`}
-      style={{ width: size, height: size, fontSize: size * 0.55 }}
-    >
-      飛
+    <span role="img" aria-label={label} className={`inline-block shrink-0 ${animate ? 'stamp-in' : '-rotate-2'}`}>
+      <BrandMark size={size} />
     </span>
   )
 }
