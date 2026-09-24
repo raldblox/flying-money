@@ -83,10 +83,15 @@ export function IssueWizard({
   const [keySaved, setKeySaved] = useState(false)
   // Step 3: budget and time (a request's exact lifetime is offered first)
   const asked = preset?.durationSeconds
-  const durations =
-    asked && !DURATIONS.some((d) => d.seconds === asked)
-      ? [{ label: `${Number(asked / 86_400n)} days (asked)`, seconds: asked }, ...DURATIONS]
-      : DURATIONS
+  // in request mode, never shorter than asked: the service may refuse a budget that ends too soon
+  const durations = asked
+    ? [
+        ...(DURATIONS.some((d) => d.seconds === asked)
+          ? []
+          : [{ label: `${Number(asked / 86_400n)} days (asked)`, seconds: asked }]),
+        ...DURATIONS.filter((d) => d.seconds >= asked),
+      ]
+    : DURATIONS
   const [amount, setAmount] = useState(preset?.amount ?? '5')
   const [durationIdx, setDurationIdx] = useState(
     asked ? durations.findIndex((d) => d.seconds === asked) : (preset?.durationIdx ?? 1),
