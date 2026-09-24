@@ -11,8 +11,8 @@ export function SiteFooter() {
         <div className="max-w-md text-sm leading-relaxed text-ink-2">
           <p className="font-display text-xl italic text-ink">Colophon</p>
           <p className="mt-2">
-            Sealed spending certificates for AI agents, people and devices. Settled in Circle USDC. No token, no points,
-            no airdrop. {SITE.footerStatus}. MIT licensed.
+            <strong className="text-ink">Hand over a budget, not your wallet.</strong> Prepaid, capped spending for AI
+            agents and people, settled in USDC. No token, no fee. Test network · open source (MIT) · not yet audited.
           </p>
         </div>
         <nav aria-label="Footer">
@@ -34,6 +34,9 @@ export function SiteFooter() {
             </li>
             {(
               [
+                ['/demo', 'Live demo'],
+                ['/wallet', 'Wallet'],
+                ['/shop', 'Open a till'],
                 ['/docs', 'Docs'],
                 ['/how-it-works', 'How it works'],
                 ['/story', 'The 804 CE story'],

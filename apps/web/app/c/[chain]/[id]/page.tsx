@@ -96,7 +96,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
         </div>
         {status !== 'closed' && (
           <p className="mt-3 text-sm text-ink-2">
-            The unredeemed remainder returns to the funder after expiry. Nobody can cancel this certificate early.
+            Whatever isn’t collected returns to the giver after the end date. Nobody can cancel this certificate early.
           </p>
         )}
       </section>

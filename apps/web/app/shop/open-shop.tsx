@@ -73,7 +73,7 @@ export function OpenShop() {
             placeholder="0x…"
             spellCheck={false}
             autoComplete="off"
-            className="min-h-11 min-w-0 flex-1 rounded border border-line bg-paper px-3 font-mono text-sm"
+            className="min-h-11 w-full min-w-0 flex-1 rounded border border-line bg-paper px-3 font-mono text-sm"
           />
           <WalletButton chain={chain} />
         </div>

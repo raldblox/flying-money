@@ -1,6 +1,6 @@
 ---
 title: Client SDK
-description: "@flying-money/client: the buyer side. A fetch that pays with sealed notes and a durable outbox."
+description: "@flying-money/client: the buyer side. A fetch that pays with signed payment slips and a durable outbox."
 ---
 
 # Client SDK (`@flying-money/client`)

@@ -183,7 +183,7 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       else if (note.cumulative <= cert.redeemed) problem = 'Already redeemed: this note adds nothing.'
       else if (st !== 'open') problem = `The certificate is ${st}.`
     } catch (e) {
-      problem = `Not a valid sealed note: ${(e as Error).message}`
+      problem = `Not a valid payment slip: ${(e as Error).message}`
       note = null
     }
   }
@@ -227,7 +227,7 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
         </p>
       )}
       <label htmlFor={`${ids}-note`} className="mt-5 block text-sm font-medium">
-        Latest sealed note (fm1…)
+        Latest payment slip (fm1…)
       </label>
       <textarea
         id={`${ids}-note`}

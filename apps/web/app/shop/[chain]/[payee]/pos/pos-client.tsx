@@ -16,17 +16,17 @@ import { short, usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, parsePriceList, type Till, TillBusyError, type TillSettings } from '@/lib/till'
 
 const REASON: Record<RejectReason, string> = {
-  'wrong-payee': 'This certificate is for another shop.',
+  'wrong-payee': 'This certificate is for a different shop.',
   insufficient: 'Not enough left on this certificate for this order.',
-  expiring: 'This certificate expires too soon to accept.',
-  closed: 'This certificate is closed.',
-  'unknown-certificate': 'There is no such certificate on the blockchain.',
-  'bad-signature': 'The signature does not match the certificate. Do not hand over the goods.',
-  malformed: 'That is not a Flying Money payment code.',
-  'different-order': 'This code was made for a different order. Ask the customer to scan the current price code.',
-  'over-first-visit-limit': 'Offline, and this new customer is over your first-visit limit.',
+  expiring: 'This certificate has ended, or ends too soon to accept.',
+  closed: 'This certificate has ended.',
+  'unknown-certificate': 'There is no such certificate.',
+  'bad-signature': 'This code wasn’t signed by the certificate’s holder. Don’t hand over the goods.',
+  malformed: 'That isn’t a Flying Money payment code.',
+  'different-order': 'This code was made for a different order. Ask the customer to scan the current price.',
+  'over-first-visit-limit': 'You’re offline, and this new customer is over your first-visit limit.',
   'wrong-chain': 'This code is for a different network.',
-  flagged: 'This payment was flagged when it was checked online. Do not accept it.',
+  flagged: 'This payment failed its check once you were back online. Don’t accept it.',
 }
 
 type Tab = 'sell' | 'ledger' | 'settings'
@@ -235,7 +235,7 @@ function Sell({ till }: { till: Till }) {
         </button>
       </section>
       <section className="sheet p-6" aria-labelledby="scan-t" aria-live="polite">
-        <p className="smallcaps text-sm text-ink-2">Step 2 · scan the customer’s sealed note</p>
+        <p className="smallcaps text-sm text-ink-2">Step 2 · scan the customer’s payment code</p>
         <h2 id="scan-t" className="sr-only">
           Scan the customer’s code
         </h2>
@@ -269,11 +269,11 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
     return (
       <div className="mt-3 text-center">
         <div className="mx-auto w-fit">
-          <Seal size={96} animate label="Guaranteed: sealed by the certificate" />
+          <Seal size={96} animate label="Accepted: backed by money set aside for your shop" />
         </div>
         <p className="mt-4 font-display text-4xl font-semibold lining-nums">Accepted {usdc(result.price)}</p>
         {result.remaining !== undefined && (
-          <p className="mt-1 text-lg text-ink-2 lining-nums">Customer remaining {usdc(result.remaining)}</p>
+          <p className="mt-1 text-lg text-ink-2 lining-nums">Customer has {usdc(result.remaining)} left</p>
         )}
         <p className="mt-3 text-sm text-ink-2">
           Guaranteed: backed by money set aside for your shop.
@@ -291,8 +291,8 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
         <p className="smallcaps text-sm font-semibold text-amber">Unverified · merchant risk</p>
         <p className="mt-2 font-display text-3xl font-semibold lining-nums">{usdc(result.price)} not guaranteed</p>
         <p className="mt-2 text-ink-2">
-          First-time customer while offline: your risk up to {usdc(result.riskLimit ?? 0n)} USDC. It will be checked
-          when you are back online.
+          New customer while you’re offline. If this payment is bad, you lose up to {usdc(result.riskLimit ?? 0n)} USDC.
+          We’ll check it when you’re back online.
         </p>
         <button type="button" className={`${buttonClass('primary')} mt-6`} onClick={onNext}>
           Next customer
@@ -399,8 +399,8 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
               To collect: {usdc(total)} USDC
             </h2>
             <p className="mt-1 text-ink-2">
-              Accepted by you, not yet collected on-chain. One transaction collects everything; anyone may send it, and
-              the money only ever goes to your shop’s address.
+              Accepted by you, not collected yet. One transaction collects everything; anyone may send it, and the money
+              only ever goes to your shop’s address.
             </p>
           </div>
           <WalletButton chain={chain} />
@@ -431,7 +431,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
               <tr>
                 <th className="py-2 pr-3">Certificate</th>
                 <th className="px-3 py-2 text-right">Accepted by you</th>
-                <th className="px-3 py-2 text-right">Collected on-chain</th>
+                <th className="px-3 py-2 text-right">Collected</th>
                 <th className="px-3 py-2 text-right">To collect</th>
               </tr>
             </thead>

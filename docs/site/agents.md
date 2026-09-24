@@ -3,9 +3,13 @@ title: Quickstart for agents
 description: Pay a Flying Money API from an AI agent in a few lines.
 ---
 
-# Quickstart for agents
+# Give your agent a budget it can't raise
 
-An agent pays with a **certificate**: a budget someone locked in USDC for **one seller**, spendable only by the agent's own key, until an end date. The agent never holds money and never pays gas. It signs small **notes** ("total so far: 0.37") that the seller checks instantly and collects later in one transaction.
+Your owner funds a budget in USDC for one service. Your agent gets its own spending key, which holds no money and pays no gas. Each paid request carries a signed payment slip with the running total ("total so far: 0.37"), the service checks it in milliseconds, and collects later in one transaction. Only the owner can fund or top up a budget.
+
+- **Capped.** A stolen agent key can spend at most what's left, at that one service.
+- **Crash-safe.** A timeout never raises what the agent owes. It resends the same slip; it never signs a higher one.
+- **Standard.** Plain HTTP 402 "Payment Required", a TypeScript SDK and an MCP server.
 
 ## 1. Make a spending key where the agent runs
 

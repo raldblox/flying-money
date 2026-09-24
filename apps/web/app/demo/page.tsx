@@ -6,7 +6,8 @@ import { DemoClient } from './demo-client'
 
 export const metadata: Metadata = {
   title: 'Live demo',
-  description: 'An AI agent buys data from a paid API with sealed notes, live on a testnet. Real transactions only.',
+  description:
+    'An AI agent pays a data API per request from a capped budget, live on a test network. Real transactions only.',
 }
 
 export default function DemoPage() {

@@ -33,5 +33,5 @@
   "bin": {
     "flying-money-mcp": "./dist/bin.js"
   },
-  "description": "MCP server: lets Claude, Hermes and any MCP agent pay APIs with a Flying Money certificate."
+  "description": "MCP server: lets Claude, Hermes and any MCP agent pay APIs from a capped budget its owner funded (Flying Money)."
 }

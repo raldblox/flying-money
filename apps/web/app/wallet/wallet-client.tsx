@@ -338,7 +338,7 @@ function Home({
                   <span className="smallcaps text-xs text-ink-2">{getChain(e.chain).chain.name}</span>
                 </div>
                 <p className="mt-2 font-display text-4xl font-semibold lining-nums">
-                  {usdc(left)} <span className="text-base font-normal text-ink-2">USDC left on this device</span>
+                  {usdc(left)} <span className="text-base font-normal text-ink-2">USDC left · on this phone</span>
                 </p>
                 <p className="mt-1 text-sm text-ink-2 lining-nums">
                   of {usdc(c.faceValue)} · {expired ? 'expired' : `valid until ${utcDate(c.expiresAt)}`}
@@ -545,7 +545,7 @@ function Review({ offer, entry, onSealed }: { offer: Offer; entry: Entry; onSeal
       <p className="font-display text-3xl font-semibold lining-nums">
         Pay {usdc(offer.price)} USDC to {entry.label}
       </p>
-      <p className="text-ink-2 lining-nums">Remaining after: {usdc(after)} USDC</p>
+      <p className="text-ink-2 lining-nums">{usdc(after)} USDC left after this</p>
       <PinInput id={id} label="Your PIN" value={pin} onChange={setPinValue} />
       {err && (
         <p role="alert" className="text-sm text-seal">
@@ -595,19 +595,19 @@ function ShowNote({
           {usdc(price)} USDC · {entry.label}
         </h1>
         <div className="mx-auto mt-4 max-w-[min(90vw,26rem)]">
-          <QrCode value={noteQr} label={`Your sealed payment code for ${usdc(price)} USDC`} />
+          <QrCode value={noteQr} label={`Your payment slip for ${usdc(price)} USDC`} />
         </div>
         <details className="mt-2 text-left text-sm">
           <summary className="cursor-pointer">Copy the code instead</summary>
           <textarea
             readOnly
             value={noteQr}
-            aria-label="Sealed payment code"
+            aria-label="Payment slip code"
             onFocus={(e) => e.currentTarget.select()}
             className="mt-2 h-24 w-full rounded border border-[#cdbfa6] p-2 font-mono text-xs"
           />
         </details>
-        <p className="mt-4 text-sm">Did the till say “Accepted”?</p>
+        <p className="mt-4 text-sm">Did the shop accept it?</p>
         <div className="mt-3 grid gap-3">
           <button
             type="button"
@@ -617,11 +617,11 @@ function ShowNote({
               await onClose()
             }}
           >
-            Yes, the shop accepted it
+            Yes, accepted
           </button>
           {!confirmNo ? (
             <button type="button" className="min-h-11 underline" onClick={() => setConfirmNo(true)}>
-              No, the shop didn’t accept it
+              No, it wasn’t accepted
             </button>
           ) : (
             <div className="rounded border border-[#cdbfa6] p-3 text-sm">

@@ -1,13 +1,13 @@
 /** Counting House sub-navigation: certificates, people & agents, places (§12.6). */
 export function ContactsNav({ current }: { current: 'app' | 'people' | 'places' }) {
   const items = [
-    ['app', '/app', 'Certificates'],
-    ['people', '/app/people', 'People & agents'],
+    ['app', '/app', 'Give & collect'],
+    ['people', '/app/people', 'Holders'],
     ['places', '/app/places', 'Places'],
   ] as const
   return (
     <nav aria-label="Counting House" className="flex flex-wrap items-center gap-1">
-      <span className="smallcaps mr-2 text-sm text-seal">The Counting House</span>
+      <span className="smallcaps mr-2 text-sm text-seal">Dashboard</span>
       {items.map(([k, href, label]) => (
         <a
           key={k}

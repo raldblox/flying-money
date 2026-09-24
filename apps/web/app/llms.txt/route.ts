@@ -11,7 +11,7 @@ export function GET() {
     .join(', ')
   const body = `# Flying Money
 
-> Sealed spending certificates for AI agents, people and devices. A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally and redeems the latest note on-chain in one transaction. Same contract source on every supported EVM chain. No token.
+> Prepaid, capped budgets for AI agents and people ("hand over a budget, not your wallet"). A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally and redeems the latest note on-chain in one transaction. Same contract source on every supported EVM chain. No token.
 
 Deployed now: ${chains || 'none yet'}. Unaudited; testnets plus capped mainnets.
 

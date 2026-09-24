@@ -40,7 +40,7 @@ Every object on the wire is `fm1.` + base64url(JSON), with integers as decimal s
 | `Flying-Money-Receipt` | seller → buyer | `{ certificateId, requestId, status, accepted, consumed, reserved, credit, remaining, expiresAt }` |
 | `Flying-Money-Reason` | seller → buyer, with `402` | why the note was refused: `insufficient`, `wrong-payee`, `expiring`… |
 
-Headers are at most 2,048 bytes. A sealed note is about 544 characters, small enough for one QR code at error-correction level M.
+Headers are at most 2,048 bytes. A signed note (the “payment slip” in the app) is about 544 characters, small enough for one QR code at error-correction level M.
 
 ## Seller algorithm (§6.5)
 
@@ -71,4 +71,4 @@ Per certificate, the buyer durably stores `accepted`, `consumed` and at most one
 
 ## At a counter (§6.8)
 
-The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a sealed-note QR with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED · merchant risk** (offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).
+The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a payment-slip QR (the signed note) with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED · merchant risk** (offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).

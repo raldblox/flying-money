@@ -1,142 +1,149 @@
 import { getChain } from '@flying-money/chains'
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import { ButtonLink, Sheet } from '@/components/section'
 import { short } from '@/lib/fmt'
 import { SITE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Pitch',
-  description: 'Flying Money on one page: the problem, the solution, what is built, and where to see it working.',
+  description: 'Flying Money on one page: budgets for anything that spends on your behalf.',
 }
 
-/** /pitch (§10.1, §21.2): an event-neutral one-pager. */
+function Block({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Sheet as="section" className="p-6 sm:p-7">
+      <h2 className="font-display text-2xl font-semibold sm:text-3xl">{title}</h2>
+      <div className="mt-3 text-lg leading-relaxed text-ink-2">{children}</div>
+    </Sheet>
+  )
+}
+
+function Dots({ items }: { items: string[] }) {
+  return (
+    <ul className="grid gap-2">
+      {items.map((i) => (
+        <li key={i} className="flex gap-3">
+          <span aria-hidden className="mt-3 size-1.5 shrink-0 rounded-full bg-seal" />
+          <span>{i}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** /pitch (§10.1, §21.2): an event-neutral one-pager for investors and partners. */
 export default function PitchPage() {
   const arb = getChain('arbitrum-sepolia')
   return (
-    <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-14">
       <p className="smallcaps text-sm text-seal">
         <span lang="zh-Hant">飛錢</span> · on one page
       </p>
-      <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight text-balance sm:text-6xl">
-        Give your AI agent a <em className="text-seal">sealed certificate</em>, not your wallet.
+      <h1 className="mt-2 font-display text-[2.4rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-6xl">
+        Budgets for anything that <em className="text-seal">spends on your behalf.</em>
       </h1>
 
-      <div className="mt-10 grid gap-6">
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">The problem</h2>
-          <p className="mt-2 text-lg text-ink-2">
-            AI agents are becoming buyers: API calls, data and compute, thousands of times a day, for fractions of a
-            cent. A card has no limit if the agent loops or is hijacked. Paying on the blockchain per request is too
-            slow and too costly. And sellers can’t trust an anonymous agent’s promise to pay later.
+      <div className="mt-10 grid gap-5 sm:gap-6">
+        <Block title="Problem">
+          <p>
+            AI agents are starting to buy things: API calls, data, compute, often for a fraction of a cent each. Today
+            their owners have three bad choices: hand over a card with no real ceiling, pay on the blockchain per call
+            (slower and costlier than the call itself), or ask sellers to trust an agent they’ve never met. The same gap
+            exists for people: parents, employers and gift givers who want to hand over money for one place without
+            handing over a card.
           </p>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">The solution</h2>
-          <p className="mt-2 text-lg text-ink-2">
-            The 804 CE idea of <em>feiqian</em>, flying money: deposit first, carry a certificate, settle later. A
-            funder locks USDC for <strong className="text-ink">one seller</strong>, spendable by{' '}
-            <strong className="text-ink">one agent key</strong>, until a date. The agent pays each request with a signed
-            running total that the seller checks locally in milliseconds; the seller collects everything in one
-            transaction. The same certificates work for people: a café tab, an allowance, a gift, paid by QR at the
-            counter, even offline.
+        </Block>
+        <Block title="Solution">
+          <p>
+            The owner sets aside a budget in USDC for one seller, one spender and one end date. The spender pays with
+            signed slips carrying the running total. The seller checks each slip on its own machine in milliseconds and
+            collects everything later in one transaction. The spender can’t authorize more than the budget, the money
+            can only reach the named seller, and every valid slip is already backed by money set aside for that seller.
+            Leftovers return to the owner.
           </p>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">Three claims, and no stronger ones</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-lg">
-            <li>Every redeemable note is backed by funds reserved exclusively for its payee until expiry.</li>
-            <li>The spender cannot authorize more than the certificate’s face value.</li>
-            <li>Anyone can redeem a note, but its value only ever reaches the payee.</li>
-          </ol>
-          <p className="mt-3 text-sm text-ink-2">
-            Unaudited; invariant-tested; testnets plus capped mainnets (100 USDC per certificate, 1,000 per deployment).{' '}
-            <a className="text-indigo underline" href="/guarantees">
-              What is and isn’t guaranteed →
-            </a>
+        </Block>
+        <Block title="Why now">
+          <Dots
+            items={[
+              'Agents can now use paid tools on their own (MCP, tool use), and HTTP 402 “Payment Required” is being revived as a way to charge them.',
+              'Dollar stablecoins on low-fee networks make one settlement for many small payments practical.',
+              'Owners need a hard spending limit that lives outside the prompt, because prompts can be hijacked.',
+            ]}
+          />
+        </Block>
+        <Block title="Market and wedge">
+          <Dots
+            items={[
+              'Wedge: paid APIs and data services that want to charge agents per call without card fees or per-call transactions.',
+              'Second front: closed-loop prepaid at places people pay often (canteens, cafés, events, suppliers), where offline acceptance for regulars matters.',
+              'Same contract and SDK for both, so every seller that joins serves both kinds of spender.',
+            ]}
+          />
+        </Block>
+        <Block title="Business model (options, not yet validated)">
+          <p className="mb-3">
+            The contract charges no fee, has no owner and no token, and will stay that way. Revenue options sit around
+            it:
           </p>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">What’s built</h2>
-          <ul className="ledger mt-3 leading-[2.25rem]">
-            <li>
-              Contract with no owner, admin, pause or fee; 41 Foundry tests incl. invariants I1–I7 (256 runs × depth 50)
-            </li>
-            <li>
-              SDK: client with a durable outbox (C1), seller middleware with replay safety and atomic reservations
-              (S1–S4)
-            </li>
-            <li>Redeemer: batches notes; about 86k gas for one redeem, 328k for ten in one transaction</li>
-            <li>Counting House (issue, redeem), live agent demo, shop till and customer wallet (works offline)</li>
-            <li>Agent docs: /llms.txt, /llms-full.txt, Markdown twins, /.well-known/flying-money.json</li>
-          </ul>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">See it working</h2>
-          <ul className="mt-3 grid gap-2">
-            <li>
-              <a className="text-indigo underline" href="/demo">
-                Live demo
+          <Dots
+            items={[
+              'A hosted collector that submits sellers’ payments and pays the network fee, for a monthly price.',
+              'A hosted, durable seller backend for APIs that don’t want to run their own payment store.',
+              'An owner dashboard with budget requests, receipts and team controls for companies running many agents.',
+              'Card-to-USDC top-ups through a licensed on-ramp partner, on a referral basis.',
+            ]}
+          />
+        </Block>
+        <Block title="Traction to date (facts only)">
+          <Dots
+            items={[
+              'Rebuilt from scratch starting 23 Sep 2026.',
+              'Contract deployed and verified on Arbitrum Sepolia, with 41 Foundry tests including invariant tests at 256 runs × depth 50.',
+              'Live test run: an agent made 20 paid calls, settled in 3 transactions, and the seller received exactly the 0.25 USDC it served. With its network cut, payments kept being accepted; a thief with the stolen key was refused three times.',
+              'Working dashboard, shop till with offline acceptance, phone wallet, and an MCP server for Claude.',
+              'Not yet audited. No mainnet deployment yet. No paying users yet.',
+            ]}
+          />
+          {arb.flyingMoney && (
+            <p className="mt-4 text-base">
+              Contract on {arb.chain.name}:{' '}
+              <a
+                className="font-mono text-indigo underline"
+                href={`${arb.explorer}/address/${arb.flyingMoney}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {short(arb.flyingMoney)}
               </a>{' '}
-              — an agent pays the Silk Road Oracle 20 times on Arbitrum Sepolia; real transactions.
-            </li>
-            <li>
-              <a className="text-indigo underline" href="/shop">
-                Shop mode
-              </a>{' '}
-              — the till and the customer wallet.
-            </li>
-            {arb.flyingMoney && (
-              <li>
-                Contract on {arb.chain.name}:{' '}
-                <a
-                  className="font-mono text-indigo underline"
-                  href={`${arb.explorer}/address/${arb.flyingMoney}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {short(arb.flyingMoney)}
-                </a>{' '}
-                (verified) ·{' '}
-                <a className="text-indigo underline" href="/chains">
-                  all deployments
-                </a>
-              </li>
-            )}
-            <li>
+              ·{' '}
               <a className="text-indigo underline" href={SITE.github}>
-                Source on GitHub
-              </a>{' '}
-              (MIT) ·{' '}
-              <a className="text-indigo underline" href="/docs">
-                Docs
+                source (MIT)
               </a>
-            </li>
-          </ul>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">What we cut, and why</h2>
-          <p className="mt-2 text-lg text-ink-2">
-            We started out building offline cash between strangers. Our own review showed software alone can’t stop the
-            same money being spent twice with two offline strangers, so we removed it, along with shared pools and
-            endorsement chains. We only ship what the math guarantees.
+            </p>
+          )}
+        </Block>
+        <Block title="Ask">
+          <p>
+            Pilot partners (a paid API or data service, and one canteen or café) and funding for a security audit before
+            a capped mainnet launch (100 USDC per certificate, 1,000 USDC per deployment).
           </p>
-        </Sheet>
-        <Sheet className="p-7">
-          <h2 className="font-display text-3xl font-semibold">Team</h2>
-          <p className="mt-2 text-lg text-ink-2">
+        </Block>
+        <Block title="Team">
+          <p>
             Built by{' '}
             <a className="text-indigo underline" href="https://github.com/raldblox">
               raldblox
             </a>
             . Contact through GitHub.
           </p>
-        </Sheet>
+        </Block>
       </div>
 
       <div className="mt-10 flex flex-wrap gap-3">
         <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>
-        <ButtonLink href="/story" variant="secondary">
-          Read the 804 CE story
+        <ButtonLink href="/guarantees" variant="secondary">
+          What’s protected
         </ButtonLink>
       </div>
     </div>

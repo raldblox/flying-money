@@ -2,6 +2,12 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Copy + mobile pass (24 Sep): ✅ locally
+
+- New copy deck `docs/copy/copy-deck.md` (consumers, developers, investors, partners), applied to the landing page, `/shops`, `/pitch`, header, footer, metadata, manifest, `llms.txt`, the till, the wallet, the demo, the README top and `docs/site` (D31).
+- Landing page: two doors (For AI agents / For families & shops) with zero layout shift when switching; the mobile menu is a fixed panel, so opening it never moves the header.
+- Mobile audit at 375 px across 20 routes: `/wallet`, the till and `/app/places` scrolled sideways because of wide text fields; fixed (text fields may now shrink).
+
 ## v1.5 step 1: V1 + V2 (24 Sep): ✅ `pnpm verify` green
 
 - **V1:**

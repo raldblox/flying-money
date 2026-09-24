@@ -185,7 +185,7 @@ export function DemoClient({
           ))}
         </fieldset>
         <p className="text-xs text-ink-2">
-          Real transactions with test money. The seller collects automatically, and once more at the end (Redeem now).
+          Real transactions with test money. The seller collects automatically, and once more at the end (Collect now).
           Every link opens the public record (block explorer).
         </p>
       </div>
@@ -249,10 +249,12 @@ export function DemoClient({
                     className="note-in inline-flex items-center gap-1.5 rounded-full border border-seal/40 bg-paper-2 px-2.5 py-1 font-mono text-xs tabular-nums"
                   >
                     <span aria-hidden className="size-1.5 rounded-full bg-seal" />
-                    sealed {usdc(s.cumulative)}
+                    slip {usdc(s.cumulative)}
                   </li>
                 ))}
-                {sealed.length === 0 && <li className="text-sm text-ink-2">Sealed notes fly here, left to right.</li>}
+                {sealed.length === 0 && (
+                  <li className="text-sm text-ink-2">Payment slips appear here as the agent pays.</li>
+                )}
               </ul>
             </section>
 
@@ -266,7 +268,7 @@ export function DemoClient({
                   <dd className="text-right font-mono tabular-nums">{latest ? usdc(latest.accepted) : '—'}</dd>
                   <dt className="text-ink-2">Served</dt>
                   <dd className="text-right font-mono tabular-nums">{latest ? usdc(latest.consumed) : '—'}</dd>
-                  <dt className="text-ink-2">Redeemed on-chain</dt>
+                  <dt className="text-ink-2">Collected</dt>
                   <dd className="text-right font-mono tabular-nums">{usdc(redeemedTotal)}</dd>
                 </dl>
                 {sellerOffline && (
@@ -283,7 +285,7 @@ export function DemoClient({
                 <ul className="mt-4 space-y-2">
                   {redeemed.map((r) => (
                     <li key={r.txHash} className="flex items-center justify-between gap-2 text-sm">
-                      <StatusChip kind="redeemed">Redeemed {usdc(r.paid)}</StatusChip>
+                      <StatusChip kind="redeemed">Collected {usdc(r.paid)}</StatusChip>
                       <a
                         href={r.txUrl}
                         target="_blank"
@@ -348,7 +350,7 @@ export function DemoClient({
           {done && (
             <p className="mt-6 text-lg">
               <strong>
-                {done.served} requests, {done.redemptions} redemption{done.redemptions === 1 ? '' : 's'}.
+                {done.served} requests, collected in {done.redemptions} transaction{done.redemptions === 1 ? '' : 's'}.
               </strong>{' '}
               The seller was paid {usdc(done.redeemed)} USDC for exactly what it served; {usdc(done.remaining)} USDC
               stays in the certificate and returns to the funder after expiry.

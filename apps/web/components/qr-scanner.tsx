@@ -136,7 +136,7 @@ export function QrScanner({
             placeholder="fm1.…"
             autoComplete="off"
             spellCheck={false}
-            className="min-h-11 min-w-0 flex-1 rounded border border-line bg-paper px-3 font-mono text-sm"
+            className="min-h-11 w-full min-w-0 flex-1 rounded border border-line bg-paper px-3 font-mono text-sm"
           />
           <button type="submit" className={buttonClass('secondary')} disabled={!pasted.trim()}>
             Use

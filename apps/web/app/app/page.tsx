@@ -6,7 +6,7 @@ import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: 'Counting House',
-  description: 'Issue and manage sealed spending certificates; redeem the notes you were paid with.',
+  description: 'Everything you’ve given, and everything you can collect.',
 }
 
 export default function AppPage() {
@@ -16,13 +16,10 @@ export default function AppPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
       <ContactsNav current="app" />
-      <h1 className="mt-1 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
-        Issue, keep, <em className="text-seal">redeem</em>.
-      </h1>
-      <p className="mt-4 max-w-3xl text-lg text-ink-2">
-        Set aside a budget for one place and give a spending key to whoever will spend it. If you’re the one being paid,
-        collect your money here. You set every limit up front: once issued, a certificate can’t be frozen or cancelled
-        early. That promise is exactly why a shop can accept it instantly.
+      <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight sm:text-6xl">Counting House</h1>
+      <p className="mt-3 max-w-3xl text-lg text-ink-2">
+        Everything you’ve given, and everything you can collect. You set where, how much and how long up front. You
+        can’t cancel early: that’s what lets a shop accept on the spot. You can always choose not to renew.
       </p>
       <Providers>
         <CountingHouse

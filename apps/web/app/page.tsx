@@ -12,284 +12,346 @@ import {
 import { SilkRoadMap } from '@/components/art/silk-road-map'
 import { BrandMark } from '@/components/brand-mark'
 import { CodeTabs } from '@/components/code-tabs'
+import { DoorOnly, DoorProvider } from '@/components/door'
 import { Hero } from '@/components/hero'
 import { ButtonLink, Chapter, Sheet } from '@/components/section'
 
-const BUY = `import { createFlyingMoneyClient, fileStore } from '@flying-money/client'
+const PAY = `import { createFlyingMoneyClient, fileStore } from '@flying-money/client'
 import { privateKeyToAccount } from 'viem/accounts'
 
 const fm = createFlyingMoneyClient({
   chains: ['arbitrum-sepolia'],
   spender: privateKeyToAccount(process.env.AGENT_KEY),
-  store: fileStore('.flying-money.json'),         // durable outbox
-  certificates: ['0x…'],                          // issued by your funder
-  maxPricePerRequest: 50_000n,                    // 0.05 USDC
+  store: fileStore('.flying-money.json'),         // crash-safe outbox
+  certificates: [process.env.AGENT_CERTIFICATES],  // the budget your owner funded
+  maxPricePerRequest: 50_000n,                     // 0.05 USDC
 })
 const res = await fm.fetch('https://oracle.example/v1/tea-price?city=Luoyang')`
 
-const SELL = `import { flyingMoney } from '@flying-money/server/hono'
+const CHARGE = `import { flyingMoney } from '@flying-money/server/hono'
 import { upstashStore } from '@flying-money/server'
 
 app.use('/v1/*', flyingMoney({
   accepts: ['arbitrum-sepolia'],
   payee: process.env.PAYEE_ADDRESS,
-  price: () => 10_000n,                           // 0.01 USDC per request
-  store: upstashStore({ url, token }),            // durable, shared state
+  price: () => 10_000n,                            // 0.01 USDC per request
+  store: upstashStore({ url, token }),             // durable, shared state
 }))
 app.get('/v1/tea-price', (c) => c.json({ price: 42 }))`
 
-const WORKED = [
-  ['Deposit before travel', 'paid upfront', 'The money is locked in before anyone spends it.'],
-  ['Payable in one place', 'one seller', 'It pays one named seller, nobody else.'],
-  [
-    'Halves that must match',
-    'checkable',
-    'Each payment slip is signed, and anyone can check it against the public record.',
+const MCP = `{
+  "mcpServers": {
+    "flying-money": {
+      "command": "node",
+      "args": ["flying-money/packages/mcp/dist/bin.js"],
+      "env": {
+        "AGENT_KEY": "0x…",
+        "AGENT_CERTIFICATES": "0x…",
+        "FM_MAX_PRICE": "0.05"
+      }
+    }
+  }
+}`
+
+type Door = 'agents' | 'people'
+
+const PROBLEMS: Record<Door, Array<[string, string]>> = {
+  agents: [
+    ['Give it your card.', 'One bad loop or one prompt injection, and there’s no ceiling on the bill.'],
+    [
+      'Pay on the blockchain for every call.',
+      'Each payment waits for a transaction and costs more than the call itself.',
+    ],
+    ['Pay later on trust.', 'A seller has no reason to trust an agent it has never met.'],
   ],
-  ['Value moved, coins stayed', 'settle later', 'Many small payments, collected once.'],
+  people: [
+    ['Cash.', 'It gets lost, spent elsewhere, and you never see where it went.'],
+    ['A spare card.', 'It works everywhere, so the limit is only a promise.'],
+    ['A shop’s own prepaid card.', 'One plastic card, one app, one sign-up per shop.'],
+  ],
+}
+
+const STEPS: Record<Door, Array<{ Icon: typeof IconIssue; t: string; d: string }>> = {
+  agents: [
+    {
+      Icon: IconIssue,
+      t: 'Fund',
+      d: 'Set aside 5 USDC for one service, spendable only by your agent’s key, until a date you pick.',
+    },
+    {
+      Icon: IconSeal,
+      t: 'Pay',
+      d: 'Every request carries a signed payment slip with the running total: “total so far: 0.37”.',
+    },
+    {
+      Icon: IconServe,
+      t: 'Serve',
+      d: 'The service checks the slip on its own machine in milliseconds and answers. No transaction, no waiting.',
+    },
+    {
+      Icon: IconRedeem,
+      t: 'Collect',
+      d: 'The service collects the latest total in one transaction. After the end date, you take back the leftovers.',
+    },
+  ],
+  people: [
+    {
+      Icon: IconIssue,
+      t: 'Give',
+      d: 'Choose the place, the amount and the end date. Send it to Mia as a link or a QR code.',
+    },
+    {
+      Icon: IconSeal,
+      t: 'Pay',
+      d: 'At the counter, the till shows the price. Mia scans it, enters her PIN, and shows her payment code.',
+    },
+    {
+      Icon: IconServe,
+      t: 'Accept',
+      d: 'The till checks the code in milliseconds, even for returning customers when the shop’s Wi‑Fi is down.',
+    },
+    {
+      Icon: IconRedeem,
+      t: 'Collect',
+      d: 'The shop collects the day’s payments in one transfer. After the end date, you take back the leftovers.',
+    },
+  ],
+}
+
+const USES = [
+  { Icon: IconAgent, t: 'Research agent', d: '5 USDC for one data API, this week. It stops at 5.00.' },
+  { Icon: IconAgent, t: 'Claude with a budget', d: 'Let Claude call paid tools inside a limit it can’t raise.' },
+  { Icon: IconBowl, t: 'School lunch', d: '50 USDC at the school canteen, this term.' },
+  { Icon: IconTea, t: 'Morning coffee', d: '20 USDC at your usual café. No fee for you.' },
+  { Icon: IconWorker, t: 'Field staff', d: 'Fuel money for one station, with no company card to lose.' },
+  {
+    Icon: IconGift,
+    t: 'A gift for one shop',
+    d: 'Sent as a link. Whatever isn’t spent returns to the sender after the end date.',
+  },
 ]
 
-const STEPS = [
-  {
-    Icon: IconIssue,
-    t: 'Issue',
-    d: 'Lock 5 USDC for one seller. Only your agent’s key can spend it, and only until the end date.',
-  },
-  { Icon: IconSeal, t: 'Seal', d: 'With every request, the agent hands over a signed slip: “total so far: 0.37”.' },
-  {
-    Icon: IconServe,
-    t: 'Serve',
-    d: 'The seller checks the slip on the spot, in milliseconds. Nothing is sent to the blockchain, so there’s no waiting, and it keeps working if the connection drops for a moment.',
-  },
-  {
-    Icon: IconRedeem,
-    t: 'Redeem',
-    d: 'The seller collects the latest total in one transaction. Whatever is left comes back to you after the end date.',
-  },
-]
+function Problem({ door }: { door: Door }) {
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+      <Sheet className="px-6 py-6 sm:px-10" tilt={-0.6}>
+        <p className="smallcaps text-sm text-ink-2">
+          {door === 'agents' ? 'Ways to let an agent pay' : 'Ways to hand over money'}
+        </p>
+        <ol className="mt-3 grid gap-5">
+          {PROBLEMS[door].map(([q, why]) => (
+            <li key={q}>
+              {/* a real strikethrough, so it follows every wrapped line on small screens */}
+              <span className="font-display text-2xl font-semibold text-ink-2 line-through decoration-seal/85 decoration-2">
+                {q}
+              </span>
+              <span className="mt-1 block text-ink-2">{why}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-6 border-t border-line pt-5 font-display text-2xl font-semibold leading-snug sm:text-3xl">
+          {door === 'agents' ? (
+            <>
+              Give it a <em className="text-seal">budget</em> instead: one service, one amount, one end date.
+            </>
+          ) : (
+            <>
+              Money for <em className="text-seal">one place</em>, with a limit that holds and leftovers that come back.
+            </>
+          )}
+        </p>
+      </Sheet>
+      <p className="text-xl leading-relaxed text-ink-2">
+        {door === 'agents'
+          ? 'Agents buy API calls, data and compute thousands of times a day, for fractions of a cent. The limit has to live outside the prompt, because prompts can be hijacked.'
+          : 'A parent, an employer or a friend wants to hand over money for one thing, without handing over a card. The shop wants to be sure the money is really there.'}
+      </p>
+    </div>
+  )
+}
 
-const HOLDERS = [
-  { Icon: IconAgent, t: 'Agents', d: 'A research agent with 5 USDC for one data API.', tilt: -2 },
-  { Icon: IconTea, t: 'Regulars’ tabs', d: '20 USDC at the café you visit every morning.', tilt: 1.5 },
-  { Icon: IconBowl, t: 'Allowances', d: 'Lunch money that only works at the school canteen.', tilt: -1 },
-  { Icon: IconWorker, t: 'Teams', d: 'Fuel money for a field worker, at one station.', tilt: 2 },
-  { Icon: IconGift, t: 'Gifts', d: 'A gift for one shop, sent as a link.', tilt: -1.5 },
-]
+function Steps({ door }: { door: Door }) {
+  return (
+    <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+      {STEPS[door].map(({ Icon, t, d }, k) => (
+        <li key={t} className="flex gap-4 sm:block">
+          <span className="relative grid size-16 shrink-0 place-items-center rounded-full bg-paper text-ink shadow-[var(--sheet-shadow)] ring-1 ring-line sm:size-20">
+            <Icon className="size-10 sm:size-12" />
+            <span
+              className="absolute -right-1 -top-1 grid size-7 place-items-center rounded-[3px] bg-seal font-han text-sm text-paper"
+              lang="zh-Hant"
+              aria-hidden
+            >
+              {['一', '二', '三', '四'][k]}
+            </span>
+          </span>
+          <div>
+            <h3 className="font-display text-3xl font-semibold sm:mt-5">{t}</h3>
+            <p className="mt-1 max-w-xs text-ink-2">{d}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function ProblemTitle() {
+  return (
+    <>
+      <DoorOnly inline door="agents">
+        Your agent needs to pay. Every way to let it is bad.
+      </DoorOnly>
+      <DoorOnly inline door="people">
+        Handing over money for one thing shouldn’t mean handing over your card.
+      </DoorOnly>
+    </>
+  )
+}
 
 export default function Home() {
   return (
-    <>
+    <DoorProvider>
       <Hero />
 
-      <Chapter id="story" n={1} eyebrow="Chang’an, 804 CE" title="The merchants who stopped carrying coins.">
-        <Sheet as="article" className="px-6 py-10 sm:px-12 sm:py-14">
-          <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr]">
-            <div className="text-lg leading-relaxed">
-              <p className="first-letter:float-left first-letter:mr-3 first-letter:font-display first-letter:text-7xl first-letter:leading-[0.8] first-letter:text-seal">
-                Tea merchants in Tang-dynasty China faced a shortage of copper coin and heavy strings of cash to carry.
-                So they deposited coin with an official office and carried a certificate instead, paid out when its
-                tallies matched.
-              </p>
-              <p className="mt-5">
-                People called it{' '}
-                <span lang="zh-Hant" className="font-han text-seal">
-                  飛錢
-                </span>
-                , <em className="font-display text-2xl">flying money</em>. The value travelled; the coins stayed safe.
-              </p>
-              <p className="mt-5 text-ink-2">
-                Twelve centuries later, AI agents are the new merchants and APIs are the new cities. They need the same
-                three properties that made flying money work.
-              </p>
+      <Chapter id="problem" n={1} eyebrow="The problem" title={<ProblemTitle />}>
+        <DoorOnly door="agents">
+          <Problem door="agents" />
+        </DoorOnly>
+        <DoorOnly door="people">
+          <Problem door="people" />
+        </DoorOnly>
+      </Chapter>
+
+      <Chapter id="how" n={2} eyebrow="How it works" title="Four steps. Your wallet stays out of it.">
+        <DoorOnly door="agents">
+          <Steps door="agents" />
+        </DoorOnly>
+        <DoorOnly door="people">
+          <Steps door="people" />
+        </DoorOnly>
+      </Chapter>
+
+      <Chapter id="guarantees" n={3} eyebrow="Trust" title="What’s protected, and what isn’t.">
+        <Sheet className="overflow-hidden">
+          <div className="grid md:grid-cols-2">
+            <div className="p-6 sm:p-10">
+              <h3 className="font-display text-2xl font-semibold">
+                <span className="text-seal">✓</span> Protected
+              </h3>
+              <ul className="mt-3 grid gap-3">
+                <li>
+                  The spender can’t pay more than the budget. A stolen key can spend at most what’s left, and only at
+                  that one place.
+                </li>
+                <li>Every valid payment slip is backed by money set aside for that seller until the end date.</li>
+                <li>Anyone can submit a slip for collection, but the money only ever goes to the named seller.</li>
+                <li>After the end date, whatever wasn’t spent goes back to whoever put it in.</li>
+              </ul>
             </div>
-            <aside aria-label="What made it work" className="border-l-2 border-seal/40 pl-6">
-              <p className="smallcaps text-sm text-seal">What made it work</p>
-              <dl className="mt-3 space-y-4">
-                {WORKED.map(([a, b, c]) => (
-                  <div key={a}>
-                    <dt className="font-display text-xl font-semibold">
-                      {a} <span className="text-base font-normal italic text-seal">({b})</span>
-                    </dt>
-                    <dd className="text-ink-2">{c}</dd>
-                  </div>
-                ))}
-              </dl>
-            </aside>
+            <div className="border-t border-dashed border-seal/40 p-6 sm:p-10 md:border-l md:border-t-0">
+              <h3 className="font-display text-2xl font-semibold text-ink-2">Not protected</h3>
+              <ul className="mt-3 grid gap-3 text-ink-2">
+                <li>That the seller delivers what was paid for.</li>
+                <li>That the seller collects before the end date. (Our seller software does this automatically.)</li>
+                <li>That the USDC issuer never freezes funds.</li>
+                <li>That the code is free of bugs. It is test software and has not been audited.</li>
+              </ul>
+            </div>
           </div>
-          <SilkRoadMap className="mt-10 w-full" />
-          <p className="mt-4 text-sm text-ink-2">
-            Sources:{' '}
-            <a className="text-indigo underline decoration-indigo/40" href="https://en.wikipedia.org/wiki/Flying_cash">
-              Wikipedia, “Flying cash”
-            </a>{' '}
-            ·{' '}
-            <a className="text-indigo underline decoration-indigo/40" href="https://www.britannica.com/topic/feiqian">
-              Britannica, “Feiqian”
+        </Sheet>
+        <p className="mt-6 max-w-3xl text-ink-2">
+          <strong className="text-ink">Why there’s no cancel button:</strong> a shop can accept a payment on the spot,
+          even offline, only because the money can’t be pulled back halfway through. You control where, how much and how
+          long, and whether to renew.{' '}
+          <a href="/guarantees" className="font-medium text-indigo underline decoration-indigo/40 underline-offset-4">
+            Read the full guarantees →
+          </a>
+        </p>
+      </Chapter>
+
+      <Chapter id="uses" n={4} eyebrow="Use cases" title="One idea, many kinds of spending.">
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {USES.map(({ Icon, t, d }) => (
+            <li key={t}>
+              <Sheet className="flex h-full gap-4 p-5">
+                <Icon className="size-11 shrink-0 text-ink" />
+                <div>
+                  <h3 className="font-display text-2xl font-semibold">{t}</h3>
+                  <p className="mt-1 text-ink-2">{d}</p>
+                </div>
+              </Sheet>
+            </li>
+          ))}
+        </ul>
+      </Chapter>
+
+      <Chapter id="developers" n={5} eyebrow="For developers" title="A few lines to pay. A few lines to charge.">
+        <p className="-mt-4 mb-6 max-w-3xl text-lg text-ink-2">
+          Your agent uses a drop-in <code className="font-mono text-base">fetch</code> that answers HTTP 402 “Payment
+          Required” by itself. Your API adds one middleware, checks every payment on its own server, and collects in
+          batches of up to 20.
+        </p>
+        <CodeTabs
+          tabs={[
+            { label: 'Pay (agent)', code: PAY },
+            { label: 'Charge (API)', code: CHARGE },
+            { label: 'Claude (MCP)', code: MCP },
+          ]}
+        />
+        <p className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <a className="font-medium text-indigo underline" href="/docs/agents">
+            Agent quickstart →
+          </a>
+          <a className="font-medium text-indigo underline" href="/docs/server">
+            Seller quickstart →
+          </a>
+          <a className="font-medium text-indigo underline" href="/llms.txt">
+            llms.txt for your agent →
+          </a>
+        </p>
+      </Chapter>
+
+      <Chapter id="story" n={6} eyebrow="Why “flying money”" title="Named after an idea from 804.">
+        <Sheet as="article" className="px-6 py-8 sm:px-12 sm:py-10">
+          <p className="max-w-3xl text-lg leading-relaxed">
+            In Tang-dynasty China, tea merchants were tired of hauling heavy strings of coin. They deposited the coin at
+            an official office and travelled with a certificate that paid out when its tallies matched. People called it{' '}
+            <span lang="zh-Hant" className="font-han text-seal">
+              飛錢
+            </span>
+            , <em className="font-display text-2xl">flying money</em>. We use the same idea: put the money aside first,
+            carry a proof instead, settle later.
+          </p>
+          <SilkRoadMap className="mt-8 w-full" />
+          <p className="mt-4 text-sm">
+            <a className="font-medium text-indigo underline" href="/story">
+              Read the story →
             </a>
           </p>
         </Sheet>
       </Chapter>
 
-      <Chapter id="problem" n={2} eyebrow="Today" title="The new merchants are machines.">
-        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-center">
-          <Sheet className="ledger px-6 py-6 sm:px-10" tilt={-0.6}>
-            <p className="smallcaps text-sm text-ink-2">Ways to let an agent pay</p>
-            <ol className="mt-2">
-              {[
-                ['Give it your card?', 'no limit if it gets stuck in a loop or hacked'],
-                [
-                  'Pay on the blockchain for every request?',
-                  'too slow and too costly when a call costs a tenth of a cent',
-                ],
-                ['Promise to pay later?', 'sellers can’t trust an anonymous agent'],
-              ].map(([q, why]) => (
-                <li key={q} className="flex flex-wrap items-baseline gap-x-3 py-[0.45rem] leading-[2.25rem]">
-                  <span className="relative font-display text-2xl font-semibold text-ink-2">
-                    {q}
-                    <span aria-hidden className="absolute inset-x-[-4px] top-1/2 h-[2px] -rotate-2 bg-seal/80" />
-                  </span>
-                  <span className="text-ink-2">— {why}.</span>
-                </li>
-              ))}
-              <li className="py-[0.45rem] leading-[2.25rem]">
-                <span className="font-display text-3xl font-semibold">
-                  Give it a <em className="text-seal">certificate.</em>
-                </span>
-              </li>
-            </ol>
-          </Sheet>
-          <p className="text-xl leading-relaxed text-ink-2">
-            Agents buy API calls, data and compute thousands of times a day, for fractions of a cent. A certificate
-            gives them a <strong className="text-ink">budget for one seller</strong>, a{' '}
-            <strong className="text-ink">key of their own</strong>, and{' '}
-            <strong className="text-ink">a date it ends</strong>. Nothing more to trust.
-          </p>
-        </div>
-      </Chapter>
-
-      <Chapter id="how" n={3} eyebrow="How it works" title="Issue. Seal. Serve. Redeem.">
-        <div className="relative">
-          <svg
-            aria-hidden
-            className="absolute left-0 top-10 hidden h-4 w-full md:block"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 4"
-          >
-            <path
-              d="M2 2 C 30 0, 60 4, 98 2"
-              fill="none"
-              stroke="var(--seal)"
-              strokeWidth="0.35"
-              strokeDasharray="1.4 1.4"
-            />
-          </svg>
-          <ol className="relative grid gap-10 md:grid-cols-4 md:gap-6">
-            {STEPS.map(({ Icon, t, d }, k) => (
-              <li key={t}>
-                <span className="relative grid size-20 place-items-center rounded-full bg-paper text-ink shadow-[var(--sheet-shadow)] ring-1 ring-line">
-                  <Icon className="size-12" />
-                  <span
-                    className="absolute -right-1 -top-1 grid size-7 place-items-center rounded-[3px] bg-seal font-han text-sm text-paper"
-                    lang="zh-Hant"
-                    aria-hidden
-                  >
-                    {['一', '二', '三', '四'][k]}
-                  </span>
-                </span>
-                <h3 className="mt-5 font-display text-3xl font-semibold">{t}</h3>
-                <p className="mt-2 max-w-xs text-ink-2">{d}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </Chapter>
-
-      <Chapter id="guarantees" n={4} eyebrow="Guarantees" title="What the math guarantees, and what it doesn’t.">
-        <Sheet className="overflow-hidden">
-          <div className="grid md:grid-cols-2">
-            <div className="p-8 sm:p-10">
-              <h3 className="font-display text-2xl font-semibold">
-                <span className="text-seal">✓</span> Guaranteed
-              </h3>
-              <ul className="ledger mt-3 leading-[2.25rem]">
-                <li>The agent can’t spend more than the budget, even if its key is stolen.</li>
-                <li>Every valid slip is backed by money set aside for that seller until the end date.</li>
-                <li>Anyone can submit a slip, but the money only ever goes to the named seller.</li>
-                <li>You get the unspent money back after the end date.</li>
-              </ul>
-            </div>
-            <div className="border-t border-dashed border-seal/40 p-8 sm:p-10 md:border-l md:border-t-0">
-              <h3 className="font-display text-2xl font-semibold text-ink-2">Not guaranteed</h3>
-              <ul className="ledger mt-3 leading-[2.25rem] text-ink-2">
-                <li>That the seller delivers what you paid for.</li>
-                <li>That the seller collects before the end date (its software does this automatically).</li>
-                <li>That the USDC issuer never freezes funds.</li>
-                <li>That the code is bug-free: it is test software and not yet audited.</li>
-              </ul>
-            </div>
-          </div>
-        </Sheet>
-        <p className="mt-6">
-          <a
-            href="/guarantees"
-            className="font-medium text-indigo underline decoration-indigo/40 underline-offset-4 hover:decoration-indigo"
-          >
-            The full guarantees and threat model →
-          </a>
-        </p>
-      </Chapter>
-
-      <Chapter id="people" n={5} eyebrow="Not only agents" title="Anyone who spends on your behalf.">
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-          {HOLDERS.map(({ Icon, t, d, tilt }) => (
-            <li key={t}>
-              <Sheet className="h-full px-5 pb-6 pt-5" tilt={tilt}>
-                <span aria-hidden className="mx-auto mb-3 block h-3 w-3 rounded-full bg-desk ring-1 ring-line" />
-                <Icon className="size-12 text-ink" />
-                <h3 className="mt-3 font-display text-2xl font-semibold">{t}</h3>
-                <p className="mt-1 text-ink-2">{d}</p>
-              </Sheet>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-10 max-w-3xl text-lg leading-relaxed">
-          <strong>No crypto wallet needed to spend.</strong> Send a certificate as a link or QR code. The person sets a
-          PIN and pays by showing a QR code at the counter. They never touch crypto or pay fees. Only you, the giver,
-          need USDC, and whatever they don’t spend comes back to you.
-        </p>
-      </Chapter>
-
-      <Chapter id="developers" n={6} eyebrow="For developers" title="A few lines to buy. A few lines to sell.">
-        <CodeTabs
-          tabs={[
-            { label: 'Buy (agent)', code: BUY },
-            { label: 'Sell (API)', code: SELL },
-          ]}
-        />
-      </Chapter>
-
-      <section aria-labelledby="honest-title" className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
+      <section aria-labelledby="close-title" className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
         <div className="mx-auto w-fit">
           <BrandMark size={96} />
         </div>
         <h2
-          id="honest-title"
+          id="close-title"
           className="mt-8 font-display text-4xl font-semibold leading-tight text-balance sm:text-5xl"
         >
-          We removed offline cash. <em className="text-seal">We only ship what the math guarantees.</em>
+          Watch an agent make 20 paid calls and settle them in <em className="text-seal">3 transactions.</em>
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ink-2">
-          We started out building offline cash: paying a stranger with no internet at all. Our own security review
-          showed that software alone can’t stop someone spending the same money twice with two strangers who are both
-          offline. So we removed it.
+          It runs live on a test network in about 30 seconds. Cut its connection. Steal its key. Watch what gets
+          refused.
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>
-          <ButtonLink href="/guarantees" variant="secondary">
-            Read the guarantees
+          <ButtonLink href="/demo">Run the live demo →</ButtonLink>
+          <ButtonLink href="/docs" variant="secondary">
+            Read the docs
           </ButtonLink>
         </div>
       </section>
-    </>
+    </DoorProvider>
   )
 }

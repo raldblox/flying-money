@@ -106,12 +106,24 @@ body {
 ::selection {
   background: color-mix(in oklab, var(--seal) 25%, transparent);
 }
+/* A text field's default width (size=20 in a large mono font) must never widen its column on a phone */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
 
 /* A sheet of paper. The torn edge comes from the #deckle SVG filter on a background layer,
    so the paper edge is rough while the text on it stays crisp. */
-.sheet {
-  position: relative;
-  isolation: isolate;
+/* In a layer, so utilities such as `fixed` or `absolute` on a sheet still win (unlayered CSS beats utilities) */
+@layer components {
+  .sheet {
+    position: relative;
+    isolation: isolate;
+  }
 }
 .sheet::before {
   content: "";

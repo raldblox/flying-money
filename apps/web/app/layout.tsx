@@ -18,9 +18,9 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' }
 const han = Noto_Serif_TC({ weight: ['600'], variable: '--font-noto-tc', preload: false })
 
 export const metadata: Metadata = {
-  title: { default: 'Flying Money: sealed spending certificates', template: '%s · Flying Money' },
+  title: { default: 'Flying Money: hand over a budget, not your wallet', template: '%s · Flying Money' },
   description:
-    'Give your AI agent a sealed certificate, not your wallet. Lock a budget for one seller; the holder pays with signed notes the seller verifies instantly.',
+    'Prepaid, capped budgets for AI agents and people. Set aside USDC for one seller; the spender pays per use, the seller checks each payment on the spot and collects in one transaction.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
   icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' } },

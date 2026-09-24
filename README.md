@@ -1,6 +1,8 @@
 # 飛錢 Flying Money
 
-Sealed spending certificates for AI agents, people and devices. Money that flies, since 804 CE.
+Hand over a budget, not your wallet. Prepaid, capped USDC budgets for AI agents and the people you pay for.
+
+Flying Money lets an owner set aside USDC for one seller, one spender and one end date. The spender (an AI agent or a phone) pays with signed slips carrying the running total. The seller checks each slip on its own machine in milliseconds and collects everything later in one transaction. The spender can't authorize more than the budget, the money can only reach the named seller, and leftovers go back to the owner. No token, no fees, no admin keys. MIT.
 
 [Live demo](https://useflyingmoney.vercel.app/demo) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments on every chain](https://useflyingmoney.vercel.app/chains) · [Shop mode](https://useflyingmoney.vercel.app/shops) · 2-min video (coming)
 
