@@ -1,2 +1,2 @@
-// Implemented in a later §17 phase; see docs/STATUS.md.
-export {}
+export { configFromEnv, type McpEnvConfig } from './config.js'
+export { createFlyingMoneyMcp, type FlyingMoneyMcpConfig, usdc } from './server.js'

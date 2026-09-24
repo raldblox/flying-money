@@ -2,6 +2,22 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 11: `@flying-money/mcp` (24 Sep): ✅ tests + stdio probe · ⏸ a live Claude session paying (human)
+
+- **Tools** (§8.4): `fm_status`, `fm_explain`, `fm_quote` and `fm_paid_fetch` (with `max_price`). There are no issue or top-up tools, and no tool returns the key.
+- **Transports:** stdio by default, or `--http <port>` for streamable HTTP on 127.0.0.1 only.
+- **Configuration** from env: `AGENT_KEY`, `AGENT_CERTIFICATES`, `AGENT_CHAINS`, `FM_MAX_PRICE`, `FM_STORE`. It uses the durable file outbox.
+- **Tests (5)** against a real in-process Oracle:
+  - exactly four tools;
+  - status and explain never contain the key;
+  - quote is free, then paid fetch pays 0.01;
+  - `max_price` refusal;
+  - stops at the face value (remaining 0.00);
+  - non-http URLs refused.
+- **Binary probe:** `dist/bin.js` over stdio lists the four tools and answers `fm_explain` from Arbitrum Sepolia.
+- **Docs:** `/docs/mcp` (Claude Desktop, Claude Code, HTTP) and `packages/mcp/README.md`; `/llms.txt` links it. It is not on npm yet, so the docs say to build it from the repo.
+- **Still open:** a real Claude session paying a live seller (§17, 9–10 Oct). That needs a public, durable Oracle deployment and a person to run Claude with the config.
+
 ## Phase 10: /demo scenarios (24 Sep): ✅ on anvil (CI test) and live on Arbitrum Sepolia
 
 - **Cut the network** and **Steal the agent key** toggles (D22); Redeem now and Reset are covered (see D22).

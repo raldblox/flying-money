@@ -24,6 +24,7 @@ Key rules for agents:
 - [Quickstart for agents](${base}/docs/agents.md): pay a Flying Money API in a few lines
 - [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
 - [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
+- [MCP server](${base}/docs/mcp.md): tools fm_status, fm_quote, fm_paid_fetch, fm_explain
 - [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox
 - [Sellers](${base}/docs/server.md): accept notes with middleware; the redeemer
 - [People & shops](${base}/docs/shops.md): the QR counter flow

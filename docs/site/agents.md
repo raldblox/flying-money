@@ -58,4 +58,6 @@ console.log(fm.status()) // remaining budget per certificate
 | `PaymentRejectedError` | The seller refused the note without taking payment |
 | `PendingUnresolvedError` | A previous note hasn't been confirmed yet; it will be resent, never re-signed |
 
+**Using Claude or another MCP agent?** Skip the code: the [MCP server](/docs/mcp) gives it `fm_quote` and `fm_paid_fetch` tools with the same rules.
+
 See also: [Client reference](/docs/client) · [Protocol](/docs/protocol) · [Guarantees](/docs/guarantees)
