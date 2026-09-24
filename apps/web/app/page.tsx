@@ -15,6 +15,7 @@ import { CodeTabs } from '@/components/code-tabs'
 import { DoorOnly, DoorProvider } from '@/components/door'
 import { Hero } from '@/components/hero'
 import { ButtonLink, Chapter, Sheet } from '@/components/section'
+import { type ExplorerStep, StepExplorer } from '@/components/step-explorer'
 
 const PAY = `import { createFlyingMoneyClient, fileStore } from '@flying-money/client'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -71,24 +72,28 @@ const PROBLEMS: Record<Door, Array<[string, string]>> = {
   ],
 }
 
-const STEPS: Record<Door, Array<{ Icon: typeof IconIssue; t: string; d: string }>> = {
+const STEPS: Record<Door, Array<Omit<ExplorerStep, 'icon'> & { Icon: typeof IconIssue }>> = {
   agents: [
     {
+      flow: 0,
       Icon: IconIssue,
       t: 'Fund',
       d: 'Set aside 5 USDC for one service, spendable only by your agent’s key, until a date you pick.',
     },
     {
+      flow: 1,
       Icon: IconSeal,
       t: 'Pay',
       d: 'Every request carries a signed payment slip with the running total: “total so far: 0.37”.',
     },
     {
+      flow: 2,
       Icon: IconServe,
       t: 'Serve',
       d: 'The service checks the slip on its own machine in milliseconds and answers. No transaction, no waiting.',
     },
     {
+      flow: 3,
       Icon: IconRedeem,
       t: 'Collect',
       d: 'The service collects the latest total in one transaction. After the end date, you take back the leftovers.',
@@ -96,21 +101,25 @@ const STEPS: Record<Door, Array<{ Icon: typeof IconIssue; t: string; d: string }
   ],
   people: [
     {
+      flow: 0,
       Icon: IconIssue,
       t: 'Give',
       d: 'Choose the place, the amount and the end date. Send it to Mia as a link or a QR code.',
     },
     {
+      flow: 1,
       Icon: IconSeal,
       t: 'Pay',
       d: 'At the counter, the till shows the price. Mia scans it, enters her PIN, and shows her payment code.',
     },
     {
+      flow: 2,
       Icon: IconServe,
       t: 'Accept',
       d: 'The till checks the code in milliseconds, even for returning customers when the shop’s Wi‑Fi is down.',
     },
     {
+      flow: 3,
       Icon: IconRedeem,
       t: 'Collect',
       d: 'The shop collects the day’s payments in one transfer. After the end date, you take back the leftovers.',
@@ -171,28 +180,7 @@ function Problem({ door }: { door: Door }) {
 }
 
 function Steps({ door }: { door: Door }) {
-  return (
-    <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-      {STEPS[door].map(({ Icon, t, d }, k) => (
-        <li key={t} className="flex gap-4 sm:block">
-          <span className="relative grid size-16 shrink-0 place-items-center rounded-full bg-paper text-ink shadow-[var(--sheet-shadow)] ring-1 ring-line sm:size-20">
-            <Icon className="size-10 sm:size-12" />
-            <span
-              className="absolute -right-1 -top-1 grid size-7 place-items-center rounded-[3px] bg-seal font-han text-sm text-paper"
-              lang="zh-Hant"
-              aria-hidden
-            >
-              {['一', '二', '三', '四'][k]}
-            </span>
-          </span>
-          <div>
-            <h3 className="font-display text-3xl font-semibold sm:mt-5">{t}</h3>
-            <p className="mt-1 max-w-xs text-ink-2">{d}</p>
-          </div>
-        </li>
-      ))}
-    </ol>
-  )
+  return <StepExplorer steps={STEPS[door].map(({ Icon, ...s }) => ({ ...s, icon: <Icon /> }))} cast={door} />
 }
 
 function ProblemTitle() {

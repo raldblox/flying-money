@@ -1,5 +1,6 @@
 import { isChainKey } from '@flying-money/chains'
 import type { Metadata } from 'next'
+import { CounterScene } from '@/components/art/counter-scene'
 import { IconBowl, IconGift, IconTea, IconWorker } from '@/components/art/ink-icons'
 import { TallyArt } from '@/components/art/tally'
 import { ButtonLink, Sheet } from '@/components/section'
@@ -78,6 +79,16 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
             20.00 USDC that only works at Lantern Café, for 30 days.
           </figcaption>
         </figure>
+      </section>
+
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6" aria-labelledby="counter">
+        <p className="smallcaps text-sm text-seal">At the counter</p>
+        <h2 id="counter" className="mt-1 font-display text-3xl font-semibold sm:text-4xl">
+          Five seconds, no card, no terminal.
+        </h2>
+        <div className="mt-6">
+          <CounterScene />
+        </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6" aria-labelledby="uses">

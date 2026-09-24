@@ -2,6 +2,19 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Visual pass (25 Sep): ✅ `pnpm verify` green
+
+- **`/demo`:** an animated stage driven by the real event stream (`lib/demo-story.ts`, unit-tested).
+  - Slips fly from the agent to the seller and answers fly back; bundles and coins travel between the seller and the chain.
+  - A cut network shows as a broken wire, and a budget bar splits into collected, waiting and unspent.
+  - 20 call squares with brackets show which transaction collected which calls; the thief's three attempts are stamped REFUSED; the result shows four big numbers.
+  - A labelled illustration (no transaction links) plays before a live run.
+- **`/how-it-works`:** scroll-driven, with a sticky money-flow diagram that animates each step (lock, sign, check, collect, leftovers back).
+- **Landing page:** chapter 2 is an auto-advancing step explorer with the same diagram, using an agents or people cast.
+- **`/guarantees`:** the three claims are illustrated; a "What if…?" picker gives a verdict and the worst case; the full threat model is folded.
+- **`/shops`:** an animated counter scene (till and phone, offline badge).
+- **Hosted Oracle:** live at `flying-money-oracle.vercel.app` (402 offers, Upstash store). It waits for `REDEEMER_KEY` and `CRON_SECRET` in its Vercel env to collect.
+
 ## v1.5 V5 + V6 (code) (25 Sep): ✅ `pnpm verify` green, S1–S4 on real Upstash
 
 - **V5:**
