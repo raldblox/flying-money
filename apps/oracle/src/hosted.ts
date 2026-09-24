@@ -95,7 +95,7 @@ export function buildHostedOracle(o: HostedOracleOptions) {
 
 /**
  * Builds the Oracle from the environment (.env.example): ORACLE_ACCEPTS, PAYEE_ADDRESS, REDEEMER_KEY (optional),
- * CRON_SECRET, VERCEL_PLAN (hobby | pro), the §21.5 store variables, ORACLE_DOCS_URL, CORS_ORIGIN, and for local anvil
+ * CRON_SECRET, FM_VERCEL_PLAN (hobby | pro), the §21.5 store variables, ORACLE_DOCS_URL, CORS_ORIGIN, and for local anvil
  * FM_ANVIL_USDC / FM_ANVIL_CONTRACT.
  */
 export function hostedOracleFromEnv(
@@ -118,7 +118,7 @@ export function hostedOracleFromEnv(
     seller,
     env,
     hosted: opts.hosted,
-    plan: env.VERCEL_PLAN === 'pro' ? 'pro' : 'hobby',
+    plan: env.FM_VERCEL_PLAN === 'pro' ? 'pro' : 'hobby',
     ...(env.REDEEMER_KEY ? { redeemerKey: env.REDEEMER_KEY as Hex } : {}),
     ...(env.CRON_SECRET ? { cronSecret: env.CRON_SECRET } : {}),
     ...(opts.readCertificate ? { readCertificate: opts.readCertificate } : {}),
