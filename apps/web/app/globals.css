@@ -425,3 +425,197 @@ a {
   color: var(--ink-2);
   margin-top: 1rem;
 }
+
+/* ───────── /demo stage: slips, answers, bundles and coins travelling between the actors ───────── */
+.lane {
+  position: relative;
+}
+.flight {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+}
+/* horizontal lanes (md and up) run left → right; on phones the stage stacks and lanes run top → bottom */
+.flight {
+  top: 50%;
+  left: 0;
+}
+@media (max-width: 767px) {
+  .flight {
+    top: 0;
+    left: 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .flight-fwd {
+    animation: fly-x-fwd 1000ms cubic-bezier(0.35, 0.1, 0.25, 1) both;
+  }
+  .flight-back {
+    animation: fly-x-back 800ms cubic-bezier(0.35, 0.1, 0.25, 1) 250ms both;
+  }
+  @media (max-width: 767px) {
+    .flight-fwd {
+      animation-name: fly-y-fwd;
+    }
+    .flight-back {
+      animation-name: fly-y-back;
+    }
+  }
+  .wire-live {
+    animation: road 1.2s linear infinite;
+  }
+  .stage-pulse {
+    animation: stage-pulse 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .refused-in {
+    animation: refused 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 450ms both;
+  }
+  .thief-shot {
+    animation: thief-shot 700ms cubic-bezier(0.5, 0, 0.75, 0) both;
+  }
+  .cell-in {
+    animation: cell-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .bracket-in {
+    animation: bracket-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    transform-origin: left center;
+  }
+  .caption-in {
+    animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes fly-x-fwd {
+  0% {
+    left: 0%;
+    opacity: 0;
+    transform: translate(0, -50%) scale(0.7) rotate(-8deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -115%) scale(1) rotate(0deg);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+    transform: translate(-100%, -50%) scale(0.85) rotate(6deg);
+  }
+}
+@keyframes fly-x-back {
+  0% {
+    left: 100%;
+    opacity: 0;
+    transform: translate(-100%, 20%) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    left: 0%;
+    opacity: 0;
+    transform: translate(0, 20%) scale(0.9);
+  }
+}
+@keyframes fly-y-fwd {
+  0% {
+    top: 0%;
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.7);
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.9);
+  }
+}
+@keyframes fly-y-back {
+  0% {
+    top: 100%;
+    opacity: 0;
+    transform: translate(10%, -100%) scale(0.8);
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0;
+    transform: translate(10%, 0) scale(0.9);
+  }
+}
+@keyframes stage-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--seal) 45%, transparent);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+@keyframes refused {
+  from {
+    opacity: 0;
+    transform: scale(1.6) rotate(-14deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+@keyframes thief-shot {
+  0% {
+    opacity: 0;
+    transform: translateX(-60px) rotate(-10deg);
+  }
+  30% {
+    opacity: 1;
+  }
+  85% {
+    transform: translateX(0) rotate(4deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-14px) rotate(-18deg);
+  }
+}
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes bracket-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

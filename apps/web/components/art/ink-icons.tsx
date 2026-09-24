@@ -109,3 +109,36 @@ export function IconWorker({ className = 'size-12' }: { className?: string }) {
     </svg>
   )
 }
+
+/** The public ledger: stacked blocks joined by a chain. */
+export function IconLedger({ className = 'size-12' }: { className?: string }) {
+  return (
+    <svg {...base} aria-hidden="true" className={className}>
+      <path d="M8 38 h16 v16 h-16 z M40 38 h16 v16 h-16 z M24 12 h16 v16 h-16 z" />
+      <path d="M24 46 h16 M18 38 l10 -10 M46 38 l-10 -10" />
+    </svg>
+  )
+}
+
+/** Someone holding a stolen key. */
+export function IconThief({ className = 'size-12' }: { className?: string }) {
+  return (
+    <svg {...base} aria-hidden="true" className={className}>
+      <circle cx="28" cy="20" r="9" />
+      <path d="M17 18 h22" strokeWidth="5" stroke="var(--seal)" />
+      <path d="M12 54 c2 -12 8 -18 16 -18 s14 6 16 18" />
+      <circle cx="48" cy="40" r="4" />
+      <path d="M48 44 v12 M48 50 h4 M48 54 h3" />
+    </svg>
+  )
+}
+
+/** A guard's shield: the rule that refuses. */
+export function IconShield({ className = 'size-12' }: { className?: string }) {
+  return (
+    <svg {...base} aria-hidden="true" className={className}>
+      <path d="M32 8 l20 8 v14 c0 14 -9 22 -20 26 c-11 -4 -20 -12 -20 -26 v-14 z" />
+      <path d="M24 32 l6 6 l12 -12" />
+    </svg>
+  )
+}

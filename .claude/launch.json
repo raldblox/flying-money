@@ -25,6 +25,20 @@
         "3100"
       ],
       "port": 3100
+    },
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@flying-money/web",
+        "exec",
+        "next",
+        "dev",
+        "--port",
+        "3001"
+      ],
+      "port": 3001
     }
   ]
 }

@@ -1,6 +1,5 @@
 import { allChains, getChain, isChainKey } from '@flying-money/chains'
 import type { Metadata } from 'next'
-import { SilkRoadMap } from '@/components/art/silk-road-map'
 import { SITE } from '@/lib/site'
 import { DemoClient } from './demo-client'
 
@@ -18,22 +17,16 @@ export default function DemoPage() {
     .filter((c) => !c.mainnet && c.flyingMoney && c.key !== 'anvil')
     .map((c) => ({ key: c.key, name: c.chain.name }))
   return (
-    <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Live demo · {SITE.testnetMode}</p>
-      <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
-        <div>
-          <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
-            Watch an agent <em className="text-seal">pay</em>.
-          </h1>
-          <p className="mt-4 max-w-3xl text-lg text-ink-2">
-            The Merchant, an AI agent planning a tea trade, buys data from the Silk Road Oracle. Its budget is a
-            certificate for that one seller. It pays for each request with a signed slip that the seller checks
-            instantly, and the seller collects the total in a few blockchain transactions. Tea prices and routes are
-            made-up game data; the weather is real.
-          </p>
-        </div>
-        <SilkRoadMap className="hidden w-full lg:block" />
-      </div>
+      <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
+        Watch an agent <em className="text-seal">pay</em>.
+      </h1>
+      <p className="mt-4 max-w-3xl text-lg text-ink-2">
+        An AI agent buys data from an API, one request at a time, from a budget it can’t go past. Below is how it plays
+        out. Press <strong className="text-ink">Run it for real</strong> to do it on a test network with real
+        transactions.
+      </p>
       <DemoClient chains={demoChains} defaultChain={chain.key} />
     </div>
   )

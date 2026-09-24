@@ -1,45 +1,72 @@
 'use client'
 import type { ChainKey } from '@flying-money/chains'
-import { useRef, useState } from 'react'
-import { Seal } from '@/components/seal'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { DemoStage } from '@/components/demo/demo-stage'
 import { buttonClass } from '@/components/section'
-import { StatusChip } from '@/components/status-chip'
-import { Tally } from '@/components/tally'
 import { usePreferredChain } from '@/lib/chain-param'
-import { short, usdc } from '@/lib/fmt'
-
-type Ev =
-  | { type: 'start'; chain: string; chainName: string; explorer: string; face: string }
-  | { type: 'info'; text: string; url?: string }
-  | { type: 'issued'; certificateId: string; faceValue: string; expiresAt: string; txHash: string; txUrl: string }
-  | { type: 'step'; text: string }
-  | { type: 'sealed'; cumulative: string; requestId: string }
-  | {
-      type: 'accepted'
-      path: string
-      price: string
-      status: string
-      accepted: string
-      consumed: string
-      credit: string
-    }
-  | { type: 'redeemed'; paid: string; cumulative: string; txHash: string; txUrl: string }
-  | { type: 'network'; down: boolean; text: string }
-  | { type: 'thief'; attempt: string; refused: boolean; detail: string }
-  | {
-      type: 'done'
-      calls: number
-      served: number
-      consumed: string
-      redeemed: string
-      redemptions: number
-      remaining: string
-      certificateUrl: string
-      bestTrade?: { buy: string; sell: string; margin: number }
-    }
-  | { type: 'error'; message: string }
+import { type DemoEvent, illustrationScript, initialStory, reduceStory, type Story } from '@/lib/demo-story'
+import { short } from '@/lib/fmt'
 
 type Phase = 'idle' | 'running' | 'done' | 'error'
+
+/** How long each kind of event stays on screen, so the story is readable (ms). */
+const PACE: Partial<Record<DemoEvent['type'], number>> = {
+  start: 1600,
+  issued: 2200,
+  sealed: 260,
+  accepted: 520,
+  step: 420,
+  redeemed: 1700,
+  network: 3000,
+  thief: 3200,
+  done: 0,
+  info: 0,
+  error: 0,
+}
+
+type Action = { kind: 'event'; e: DemoEvent } | { kind: 'reset' }
+const reducer = (s: Story, a: Action): Story => (a.kind === 'reset' ? initialStory : reduceStory(s, a.e))
+
+/**
+ * Plays events into the story at a readable pace. The live stream is queued as it arrives (a real chain can burst);
+ * when a backlog builds up, the pace speeds up so the story never falls far behind.
+ */
+function usePacedStory() {
+  const [story, dispatch] = useReducer(reducer, initialStory)
+  const queue = useRef<DemoEvent[]>([])
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pump = useCallback(() => {
+    if (timer.current) return
+    const next = () => {
+      const e = queue.current.shift()
+      if (!e) {
+        timer.current = null
+        return
+      }
+      dispatch({ kind: 'event', e })
+      const backlog = queue.current.length
+      const base = PACE[e.type] ?? 300
+      timer.current = setTimeout(next, backlog > 24 ? base / 4 : backlog > 8 ? base / 2 : base)
+    }
+    next()
+  }, [])
+  const push = useCallback(
+    (e: DemoEvent) => {
+      queue.current.push(e)
+      pump()
+    },
+    [pump],
+  )
+  const reset = useCallback(() => {
+    queue.current = []
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    dispatch({ kind: 'reset' })
+  }, [])
+  const idle = useCallback(() => queue.current.length === 0 && timer.current === null, [])
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), [])
+  return { story, push, reset, idle }
+}
 
 export function DemoClient({
   chains,
@@ -55,15 +82,44 @@ export function DemoClient({
   const chainName = chains.find((c) => c.key === chainKey)?.name ?? chainKey
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [events, setEvents] = useState<Array<Ev & { seq?: number }>>([])
+  const [log, setLog] = useState<DemoEvent[]>([])
   const [cutNetwork, setCutNetwork] = useState(true)
   const [stealKey, setStealKey] = useState(true)
-  const logRef = useRef<HTMLOListElement>(null)
+  const [mode, setMode] = useState<'illustration' | 'live'>('illustration')
+  const { story, push, reset, idle } = usePacedStory()
+
+  // Before a live run: play the labelled illustration in a loop, following the chosen toggles.
+  useEffect(() => {
+    if (mode !== 'illustration') return
+    let stopped = false
+    let wait: ReturnType<typeof setTimeout>
+    const loop = () => {
+      if (stopped) return
+      reset()
+      for (const e of illustrationScript({ cutNetwork, stealKey })) push(e)
+      const check = () => {
+        if (stopped) return
+        if (idle()) wait = setTimeout(loop, 7000)
+        else wait = setTimeout(check, 500)
+      }
+      wait = setTimeout(check, 500)
+    }
+    loop()
+    return () => {
+      stopped = true
+      clearTimeout(wait)
+    }
+  }, [mode, cutNetwork, stealKey, push, reset, idle])
+
+  const stageRef = useRef<HTMLDivElement>(null)
 
   async function run() {
+    stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setMode('live')
+    reset()
     setPhase('running')
     setError(null)
-    setEvents([])
+    setLog([])
     try {
       const res = await fetch('/api/demo/run', {
         method: 'POST',
@@ -84,14 +140,14 @@ export function DemoClient({
         buf = lines.pop() ?? ''
         for (const line of lines) {
           if (!line.trim()) continue
-          const e = JSON.parse(line) as Ev
-          setEvents((prev) => [...prev, { ...e, seq: prev.length }])
+          const e = JSON.parse(line) as DemoEvent
+          push(e)
+          setLog((prev) => [...prev, e])
           if (e.type === 'error') {
             setError(e.message)
             setPhase('error')
           }
           if (e.type === 'done') setPhase('done')
-          requestAnimationFrame(() => logRef.current?.lastElementChild?.scrollIntoView({ block: 'nearest' }))
         }
       }
       setPhase((p) => (p === 'running' ? 'done' : p))
@@ -101,50 +157,79 @@ export function DemoClient({
     }
   }
 
-  const start = events.find((e): e is Extract<Ev, { type: 'start' }> => e.type === 'start')
-  const issued = events.find((e): e is Extract<Ev, { type: 'issued' }> => e.type === 'issued')
-  const accepted = events.filter((e): e is Extract<Ev, { type: 'accepted' }> => e.type === 'accepted')
-  const sealed = events.filter((e): e is Extract<Ev, { type: 'sealed' }> => e.type === 'sealed')
-  const redeemed = events.filter((e): e is Extract<Ev, { type: 'redeemed' }> => e.type === 'redeemed')
-  const done = events.find((e): e is Extract<Ev, { type: 'done' }> => e.type === 'done')
-  const latest = accepted.at(-1)
-  const redeemedTotal = redeemed.reduce((s, r) => s + BigInt(r.paid), 0n)
-  const face = issued ? BigInt(issued.faceValue) : 0n
-  const lines = events.filter(
-    (e): e is Extract<Ev, { type: 'step' | 'info' | 'network' }> & { seq?: number } =>
-      e.type === 'step' || e.type === 'info' || e.type === 'network',
-  )
-  const thief = events.filter((e): e is Extract<Ev, { type: 'thief' }> => e.type === 'thief')
-  const net = events.filter((e): e is Extract<Ev, { type: 'network' }> => e.type === 'network').at(-1)
-  const sellerOffline = net?.down === true && phase === 'running'
+  function backToIllustration() {
+    setPhase('idle')
+    setError(null)
+    setMode('illustration')
+  }
+
+  const issued = log.find((e): e is Extract<DemoEvent, { type: 'issued' }> => e.type === 'issued')
+  const start = log.find((e): e is Extract<DemoEvent, { type: 'start' }> => e.type === 'start')
   const toggles = [
     {
       on: cutNetwork,
       set: setCutNetwork,
       label: 'Cut the network',
-      hint: 'The seller’s blockchain connection is cut; payments keep flowing.',
+      hint: 'Halfway through, the seller loses its blockchain connection. Watch payments keep flowing.',
     },
     {
       on: stealKey,
       set: setStealKey,
       label: 'Steal the agent key',
-      hint: 'A thief with the key tries to overspend and to pay someone else.',
+      hint: 'At the end, a thief with the agent’s key tries three ways to take more.',
     },
   ]
 
   return (
-    <div className="mt-8">
-      <div className="sheet grid gap-4 p-4">
+    <div className="mt-8 grid gap-5">
+      {error && (
+        <div role="alert" className="sheet border-l-4 border-seal p-5 text-sm">
+          <p>{error}</p>
+          <button type="button" onClick={backToIllustration} className="mt-2 text-indigo underline">
+            Watch the illustration instead
+          </button>
+        </div>
+      )}
+
+      <div ref={stageRef} className="scroll-mt-4" />
+      <DemoStage
+        story={story}
+        mode={mode}
+        action={
+          mode === 'illustration' ? (
+            <>
+              <button type="button" onClick={run} className={buttonClass('primary')}>
+                Now run it for real
+              </button>
+              <span className="text-sm text-ink-2">Same steps, on {chainName}, with transactions you can check.</span>
+            </>
+          ) : story.certificateUrl ? (
+            <>
+              <a href={story.certificateUrl} className={buttonClass('primary')}>
+                See this budget on the blockchain
+              </a>
+              <a href="/docs/agents" className={buttonClass('secondary')}>
+                Give your own agent a budget
+              </a>
+            </>
+          ) : undefined
+        }
+      />
+      <div className="sheet grid gap-4 p-4 sm:p-5">
+        <h2 className="font-display text-2xl font-semibold">Run it yourself</h2>
         <div className="flex flex-wrap items-center gap-4">
-          <p className="text-sm">
+          <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
+            {phase === 'running' ? 'Running on the blockchain…' : phase === 'idle' ? 'Run it for real' : 'Run again'}
+          </button>
+          <p className="text-sm text-ink-2">
             {chains.length > 1 ? (
-              <label className="mr-1">
-                Chain{' '}
+              <label>
+                on{' '}
                 <select
                   value={chainKey}
                   disabled={phase === 'running'}
                   onChange={(e) => setChainKey(e.target.value as ChainKey)}
-                  className="rounded border border-line bg-paper px-2 py-1 font-semibold"
+                  className="rounded border border-line bg-paper px-2 py-1 font-semibold text-ink"
                 >
                   {chains.map((c) => (
                     <option key={c.key} value={c.key}>
@@ -155,24 +240,26 @@ export function DemoClient({
               </label>
             ) : (
               <>
-                Chain <strong>{chainName}</strong>
+                on <strong className="text-ink">{chainName}</strong>
               </>
             )}{' '}
-            · Budget <strong>0.30 USDC</strong> · 20 paid calls · a fresh certificate every run
+            with test money: a real 0.30 USDC budget, 20 real paid calls, real transactions you can check.
           </p>
-          <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
-            {phase === 'running' ? 'Running…' : phase === 'idle' ? 'Run the demo' : 'Run again'}
-          </button>
+          {mode === 'live' && phase !== 'running' && (
+            <button type="button" onClick={backToIllustration} className="text-sm text-indigo underline">
+              Back to the illustration
+            </button>
+          )}
         </div>
-        <fieldset className="flex flex-wrap gap-3" disabled={phase === 'running'}>
-          <legend className="smallcaps mb-2 text-xs text-ink-2">During the run, also</legend>
+        <fieldset className="grid gap-3 sm:grid-cols-2" disabled={phase === 'running'}>
+          <legend className="smallcaps mb-2 text-xs text-ink-2">Also show</legend>
           {toggles.map((t) => (
             <button
               key={t.label}
               type="button"
               aria-pressed={t.on}
               onClick={() => t.set(!t.on)}
-              className={`flex min-h-11 max-w-xs flex-col items-start rounded border px-3 py-2 text-left disabled:opacity-60 ${t.on ? 'border-seal bg-paper-2' : 'border-ink/25'}`}
+              className={`flex min-h-11 flex-col items-start rounded border px-3 py-2 text-left disabled:opacity-60 ${t.on ? 'border-seal bg-paper-2' : 'border-ink/25'}`}
             >
               <span className="text-sm font-semibold">
                 <span aria-hidden className="mr-1.5 text-seal">
@@ -184,187 +271,77 @@ export function DemoClient({
             </button>
           ))}
         </fieldset>
-        <p className="text-xs text-ink-2">
-          Real transactions with test money. The seller collects automatically, and once more at the end (Collect now).
-          Every link opens the public record (block explorer).
-        </p>
       </div>
 
-      {error && (
-        <div role="alert" className="mt-4 sheet border-l-4 border-seal p-5 text-sm">
-          {error}
-        </div>
-      )}
-
-      {phase === 'idle' && events.length === 0 && (
-        <p className="mt-8 text-ink-2">
-          Press <strong>Run the demo</strong>. We create a fresh certificate for the Silk Road Oracle on the blockchain.
-          The Merchant agent then makes 20 paid calls, each with a signed slip, and the Oracle collects its money in a
-          few transactions.
-        </p>
-      )}
-
-      {events.length > 0 && (
-        <>
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr]">
-            <section aria-labelledby="merchant" className="sheet min-w-0">
-              <h2 id="merchant" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
-                Merchant (agent)
-              </h2>
-              <ol
-                ref={logRef}
-                className="h-80 overflow-y-auto p-4 font-mono text-xs leading-relaxed"
-                aria-live="polite"
-              >
-                {lines.map((l) => (
-                  <li
-                    key={l.seq}
-                    className={`break-words ${l.type === 'info' ? 'text-ink-2' : l.type === 'network' ? `my-1 rounded border-l-2 px-2 py-1 ${l.down ? 'border-amber text-amber' : 'border-celadon'}` : ''}`}
-                  >
-                    {l.text}
-                    {l.type === 'info' && l.url && (
-                      <>
-                        {' '}
-                        <a className="text-indigo underline" href={l.url} target="_blank" rel="noreferrer">
-                          tx ↗
-                        </a>
-                      </>
-                    )}
-                  </li>
-                ))}
-                {phase === 'running' && lines.length === 0 && (
-                  <li className="text-ink-2">Issuing the certificate on-chain…</li>
-                )}
-              </ol>
-            </section>
-
-            <section aria-labelledby="road" className="sheet min-w-0">
-              <h2 id="road" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
-                The Road
-              </h2>
-              <ul className="flex h-80 flex-wrap content-start gap-2 overflow-y-auto p-4">
-                {sealed.map((s) => (
-                  <li
-                    key={s.requestId}
-                    className="note-in inline-flex items-center gap-1.5 rounded-full border border-seal/40 bg-paper-2 px-2.5 py-1 font-mono text-xs tabular-nums"
-                  >
-                    <span aria-hidden className="size-1.5 rounded-full bg-seal" />
-                    slip {usdc(s.cumulative)}
-                  </li>
-                ))}
-                {sealed.length === 0 && (
-                  <li className="text-sm text-ink-2">Payment slips appear here as the agent pays.</li>
-                )}
-              </ul>
-            </section>
-
-            <section aria-labelledby="oracle" className="sheet min-w-0">
-              <h2 id="oracle" className="border-b border-line px-4 py-3 font-display text-xl font-semibold">
-                Oracle (seller)
-              </h2>
-              <div className="h-80 overflow-y-auto p-4">
-                <dl className="grid grid-cols-2 gap-y-2 text-sm">
-                  <dt className="text-ink-2">Latest note accepted</dt>
-                  <dd className="text-right font-mono tabular-nums">{latest ? usdc(latest.accepted) : '—'}</dd>
-                  <dt className="text-ink-2">Served</dt>
-                  <dd className="text-right font-mono tabular-nums">{latest ? usdc(latest.consumed) : '—'}</dd>
-                  <dt className="text-ink-2">Collected</dt>
-                  <dd className="text-right font-mono tabular-nums">{usdc(redeemedTotal)}</dd>
-                </dl>
-                {sellerOffline && (
-                  <p role="status" className="mt-3 rounded border border-amber px-2 py-1 text-xs text-amber">
-                    Chain connection cut · still accepting · redemption queued
-                  </p>
-                )}
-                {latest && (
-                  <p className="mt-3 flex items-center gap-2">
-                    <Seal size={28} animate key={latest.accepted} label="Note accepted" />
-                    <StatusChip kind="accepted">Accepted by seller</StatusChip>
-                  </p>
-                )}
-                <ul className="mt-4 space-y-2">
-                  {redeemed.map((r) => (
-                    <li key={r.txHash} className="flex items-center justify-between gap-2 text-sm">
-                      <StatusChip kind="redeemed">Collected {usdc(r.paid)}</StatusChip>
-                      <a
-                        href={r.txUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono text-xs text-indigo underline"
-                      >
-                        {short(r.txHash)} ↗
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          </div>
-
-          <section aria-labelledby="strip" className="mt-4 sheet p-5">
-            <h2 id="strip" className="sr-only">
-              Certificate
-            </h2>
-            {issued ? (
-              <div className="grid items-center gap-4 md:grid-cols-[1fr_auto]">
-                <Tally used={latest ? BigInt(latest.accepted) : 0n} face={face} label="signed" />
-                <p className="text-sm">
-                  <a className="text-indigo underline" href={`/c/${start?.chain}/${issued.certificateId}`}>
-                    Certificate {short(issued.certificateId)}
-                  </a>{' '}
-                  ·{' '}
-                  <a className="text-indigo underline" href={issued.txUrl} target="_blank" rel="noreferrer">
-                    issue tx ↗
-                  </a>
-                </p>
-              </div>
-            ) : (
-              <p className="h-10 animate-pulse rounded bg-paper-2 motion-reduce:animate-none">
-                <span className="sr-only">Issuing the certificate…</span>
-              </p>
-            )}
-          </section>
-
-          {thief.length > 0 && (
-            <section aria-labelledby="thief" className="mt-4 sheet p-5">
-              <h2 id="thief" className="font-display text-xl font-semibold">
-                The thief (same agent key)
-              </h2>
-              <ul className="mt-2 grid gap-2">
-                {thief.map((t) => (
-                  <li key={t.attempt} className="grid gap-0.5 border-b border-line pb-2 text-sm">
-                    <span>{t.attempt}</span>
-                    <span className={t.refused ? 'font-medium text-ink' : 'font-medium text-seal'}>
-                      {t.refused ? '✓ ' : '✗ '}
-                      {t.detail}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs text-ink-2">
-                A stolen key can only ever pay the named seller, up to what is left on the certificate.
-              </p>
-            </section>
-          )}
-
-          {done && (
-            <p className="mt-6 text-lg">
-              <strong>
-                {done.served} requests, collected in {done.redemptions} transaction{done.redemptions === 1 ? '' : 's'}.
-              </strong>{' '}
-              The seller was paid {usdc(done.redeemed)} USDC for exactly what it served; {usdc(done.remaining)} USDC
-              stays in the certificate and returns to the funder after expiry.
-              {done.bestTrade && (
-                <span className="text-ink-2">
-                  {' '}
-                  The Merchant’s best trade: buy tea in {done.bestTrade.buy}, sell in {done.bestTrade.sell}{' '}
-                  (illustrative game data).
-                </span>
-              )}
+      {mode === 'live' && log.length > 0 && (
+        <details className="sheet p-4 text-sm">
+          <summary className="cursor-pointer font-medium">Technical log and links</summary>
+          <p className="mt-3 text-ink-2">
+            Everything below happened on {start?.chainName ?? chainName}. Each link opens the public record.
+          </p>
+          {issued && (
+            <p className="mt-2">
+              <a className="text-indigo underline" href={`/c/${start?.chain}/${issued.certificateId}`}>
+                Budget {short(issued.certificateId)}
+              </a>{' '}
+              ·{' '}
+              <a className="text-indigo underline" href={issued.txUrl} target="_blank" rel="noreferrer">
+                lock transaction ↗
+              </a>
             </p>
           )}
-        </>
+          <ol className="mt-3 max-h-80 overflow-y-auto font-mono text-xs leading-relaxed">
+            {log.map((e, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: an append-only log
+              <li key={i} className="break-words border-b border-line/60 py-1">
+                {describe(e)}
+                {'txUrl' in e && e.txUrl && (
+                  <>
+                    {' '}
+                    <a className="text-indigo underline" href={e.txUrl} target="_blank" rel="noreferrer">
+                      tx ↗
+                    </a>
+                  </>
+                )}
+                {e.type === 'info' && e.url && (
+                  <>
+                    {' '}
+                    <a className="text-indigo underline" href={e.url} target="_blank" rel="noreferrer">
+                      tx ↗
+                    </a>
+                  </>
+                )}
+              </li>
+            ))}
+          </ol>
+        </details>
       )}
     </div>
   )
+}
+
+function describe(e: DemoEvent): string {
+  switch (e.type) {
+    case 'start':
+      return `start: ${e.chainName}, budget ${e.face} base units`
+    case 'issued':
+      return `budget locked: ${e.certificateId}`
+    case 'sealed':
+      return `slip signed: total ${e.cumulative}`
+    case 'accepted':
+      return `${e.status} ${e.path}: accepted ${e.accepted}, served ${e.consumed}`
+    case 'redeemed':
+      return `collected ${e.paid} (up to total ${e.cumulative})`
+    case 'step':
+    case 'info':
+      return e.text
+    case 'network':
+      return e.text
+    case 'thief':
+      return `thief: ${e.attempt} → ${e.detail}`
+    case 'done':
+      return `done: ${e.served}/${e.calls} served, collected ${e.redeemed}, ${e.redemptions} transactions`
+    case 'error':
+      return `error: ${e.message}`
+  }
 }
