@@ -2,6 +2,16 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 13: Hackathon pages and browser e2e (24 Sep): ✅
+
+- **`/hackathons/[event]`** for arbitrum, colosseum, monad and arc (§16.2), from `lib/hackathons.ts`. Each page has its own framing and track, leads with the door that fits the track, and reads its chains from the registry.
+- The pages say only what is true today: "is live on Arbitrum Sepolia and will be deployed on Arbitrum One"; not-yet-deployed chains say so.
+- The Monad page picks Track 4 (agents + MCP lead). §16.2 asks us to pick one; it is one line to change.
+- **Playwright e2e** (`pnpm --filter @flying-money/web e2e`, §17 Sprint B): on a private anvil it connects the mock wallet, issues 5 USDC, signs a 2.50 note with the e2e spender key, redeems it as the payee, and checks that the replay is refused ("Already redeemed").
+  - Locally it uses the installed Chrome; CI installs Chromium.
+  - The teardown stops anvil and removes the e2e files.
+  - **New CI job: `e2e`.** Vitest is now scoped to `test/`.
+
 ## Phase 12: Contacts, people & places (24 Sep): ✅ locally (anvil)
 
 - **`/app/places`:**

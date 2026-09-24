@@ -31,3 +31,5 @@ contracts/snapshots/
 .e2e-state.json
 apps/web/next-env.d.ts
 .vercel
+test-results/
+playwright-report/
