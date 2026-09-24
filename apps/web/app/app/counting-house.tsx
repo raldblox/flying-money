@@ -6,6 +6,7 @@ import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } fro
 import { IssuedList, PayeeList } from '@/components/app/certificate-lists'
 import { IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { buttonClass } from '@/components/section'
+import { badgeOf, listPlaces, type PlaceContact } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
 import { SITE } from '@/lib/site'
 import { deployedChains } from '@/lib/wagmi'
@@ -32,7 +33,17 @@ export function CountingHouse({ defaultChain, oraclePayee }: { defaultChain: str
   const { switchChain, isPending: switching } = useSwitchChain()
   const wrongNetwork = isConnected && walletChainId !== chain.chain.id
 
-  const places: Place[] = oraclePayee ? [{ name: 'Silk Road Oracle (demo)', address: oraclePayee, verified: true }] : []
+  // saved Places (§12.6) plus the demo Oracle
+  const [saved, setSaved] = useState<PlaceContact[]>([])
+  useEffect(() => {
+    void listPlaces().then(setSaved)
+  }, [])
+  const places: Place[] = [
+    ...(oraclePayee ? [{ name: 'Silk Road Oracle (demo)', address: oraclePayee, verified: true }] : []),
+    ...saved
+      .filter((p) => p.chain === chain.key && !(oraclePayee && p.payee.toLowerCase() === oraclePayee.toLowerCase()))
+      .map((p) => ({ name: p.name, address: p.payee, verified: p.verification !== 'unverified', badge: badgeOf(p) })),
+  ]
 
   return (
     <div className="mt-8 grid gap-8">

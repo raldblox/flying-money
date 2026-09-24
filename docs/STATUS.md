@@ -2,6 +2,29 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 12: Contacts, people & places (24 Sep): ✅ locally (anvil)
+
+- **`/app/places`:**
+  - **✓ Scanned:** scan the till's price code, or the QR on the shop page, which now encodes the shop page itself.
+  - **✓ domain:** reads the seller's `/.well-known/flying-money.json` in the browser.
+  - **⚠ Unverified:** a pasted address, which must be confirmed twice before issuing.
+  - A place's verification can never be downgraded.
+- **`/app/people`:** add a person, child, employee or agent, with the §3.9 key policy (a fresh key per certificate for people, one key for agents and employees).
+- **`/app/people/[id]`** (the holder control page):
+  - totals: left in total, collected so far, open certificates;
+  - per certificate: status, tally, "Ends in 2 days. Renew?", and Top up, Extend and Reclaim (for the funder's wallet);
+  - **Give a certificate:** the wizard is prefilled with the holder's key policy and the saved places;
+  - **Renew:** same place, amount and length, with a new key for per-certificate holders.
+- **Wizard:** presets, saved places with their badges, "Now give it to Mia" copy, and the hand-over link named after the holder.
+- **Privacy and backup:** contacts stay in IndexedDB only, with an encrypted export and import (passphrase). The pages state the no-freeze control model and the privacy rule.
+- **Verified on anvil:**
+  1. Scanned "Lantern Café" from its shop link.
+  2. Added Mia (child).
+  3. Gave 10 USDC and got the hand-over link.
+  4. Renew prefilled 10 USDC, 7 days and Lantern Café, and issued.
+  5. Mia's page showed 2 certificates and 20.00 left.
+- **Not done (optional in §12.6):** local reminder notifications (an in-page "Renew?" is shown instead), and receipts from a paired holder wallet to the funder (a stretch goal).
+
 ## Phase 11: `@flying-money/mcp` (24 Sep): ✅ tests + stdio probe · ⏸ a live Claude session paying (human)
 
 - **Tools** (§8.4): `fm_status`, `fm_explain`, `fm_quote` and `fm_paid_fetch` (with `max_price`). There are no issue or top-up tools, and no tool returns the key.

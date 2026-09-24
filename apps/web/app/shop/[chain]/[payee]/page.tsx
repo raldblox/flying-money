@@ -34,9 +34,15 @@ export default async function ShopPublicPage({
           code. No fees for you, no crypto wallet needed.
         </p>
         <div className="mx-auto mt-8 max-w-60">
-          <QrCode value={`${SITE.url}/wallet`} label="Open the Flying Money wallet" />
+          <QrCode
+            value={`${SITE.url}/shop/${c.key}/${payee}?name=${encodeURIComponent(name)}`}
+            label={`${name}: the shop’s code`}
+          />
         </div>
-        <p className="mt-2 text-sm text-ink-2">Scan to open the wallet</p>
+        <p className="mt-2 text-sm text-ink-2">
+          The shop’s code. Customers open it to reach their wallet; givers scan it in the Counting House to add this
+          shop as a verified place.
+        </p>
         <p className="mt-6 text-xs text-ink-2">
           Payments go only to <span className="font-mono">{short(payee)}</span>. Only certificates made for this shop
           work here.

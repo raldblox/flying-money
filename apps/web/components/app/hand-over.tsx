@@ -9,8 +9,18 @@ import { handOverFragment } from '@/lib/wallet'
  * "Give a certificate to someone" (§12.5 funder flow): a wallet link with the spending key in the URL fragment,
  * which browsers never send to a server. Shown once; nothing is stored.
  */
-export function HandOverLink({ chain, id, spenderKey }: { chain: ChainKey; id: Hex; spenderKey: Hex }) {
-  const [name, setName] = useState('')
+export function HandOverLink({
+  chain,
+  id,
+  spenderKey,
+  name: initialName = '',
+}: {
+  chain: ChainKey
+  id: Hex
+  spenderKey: Hex
+  name?: string | undefined
+}) {
+  const [name, setName] = useState(initialName)
   const [show, setShow] = useState(false)
   const [origin, setOrigin] = useState('')
   const ids = useId()

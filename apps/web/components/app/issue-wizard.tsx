@@ -15,6 +15,27 @@ export interface Place {
   name: string
   address: Hex
   verified: boolean
+  /** How it was verified, e.g. "✓ Scanned" or "✓ shop.com" (§12.6). */
+  badge?: string
+}
+
+/** Prefill from Contacts: Give certificate / Renew (§12.6). */
+export interface IssuePreset {
+  placeAddress?: Hex
+  spender?: Hex
+  spenderMode?: 'paste' | 'generate'
+  amount?: string
+  durationIdx?: number
+  holderName?: string
+}
+
+export interface IssuedInfo {
+  id: Hex
+  chain: ChainConfig['key']
+  payee: Hex
+  spender: Hex
+  faceValue: bigint
+  durationIdx: number
 }
 
 const DURATIONS = [
@@ -30,10 +51,12 @@ export function IssueWizard({
   chain,
   places,
   onIssued,
+  preset,
 }: {
   chain: ChainConfig
   places: Place[]
-  onIssued: () => void
+  preset?: IssuePreset
+  onIssued: (info: IssuedInfo) => void
 }) {
   const { address } = useAccount()
   const publicClient = usePublicClient({ chainId: chain.chain.id })
@@ -43,17 +66,20 @@ export function IssueWizard({
   const ids = useId()
 
   // Step 1: who can be paid
-  const [placeIdx, setPlaceIdx] = useState<number | 'custom'>(places.length ? 0 : 'custom')
-  const [customPayee, setCustomPayee] = useState('')
+  const presetIdx = preset?.placeAddress ? places.findIndex((p) => sameAddress(p.address, preset.placeAddress!)) : -1
+  const [placeIdx, setPlaceIdx] = useState<number | 'custom'>(
+    presetIdx >= 0 ? presetIdx : preset?.placeAddress ? 'custom' : places.length ? 0 : 'custom',
+  )
+  const [customPayee, setCustomPayee] = useState(presetIdx < 0 && preset?.placeAddress ? preset.placeAddress : '')
   const [customConfirmed, setCustomConfirmed] = useState(false)
   // Step 2: who can spend
-  const [spenderMode, setSpenderMode] = useState<'paste' | 'generate'>('paste')
-  const [pastedSpender, setPastedSpender] = useState('')
+  const [spenderMode, setSpenderMode] = useState<'paste' | 'generate'>(preset?.spenderMode ?? 'paste')
+  const [pastedSpender, setPastedSpender] = useState<string>(preset?.spender ?? '')
   const [generated, setGenerated] = useState<{ key: Hex; address: Hex } | null>(null)
   const [keySaved, setKeySaved] = useState(false)
   // Step 3: budget and time
-  const [amount, setAmount] = useState('5')
-  const [durationIdx, setDurationIdx] = useState(1)
+  const [amount, setAmount] = useState(preset?.amount ?? '5')
+  const [durationIdx, setDurationIdx] = useState(preset?.durationIdx ?? 1)
   const [issued, setIssued] = useState<{ id: Hex; hash: Hex } | null>(null)
 
   // Forget a generated key when leaving the page (it is never stored).
@@ -61,7 +87,8 @@ export function IssueWizard({
 
   const place = placeIdx === 'custom' ? null : places[placeIdx]
   const payee = (place?.address ?? (isAddress(customPayee) ? customPayee : undefined)) as Hex | undefined
-  const payeeOk = Boolean(payee) && (place ? true : customConfirmed)
+  // listed or verified places are ready; pasted or unverified ones need the "checked twice" confirmation
+  const payeeOk = Boolean(payee) && (place?.verified || customConfirmed)
   const spender = (
     spenderMode === 'generate' ? generated?.address : isAddress(pastedSpender) ? pastedSpender : undefined
   ) as Hex | undefined
@@ -96,7 +123,8 @@ export function IssueWizard({
   if (spender && address && sameAddress(spender, address))
     problems.push('The spender key can’t be your own wallet: use a separate key that holds no money.')
   if (spender && payee && sameAddress(spender, payee)) problems.push('The spender key can’t be the payee.')
-  if (spenderMode === 'generate' && generated && !keySaved) problems.push('Save the generated key first.')
+  if (spenderMode === 'generate' && generated && !keySaved && !preset?.holderName)
+    problems.push('Save the generated key first.')
   if (face === null || face === 0n) problems.push('Enter a face value above 0 (up to 6 decimals).')
   if (face && chain.maxFaceValue > 0n && face > chain.maxFaceValue)
     problems.push(`This deployment caps a certificate at ${usdc(chain.maxFaceValue)} USDC.`)
@@ -139,7 +167,7 @@ export function IssueWizard({
     const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
     if (log) {
       setIssued({ id: log.args.id, hash: receipt.transactionHash })
-      onIssued()
+      onIssued({ id: log.args.id, chain: chain.key, payee, spender, faceValue: face, durationIdx })
     }
   }
 
@@ -161,11 +189,19 @@ export function IssueWizard({
         </div>
         <h3 className="mt-5 font-display text-3xl font-semibold">Certificate issued.</h3>
         <p className="mt-2 font-mono text-sm break-all">{issued.id}</p>
-        <p className="mt-4 text-ink-2">Add it to your agent’s config:</p>
-        <pre className="mx-auto mt-2 w-fit rounded bg-paper-2 px-4 py-3 text-left font-mono text-sm">
-          <code>{`certificates: ['${issued.id}']`}</code>
-        </pre>
-        {generated && (
+        {preset?.holderName && generated ? (
+          <p className="mt-4 text-ink-2">
+            Now give it to {preset.holderName}: send the hand-over link below privately.
+          </p>
+        ) : (
+          <>
+            <p className="mt-4 text-ink-2">Add it to your agent’s config:</p>
+            <pre className="mx-auto mt-2 w-fit rounded bg-paper-2 px-4 py-3 text-left font-mono text-sm">
+              <code>{`certificates: ['${issued.id}']`}</code>
+            </pre>
+          </>
+        )}
+        {generated && !preset?.holderName && (
           <button
             type="button"
             className={`${buttonClass('secondary')} mt-4`}
@@ -174,7 +210,14 @@ export function IssueWizard({
             Download the agent .env again (with the certificate id)
           </button>
         )}
-        {generated && <HandOverLink chain={chain.key} id={issued.id} spenderKey={generated.key} />}
+        {generated && (
+          <HandOverLink
+            chain={chain.key}
+            id={issued.id}
+            spenderKey={generated.key}
+            name={preset?.holderName ?? place?.name}
+          />
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
           <a className="text-indigo underline" href={`/c/${chain.key}/${issued.id}`}>
             Open the certificate page
@@ -224,12 +267,19 @@ export function IssueWizard({
                 type="radio"
                 name={`${ids}-place`}
                 checked={placeIdx === i}
-                onChange={() => setPlaceIdx(i)}
+                onChange={() => {
+                  setPlaceIdx(i)
+                  setCustomConfirmed(false)
+                }}
                 className="accent-[var(--seal)]"
               />
               <span className="font-medium">{p.name}</span>
               <span className="font-mono text-xs text-ink-2">{short(p.address)}</span>
-              {p.verified && <span className="ml-auto text-xs text-ink-2">✓ listed</span>}
+              {p.verified ? (
+                <span className="ml-auto text-xs text-ink-2">{p.badge ?? '✓ listed'}</span>
+              ) : (
+                <span className="ml-auto text-xs text-amber">⚠ unverified</span>
+              )}
             </label>
           ))}
           <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded border border-line px-3 py-2 has-[:checked]:border-seal">
@@ -244,6 +294,20 @@ export function IssueWizard({
             <span className="ml-auto text-xs text-amber">⚠ unverified</span>
           </label>
         </div>
+        {place && !place.verified && (
+          <label className="mt-3 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={customConfirmed}
+              onChange={(e) => setCustomConfirmed(e.target.checked)}
+              className="mt-1 accent-[var(--seal)]"
+            />
+            <span>
+              I checked this address twice with {place.name}. Money locked for a wrong address can only be reclaimed
+              after expiry.
+            </span>
+          </label>
+        )}
         {placeIdx === 'custom' && (
           <div className="mt-3">
             <label htmlFor={`${ids}-payee`} className="text-sm font-medium">
@@ -355,27 +419,34 @@ export function IssueWizard({
                 <p className="text-sm">
                   Address: <span className="font-mono">{generated.address}</span>
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    className={buttonClass('secondary')}
-                    onClick={() => {
-                      downloadEnv(generated.key)
-                      setKeySaved(true)
-                    }}
-                  >
-                    Download the agent .env
-                  </button>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={keySaved}
-                      onChange={(e) => setKeySaved(e.target.checked)}
-                      className="accent-[var(--seal)]"
-                    />
-                    I saved the key
-                  </label>
-                </div>
+                {preset?.holderName ? (
+                  <p className="text-sm text-ink-2">
+                    After issuing you get a hand-over link for {preset.holderName}. The key travels only in that link;
+                    it is never stored here. If it gets lost, you reclaim the money after the end date.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      className={buttonClass('secondary')}
+                      onClick={() => {
+                        downloadEnv(generated.key)
+                        setKeySaved(true)
+                      }}
+                    >
+                      Download the agent .env
+                    </button>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={keySaved}
+                        onChange={(e) => setKeySaved(e.target.checked)}
+                        className="accent-[var(--seal)]"
+                      />
+                      I saved the key
+                    </label>
+                  </div>
+                )}
               </div>
             )}
           </div>

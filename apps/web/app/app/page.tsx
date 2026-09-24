@@ -1,5 +1,6 @@
 import type { Hex } from '@flying-money/core'
 import type { Metadata } from 'next'
+import { ContactsNav } from '@/components/app/contacts-nav'
 import { CountingHouse } from './counting-house'
 import { Providers } from './providers'
 
@@ -14,7 +15,7 @@ export default function AppPage() {
   const oraclePayee = payee && /^0x[0-9a-fA-F]{40}$/.test(payee) ? (payee as Hex) : undefined
   return (
     <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
-      <p className="smallcaps text-sm text-seal">The Counting House</p>
+      <ContactsNav current="app" />
       <h1 className="mt-1 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
         Issue, keep, <em className="text-seal">redeem</em>.
       </h1>
