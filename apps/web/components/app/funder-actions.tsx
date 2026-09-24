@@ -67,7 +67,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
         functionName,
         args: args as never,
       })
-      return wallet.writeContract(request)
+      return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
       setPanel(null)
@@ -156,6 +156,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
               void approveTx
                 .run(() =>
                   wallet!.writeContract({
+                    chain: chain.chain,
                     address: chain.usdc,
                     abi: erc20Abi,
                     functionName: 'approve',

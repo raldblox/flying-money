@@ -198,7 +198,7 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
         functionName: 'redeem',
         args: [note!.certificateId, note!.cumulative, note!.memo, note!.sig],
       })
-      return wallet.writeContract(request)
+      return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
       setPaid(note.cumulative - cert.redeemed)

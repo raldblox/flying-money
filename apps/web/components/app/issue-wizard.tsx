@@ -163,6 +163,7 @@ export function IssueWizard({
     if (!wallet || !face || !chain.flyingMoney) return
     const r = await approveTx.run(() =>
       wallet.writeContract({
+        chain: chain.chain,
         address: chain.usdc,
         abi: erc20Abi,
         functionName: 'approve',
@@ -184,7 +185,7 @@ export function IssueWizard({
         functionName: 'issue',
         args: [payee, spender, face!, expiresAt],
       })
-      return wallet.writeContract(request)
+      return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (!receipt) return
     const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })

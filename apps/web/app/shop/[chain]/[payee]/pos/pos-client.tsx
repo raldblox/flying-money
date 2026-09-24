@@ -378,7 +378,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
           })),
         ],
       })
-      return wallet.writeContract(request)
+      return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
       for (const p of batch) await till.store.markRedeemed(p.key, p.note.cumulative, r.transactionHash)

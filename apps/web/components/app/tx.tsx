@@ -73,6 +73,8 @@ export function useTx(publicClient: PublicClient | undefined) {
 function friendly(e: unknown): string {
   const m = (e as { shortMessage?: string; message?: string })?.shortMessage ?? (e as Error)?.message ?? String(e)
   if (/user rejected|denied/i.test(m)) return 'You rejected the request in your wallet.'
+  if (/does not match the target chain|chain mismatch/i.test(m))
+    return 'Your wallet is on another network. Switch it to the network shown on this page, then try again.'
   return m.split('\n')[0]!
 }
 
