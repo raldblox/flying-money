@@ -22,6 +22,8 @@ type Ev =
       credit: string
     }
   | { type: 'redeemed'; paid: string; cumulative: string; txHash: string; txUrl: string }
+  | { type: 'network'; down: boolean; text: string }
+  | { type: 'thief'; attempt: string; refused: boolean; detail: string }
   | {
       type: 'done'
       calls: number
@@ -40,7 +42,9 @@ type Phase = 'idle' | 'running' | 'done' | 'error'
 export function DemoClient({ chainName }: { chainName: string }) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [events, setEvents] = useState<Ev[]>([])
+  const [events, setEvents] = useState<Array<Ev & { seq?: number }>>([])
+  const [cutNetwork, setCutNetwork] = useState(true)
+  const [stealKey, setStealKey] = useState(true)
   const logRef = useRef<HTMLOListElement>(null)
 
   async function run() {
@@ -48,7 +52,11 @@ export function DemoClient({ chainName }: { chainName: string }) {
     setError(null)
     setEvents([])
     try {
-      const res = await fetch('/api/demo/run', { method: 'POST' })
+      const res = await fetch('/api/demo/run', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ cutNetwork, stealKey }),
+      })
       if (!res.ok || !res.body) {
         const j = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(j.error ?? `The demo runner answered ${res.status}.`)
@@ -64,7 +72,7 @@ export function DemoClient({ chainName }: { chainName: string }) {
         for (const line of lines) {
           if (!line.trim()) continue
           const e = JSON.parse(line) as Ev
-          setEvents((prev) => [...prev, e])
+          setEvents((prev) => [...prev, { ...e, seq: prev.length }])
           if (e.type === 'error') {
             setError(e.message)
             setPhase('error')
@@ -90,20 +98,62 @@ export function DemoClient({ chainName }: { chainName: string }) {
   const redeemedTotal = redeemed.reduce((s, r) => s + BigInt(r.paid), 0n)
   const face = issued ? BigInt(issued.faceValue) : 0n
   const lines = events.filter(
-    (e): e is Extract<Ev, { type: 'step' | 'info' }> => e.type === 'step' || e.type === 'info',
+    (e): e is Extract<Ev, { type: 'step' | 'info' | 'network' }> & { seq?: number } =>
+      e.type === 'step' || e.type === 'info' || e.type === 'network',
   )
+  const thief = events.filter((e): e is Extract<Ev, { type: 'thief' }> => e.type === 'thief')
+  const net = events.filter((e): e is Extract<Ev, { type: 'network' }> => e.type === 'network').at(-1)
+  const sellerOffline = net?.down === true && phase === 'running'
+  const toggles = [
+    {
+      on: cutNetwork,
+      set: setCutNetwork,
+      label: 'Cut the network',
+      hint: 'The seller’s blockchain connection is cut; payments keep flowing.',
+    },
+    {
+      on: stealKey,
+      set: setStealKey,
+      label: 'Steal the agent key',
+      hint: 'A thief with the key tries to overspend and to pay someone else.',
+    },
+  ]
 
   return (
     <div className="mt-8">
-      <div className="flex flex-wrap items-center gap-4 sheet p-4">
-        <p className="text-sm">
-          Chain <strong>{chainName}</strong> · Budget <strong>0.30 USDC</strong> · 20 paid calls
-        </p>
-        <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
-          {phase === 'running' ? 'Running…' : phase === 'idle' ? 'Run the demo' : 'Run again'}
-        </button>
+      <div className="sheet grid gap-4 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="text-sm">
+            Chain <strong>{chainName}</strong> · Budget <strong>0.30 USDC</strong> · 20 paid calls · a fresh certificate
+            every run
+          </p>
+          <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
+            {phase === 'running' ? 'Running…' : phase === 'idle' ? 'Run the demo' : 'Run again'}
+          </button>
+        </div>
+        <fieldset className="flex flex-wrap gap-3" disabled={phase === 'running'}>
+          <legend className="smallcaps mb-2 text-xs text-ink-2">During the run, also</legend>
+          {toggles.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              aria-pressed={t.on}
+              onClick={() => t.set(!t.on)}
+              className={`flex min-h-11 max-w-xs flex-col items-start rounded border px-3 py-2 text-left disabled:opacity-60 ${t.on ? 'border-seal bg-paper-2' : 'border-ink/25'}`}
+            >
+              <span className="text-sm font-semibold">
+                <span aria-hidden className="mr-1.5 text-seal">
+                  {t.on ? '■' : '□'}
+                </span>
+                {t.label}
+              </span>
+              <span className="text-xs text-ink-2">{t.hint}</span>
+            </button>
+          ))}
+        </fieldset>
         <p className="text-xs text-ink-2">
-          Real transactions with test money. Every link opens the public record (block explorer).
+          Real transactions with test money. The seller collects automatically, and once more at the end (Redeem now).
+          Every link opens the public record (block explorer).
         </p>
       </div>
 
@@ -133,9 +183,11 @@ export function DemoClient({ chainName }: { chainName: string }) {
                 className="h-80 overflow-y-auto p-4 font-mono text-xs leading-relaxed"
                 aria-live="polite"
               >
-                {lines.map((l, k) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: the log is append-only, so an index never changes meaning
-                  <li key={k} className={`break-words ${l.type === 'info' ? 'text-ink-2' : ''}`}>
+                {lines.map((l) => (
+                  <li
+                    key={l.seq}
+                    className={`break-words ${l.type === 'info' ? 'text-ink-2' : l.type === 'network' ? `my-1 rounded border-l-2 px-2 py-1 ${l.down ? 'border-amber text-amber' : 'border-celadon'}` : ''}`}
+                  >
                     {l.text}
                     {l.type === 'info' && l.url && (
                       <>
@@ -184,6 +236,11 @@ export function DemoClient({ chainName }: { chainName: string }) {
                   <dt className="text-ink-2">Redeemed on-chain</dt>
                   <dd className="text-right font-mono tabular-nums">{usdc(redeemedTotal)}</dd>
                 </dl>
+                {sellerOffline && (
+                  <p role="status" className="mt-3 rounded border border-amber px-2 py-1 text-xs text-amber">
+                    Chain connection cut · still accepting · redemption queued
+                  </p>
+                )}
                 {latest && (
                   <p className="mt-3 flex items-center gap-2">
                     <Seal size={28} animate key={latest.accepted} label="Note accepted" />
@@ -232,6 +289,28 @@ export function DemoClient({ chainName }: { chainName: string }) {
               </p>
             )}
           </section>
+
+          {thief.length > 0 && (
+            <section aria-labelledby="thief" className="mt-4 sheet p-5">
+              <h2 id="thief" className="font-display text-xl font-semibold">
+                The thief (same agent key)
+              </h2>
+              <ul className="mt-2 grid gap-2">
+                {thief.map((t) => (
+                  <li key={t.attempt} className="grid gap-0.5 border-b border-line pb-2 text-sm">
+                    <span>{t.attempt}</span>
+                    <span className={t.refused ? 'font-medium text-ink' : 'font-medium text-seal'}>
+                      {t.refused ? '✓ ' : '✗ '}
+                      {t.detail}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-ink-2">
+                A stolen key can only ever pay the named seller, up to what is left on the certificate.
+              </p>
+            </section>
+          )}
 
           {done && (
             <p className="mt-6 text-lg">

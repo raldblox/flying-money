@@ -37,6 +37,9 @@ export async function POST(req: Request) {
     )
   if (running)
     return Response.json({ error: 'Another visitor’s demo is running. Try again in a minute.' }, { status: 429 })
+  // §13.3 scenario toggles (D22): chosen before the run, performed live during it
+  const body = (await req.json().catch(() => ({}))) as { cutNetwork?: unknown; stealKey?: unknown }
+  const scenarios = { cutNetwork: body.cutNetwork === true, stealKey: body.stealKey === true }
   running = true
   lastRun.set(ip, Date.now())
 
@@ -73,6 +76,7 @@ export async function POST(req: Request) {
             faceValue: FACE,
             env: process.env,
             transport: 'in-process',
+            scenarios,
             onEvent: send,
           }),
         ]).finally(() => clearTimeout(timer))

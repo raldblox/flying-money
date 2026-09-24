@@ -2,6 +2,16 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.4.1 · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Phase 10: /demo scenarios (24 Sep): ✅ on anvil (CI test) and live on Arbitrum Sepolia
+
+- **Cut the network** and **Steal the agent key** toggles (D22); Redeem now and Reset are covered (see D22).
+- **Live run on Arbitrum Sepolia:** 20 requests, 3 redemptions, 0.25 USDC paid for exactly what was served. With the seller's chain connection cut, notes kept being accepted. The thief was refused three times: by the seller (insufficient), by the contract (`ExceedsFaceValue`, a read-only call) and by a different seller (wrong-payee).
+- **New anvil test** `apps/agent/test/scenarios.test.ts` checks four things:
+  - notes are accepted while the connection is cut, with no redemption until the restore;
+  - all three thief attempts are refused;
+  - the payee's balance equals what was served;
+  - the amount redeemed equals the amount served.
+
 ## Phase 9: Counting House funder actions (24 Sep): ✅ locally (anvil)
 
 - **Top up** (approve if needed → `topUp`), **Extend** (+1, +7 or +30 days; never shorter, at most 365 days from now), **Reclaim** (only after expiry). Also **Open page** on every issued certificate (§12.2).
