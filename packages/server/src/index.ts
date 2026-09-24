@@ -9,6 +9,19 @@ export {
   type RejectReason,
   type UnverifiedRecord,
 } from './counter.js'
+export {
+  DurableStoreRequiredError,
+  type FmEnv,
+  type Lock,
+  memoryLock,
+  memoryRateLimiter,
+  type RateLimiter,
+  rateLimiter,
+  redisFromEnv,
+  redisLock,
+  type SellerStore,
+  sellerStoreFromEnv,
+} from './durable.js'
 export { createIdempotency } from './idempotency.js'
 export { type MemoryStoreOptions, memoryStore, type StoreSnapshot } from './memory-store.js'
 export {

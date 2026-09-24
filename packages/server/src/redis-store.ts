@@ -30,7 +30,7 @@ export function upstashEval(client: UpstashRedis): RedisEval {
 }
 
 // Decimal-string arithmetic: Redis Lua numbers are doubles and would lose precision above 2^53.
-const LUA_PRELUDE = `
+export const LUA_PRELUDE = `
 local function strip(s) local r = string.gsub(s, '^0+', '') if r == '' then return '0' end return r end
 local function pad(n) return string.rep('0', 78 - #n) .. n end
 local function cmp(a, b)
@@ -89,7 +89,8 @@ redis.call('SADD', KEYS[5], ARGV[7])
 return 'ADMITTED'
 `
 
-// KEYS: out, st, pending   ARGV: ok ('1'|'0'), responseRef ('' = none), nowMs, pendingMember, hasRef ('1'|'0')
+// KEYS: out, st, pending
+// ARGV: ok ('1'|'0'), responseRef ('' = none), nowMs, pendingMember, hasRef ('1'|'0'), outcomeTtlSeconds
 const FINISH =
   LUA_PRELUDE +
   `
@@ -106,6 +107,7 @@ if ARGV[1] == '1' then
 else
   redis.call('HSET', KEYS[1], 'status', 'FAILED_CREDITED')
 end
+redis.call('EXPIRE', KEYS[1], ARGV[6])
 redis.call('ZREM', KEYS[3], ARGV[4])
 return 'DONE'
 `
@@ -141,27 +143,34 @@ const OUTCOME = `return redis.call('HMGET', KEYS[1], 'status', 'price', 'respons
 const BEST = `return redis.call('ZREVRANGEBYLEX', KEYS[1], '[' .. ARGV[1] .. '|~', '-', 'LIMIT', 0, 1)`
 const STALE = `return redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])`
 const MEMBERS = `return redis.call('SMEMBERS', KEYS[1])`
-const GET = `return redis.call('GET', KEYS[1])`
-const SET = `if ARGV[1] == '' then return redis.call('DEL', KEYS[1]) end return redis.call('SET', KEYS[1], ARGV[1])`
+const GET = `return redis.call('HGET', KEYS[1], 'json')`
+const SET = `if ARGV[1] == '' then return redis.call('DEL', KEYS[1]) end return redis.call('HSET', KEYS[1], 'json', ARGV[1])`
+/** §21.5: an outcome record is kept 30 days after it becomes final (SERVED or FAILED_CREDITED). */
+const OUTCOME_TTL_SECONDS = 30 * 86_400
 
 const pad78 = (n: bigint) => n.toString().padStart(78, '0')
 type Bulk = string | null | false | undefined
 const str = (v: unknown): string | null => (v === null || v === undefined || v === false ? null : String(v))
 
 export interface RedisStoreOptions {
-  /** Key prefix (namespace), default "fm:". */
+  /** Key prefix (namespace), default "fm:". Hosted sellers use `fm:v1:${FM_ENV}:` (§21.5, see storeFromEnv). */
   prefix?: string
+  /** The seller's payee address: every seller key lives under `{prefix}s:{payee}:` (§21.5 key schema, D25). */
+  payee?: Hex
 }
 
 export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): NoteStore {
-  const P = opts.prefix ?? 'fm:'
+  // §21.5 key schema (D25): {p}s:{payee}:{chainId}:{certId}:state|notes|out:{requestId}, {p}s:{payee}:{chainId}:sub.
+  // Two index keys the schema needs to find work: {p}s:{payee}:{chainId}:certs and {p}s:{payee}:pending.
+  const S = `${opts.prefix ?? 'fm:'}s:${opts.payee ? opts.payee.toLowerCase() : '_'}:`
+  const cert = (key: CertKey) => `${S}${normKey(key)}:`
   const k = {
-    st: (key: CertKey) => `${P}st:${normKey(key)}`,
-    notes: (key: CertKey) => `${P}notes:${normKey(key)}`,
-    out: (key: CertKey, rid: Hex) => `${P}out:${normKey(key)}:${normId(rid)}`,
-    pending: `${P}pending`,
-    certs: (chainId: number) => `${P}certs:${chainId}`,
-    sub: (chainId: number) => `${P}sub:${chainId}`,
+    st: (key: CertKey) => `${cert(key)}state`,
+    notes: (key: CertKey) => `${cert(key)}notes`,
+    out: (key: CertKey, rid: Hex) => `${cert(key)}out:${normId(rid)}`,
+    pending: `${S}pending`,
+    certs: (chainId: number) => `${S}${chainId}:certs`,
+    sub: (chainId: number) => `${S}${chainId}:sub`,
   }
   const member = (key: CertKey, rid: Hex) => `${normKey(key)}|${normId(rid)}`
 
@@ -234,6 +243,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
             String(Date.now()),
             member(key, requestId),
             responseRef !== undefined ? '1' : '0',
+            String(OUTCOME_TTL_SECONDS),
           ],
         ),
       )

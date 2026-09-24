@@ -20,7 +20,7 @@ afterAll(async () => {
       cursor = String(next)
     } while (cursor !== '0')
   }
-})
+}, 300_000) // one SCAN/DEL round trip per page and prefix over HTTPS
 
 /**
  * The shop till's store: memoryStore persisted through onCommit (IndexedDB in the browser). To prove nothing lives
@@ -93,6 +93,9 @@ export async function note(spenderKey: Hex, id: Hex, cumulative: bigint, memo: H
 }
 
 const rand = () => Math.random().toString(36).slice(2)
+
+/** Remote stores (real Redis, Upstash over HTTPS) pay a network round trip per call: allow them more time. */
+export const remoteTimeout = (name: string) => (/Upstash|real Redis/.test(name) ? 120_000 : 5_000)
 
 /** Stores under test: memory + Redis Lua (in-process mock always; real Redis / Upstash when configured). */
 export function storeFactories(): Array<[string, () => NoteStore]> {

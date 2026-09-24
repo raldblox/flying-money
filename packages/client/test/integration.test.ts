@@ -10,7 +10,14 @@ import {
   readCertificate,
   signNote,
 } from '@flying-money/core'
-import { createIdempotency, createRedeemer, type NoteStore, memoryStore as sellerStore } from '@flying-money/server'
+import {
+  createIdempotency,
+  createRedeemer,
+  type Lock,
+  memoryLock,
+  type NoteStore,
+  memoryStore as sellerStore,
+} from '@flying-money/server'
 import { flyingMoney } from '@flying-money/server/hono'
 import { Hono } from 'hono'
 import { createPublicClient, createWalletClient, http, type PublicClient } from 'viem'
@@ -100,10 +107,12 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     store: NoteStore,
     minAmount: bigint,
     events: Array<{ txHash: Hex; cumulative: bigint; paid: bigint }>,
+    lock?: Lock,
   ) =>
     createRedeemer({
       chains: ['anvil'],
       store,
+      ...(lock ? { lock } : {}),
       redeemerAccount,
       env,
       pollingIntervalMs: 50,
@@ -156,6 +165,41 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     expect(onchain.redeemed).toBe(50n * PRICE)
     expect(client.status()[0]).toMatchObject({ spentLocal: 500_000n, consumed: 500_000n, remaining: 500_000n })
   }, 120_000)
+
+  it('F8: two redeemer instances sharing a store and a lock submit one batch, never two', async () => {
+    const spenderKey = generatePrivateKey()
+    const id = await issue(1_000_000n, privateKeyToAccount(spenderKey).address)
+    const inner = sellerStore()
+    const submissions: Hex[] = []
+    // a slow store widens the check-then-submit window, like two serverless instances on Upstash
+    const store = new Proxy(inner, {
+      get(t, prop, recv) {
+        const v = Reflect.get(t, prop, recv) as (...a: unknown[]) => Promise<unknown>
+        if (prop === 'getSubmission')
+          return async (...a: unknown[]) => {
+            const r = await v.apply(t, a)
+            await new Promise((res) => setTimeout(res, 100))
+            return r
+          }
+        if (prop === 'setSubmission')
+          return async (chainId: number, sub: { txHash: Hex } | null) => {
+            if (sub) submissions.push(sub.txHash)
+            return v.apply(t, [chainId, sub])
+          }
+        return typeof v === 'function' ? v.bind(t) : v
+      },
+    }) as NoteStore
+    const { app } = seller(inner)
+    const client = clientFor(spenderKey, [id], app)
+    for (let i = 0; i < 5; i++) expect((await client.fetch(`http://oracle.test/v1/tea?i=${i}`)).status).toBe(200)
+    const lock = memoryLock()
+    const events: Array<{ txHash: Hex; cumulative: bigint; paid: bigint }> = []
+    const a = redeemerFor(store, 1n, events, lock)
+    const b = redeemerFor(store, 1n, events, lock)
+    await Promise.all([a.tick({ force: true }), b.tick({ force: true })])
+    expect(submissions).toHaveLength(1)
+    expect((await readCertificate(pub, fm, id))!.redeemed).toBe(5n * PRICE)
+  }, 60_000)
 
   it('overspend is refused at the cap; a note above face value is rejected', async () => {
     const spenderKey = generatePrivateKey()

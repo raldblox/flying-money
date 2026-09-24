@@ -16,8 +16,11 @@ const dotenv = join(root, '.env')
 if (existsSync(dotenv))
   for (const line of readFileSync(dotenv, 'utf8').split(/\r?\n/)) {
     const m =
-      /^(KV_REST_API_URL|KV_REST_API_TOKEN|UPSTASH_REDIS_REST_URL|UPSTASH_REDIS_REST_TOKEN|REDIS_URL)=(\S+)/.exec(line)
-    if (m && !env[m[1]!]) env[m[1]!] = m[2]!
+      /^(KV_REST_API_URL|KV_REST_API_TOKEN|UPSTASH_REDIS_REST_URL|UPSTASH_REDIS_REST_TOKEN|REDIS_URL)=\s*(\S+)/.exec(
+        line,
+      )
+    // values may be quoted in .env ("…" or '…'), as Vercel's own `env pull` writes them
+    if (m && !env[m[1]!]) env[m[1]!] = m[2]!.replace(/^(["'])(.*)\1$/, '$2')
   }
 
 const steps: Array<[string, () => boolean]> = [

@@ -15,6 +15,7 @@ import {
   type CertificateReader,
   createIdempotency,
   createRedeemer,
+  type Lock,
   type NoteStore,
   type Redeemer,
   type RedeemPolicy,
@@ -57,9 +58,13 @@ export interface OracleConfig {
   readCertificate?: CertificateReader
   fetchWeather?: (lat: number, lon: number) => Promise<WeatherNow>
   docsUrl?: string
+  /** Seconds a certificate must still have left to be accepted (§6.7; default 3600, hosted on Hobby: 36 h, D27). */
+  minRemainingLifetime?: number
   /** Start a redeemer (needs gas on each chain). Demo policy (§13.1): 0.10 USDC or 60 s. */
   redeemer?: {
     account: LocalAccount
+    /** Cross-instance lock (§21.5 `{p}lock:redeemer:{chainId}`): required when several instances share the store. */
+    lock?: Lock
     policy?: Partial<RedeemPolicy>
     intervalMs?: number
     pollingIntervalMs?: number
@@ -97,6 +102,7 @@ export function createOracle(config: OracleConfig) {
     ...(config.readCertificate ? { readCertificate: config.readCertificate } : {}),
     suggestedFaceValue: 500_000n,
     ...(config.docsUrl ? { docs: config.docsUrl } : {}),
+    ...(config.minRemainingLifetime !== undefined ? { minRemainingLifetime: config.minRemainingLifetime } : {}),
     price: (c) => PRICES[c.req.path] ?? 0n,
     requestStatus: async (rid) => jobs.status(rid),
   })
@@ -108,6 +114,7 @@ export function createOracle(config: OracleConfig) {
       chains: config.accepts,
       store: config.store,
       redeemerAccount: config.redeemer.account,
+      ...(config.redeemer.lock ? { lock: config.redeemer.lock } : {}),
       ...(config.env ? { env: config.env } : {}),
       ...(config.redeemer.pollingIntervalMs ? { pollingIntervalMs: config.redeemer.pollingIntervalMs } : {}),
       policy: { minAmount: 100_000n, maxAgeSeconds: 60, safetyBeforeExpiry: 1800, ...config.redeemer.policy },

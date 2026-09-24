@@ -3,6 +3,7 @@
 import { keyFromEnv, type LiveEvent, runLiveDemo } from '@flying-money/agent'
 import { getChain, isChainKey } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
+import { admitDemoRun, demoGuardFromEnv } from '@/lib/demo-guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,6 @@ export const maxDuration = 300
 
 const RUN_TIMEOUT_MS = 240_000 // a hung run must never hold the lock
 const FACE = 300_000n // 0.30 USDC per run (20 calls cost 0.25)
-const PER_IP_MS = 2 * 60_000 // §13.3: 1 run per IP per 2 minutes
-const lastRun = new Map<string, number>()
-let running = false // one run at a time: parallel runs would race the funder's nonce
 
 function configured() {
   return ['DEMO_FUNDER_KEY', 'DEMO_AGENT_KEY', 'REDEEMER_KEY', 'PAYEE_ADDRESS'].every((k) => process.env[k])
@@ -32,19 +30,12 @@ export async function POST(req: Request) {
       { status: 503 },
     )
 
-  const ip = (req.headers.get('x-forwarded-for') ?? 'local').split(',')[0]!.trim()
-  const last = lastRun.get(ip) ?? 0
-  if (Date.now() - last < PER_IP_MS)
-    return Response.json(
-      {
-        error: `One run per visitor every 2 minutes. Try again in ${Math.ceil((PER_IP_MS - (Date.now() - last)) / 1000)} s.`,
-      },
-      { status: 429 },
-    )
-  if (running)
-    return Response.json({ error: 'Another visitor’s demo is running. Try again in a minute.' }, { status: 429 })
-  running = true
-  lastRun.set(ip, Date.now())
+  // F9 (D28): limits shared by every instance (Upstash), same-origin only, one run at a time, a daily USDC cap
+  const guard = demoGuardFromEnv(process.env)
+  if (!guard)
+    return Response.json({ error: 'Demo paused: the shared demo limits are not configured.' }, { status: 503 })
+  const admission = await admitDemoRun(req, guard, FACE)
+  if (!admission.ok) return Response.json({ error: admission.error }, { status: admission.status })
 
   const enc = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
@@ -86,7 +77,7 @@ export async function POST(req: Request) {
       } catch (e) {
         send({ type: 'error', message: `Demo paused: ${(e as Error).message.split('\n')[0]}` })
       } finally {
-        running = false
+        await admission.release().catch(() => {})
         controller.close()
       }
     },

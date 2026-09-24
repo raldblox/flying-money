@@ -9,7 +9,7 @@ import {
   type NoteStore,
   type PaymentContext,
 } from '../src/index.js'
-import { CHAIN_ID, Clock, CONTRACT, FakeChain, note, payee, storeFactories } from './fixtures.js'
+import { CHAIN_ID, Clock, CONTRACT, FakeChain, note, payee, remoteTimeout, storeFactories } from './fixtures.js'
 
 const DAY = 86_400n
 
@@ -70,7 +70,7 @@ const bi = (_: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)
 const ok = (value: unknown = 'ok'): ExecResult => ({ ok: true, responseRef: JSON.stringify(value) })
 
 for (const [name, make] of storeFactories()) {
-  describe(`server §6.5 — ${name}`, () => {
+  describe(`server §6.5 — ${name}`, { timeout: remoteTimeout(name) }, () => {
     it('no note → 402 with a flying-money offer listing the registry contract, USDC and payee', async () => {
       const { server } = setup(make())
       const r = await server.handle({ noteHeader: null, price: 10n }, async () => ok())

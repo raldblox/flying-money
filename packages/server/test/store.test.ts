@@ -1,13 +1,13 @@
 import { certKey, type Hex, newRequestId } from '@flying-money/core'
 import { generatePrivateKey } from 'viem/accounts'
 import { describe, expect, it } from 'vitest'
-import { CHAIN_ID, note, storeFactories } from './fixtures.js'
+import { CHAIN_ID, note, remoteTimeout, storeFactories } from './fixtures.js'
 
 const spenderKey = generatePrivateKey()
 const cid = newRequestId() // any 32-byte id
 
 for (const [name, make] of storeFactories()) {
-  describe(`NoteStore contract: ${name}`, () => {
+  describe(`NoteStore contract: ${name}`, { timeout: remoteTimeout(name) }, () => {
     const key = certKey(CHAIN_ID, cid)
 
     it('state is null until recover; recover sets accepted = consumed = redeemedOnChain (D5 status)', async () => {

@@ -2,6 +2,25 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## v1.5 V5 + V6 (code) (25 Sep): ✅ `pnpm verify` green, S1–S4 on real Upstash
+
+- **V5:**
+  - Upstash `flying-money-testnet` is installed from the Vercel Marketplace (Free, iad1, eviction off) and connected to `useflyingmoney` (prefix `KV`).
+  - The §21.5 key schema is in place (D25), and `sellerStoreFromEnv` has the durable-store refusal and mainnet guards (D26).
+  - Redis locks and rate limits exist.
+  - The S1–S4 store and server suites now run on Upstash in `pnpm verify`; test keys are deleted after each run (checked: 0 left).
+- **V6 (code):**
+  - `apps/oracle` has a Vercel entry (`api/index.ts`, `vercel.json`: rewrites, daily cron at 03:00, Bearer `CRON_SECRET`).
+  - Hobby margins are 36 h (D27), with an opportunistic `waitUntil` sweep and redeem after serving.
+  - The local server shares the same builder.
+- **F8** (redeemer lock, anvil race test) and **F9** (shared demo limits: same-origin, lock, 1 run per visitor per 2 minutes, 6 USDC/day; D28) are fixed.
+- `pnpm verify` now also accepts quoted values in `.env`.
+- **Waiting for the founder:**
+  - create the Oracle's own Vercel project (root `apps/oracle`) and connect the Upstash database to it;
+  - set `PAYEE_ADDRESS`, `REDEEMER_KEY` and `CRON_SECRET` there;
+  - push, which deploys.
+- **Then:** the §21.7 check (an external MCP session pays the hosted Oracle on Arbitrum Sepolia, and a redemption lands).
+
 ## Audit 2026-09-25 fixes (25 Sep): ✅ locally
 
 - **F1** request binding (D32), **F2** receipt clamping (D33), **F3** till-wide offline float (D34). Each had failing tests first, then the fix.

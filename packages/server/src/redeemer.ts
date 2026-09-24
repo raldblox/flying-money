@@ -11,6 +11,7 @@ import {
   parseEventLogs,
   type TransactionReceipt,
 } from 'viem'
+import type { Lock } from './durable.js'
 import type { CertKey, NoteStore, PendingRedemption, Submission } from './store.js'
 
 export interface RedeemPolicy {
@@ -53,6 +54,12 @@ export interface RedeemerConfig {
   onSkipped?: (e: SkippedEvent) => void
   /** Operator alert: reverted batch (token-level failure), dropped tx, RPC errors. */
   onError?: (e: Error, chainId: number) => void
+  /**
+   * Cross-instance lock (`{p}lock:redeemer:{chainId}`, §21.5; DECISIONS D27). Required whenever more than one process
+   * can run the redeemer on the same store (serverless instances, cron + waitUntil): without it two instances can both
+   * find no submission and both send a batch. Ticks inside one process are serialised anyway.
+   */
+  lock?: Lock
 }
 
 export interface Redeemer {
@@ -191,7 +198,22 @@ export function createRedeemer(config: RedeemerConfig): Redeemer {
     return out
   }
 
+  /** At most 5 minutes (§21.5); a batch that takes longer is still safe: the recorded submission is checked first. */
+  const LOCK_TTL_MS = 300_000
+
   async function runChain(ch: Chain, force: boolean) {
+    if (!config.lock) return runChainLocked(ch, force)
+    const name = `redeemer:${ch.chainId}`
+    const token = await config.lock.acquire(name, LOCK_TTL_MS)
+    if (!token) return // another instance is redeeming this chain right now
+    try {
+      await runChainLocked(ch, force)
+    } finally {
+      await config.lock.release(name, token)
+    }
+  }
+
+  async function runChainLocked(ch: Chain, force: boolean) {
     if (await checkSubmission(ch)) return
     const batch = (await eligible(ch, await store.pendingRedemptions(ch.chainId), force)).slice(0, batchSize)
     if (batch.length === 0) return
