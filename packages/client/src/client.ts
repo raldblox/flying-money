@@ -368,7 +368,9 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
           })
         return res
       }
-      if (res.status >= 500) {
+      // temporary: a server error, a timeout or rate limiting in front of the seller. Resend the same note (C1);
+      // clearing it here would drop a payment the seller may still admit (audit F13)
+      if (res.status >= 500 || res.status === 408 || res.status === 429) {
         lastErr = `HTTP ${res.status}`
         await res.text().catch(() => {})
         emit({ type: 'retry', url: pending.request.url, requestId: pending.requestId, attempt, error: lastErr })

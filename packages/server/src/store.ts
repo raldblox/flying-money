@@ -25,6 +25,8 @@ export interface Submission {
   keys: CertKey[]
   /** Account nonce of the batch tx, used to detect a dropped/replaced tx without ever rebroadcasting (D14). */
   nonce?: number
+  /** When it was recorded (ms), so a tx that never reached the network can be forgotten after a grace period (F12). */
+  at?: number
 }
 
 export interface PendingRedemption {

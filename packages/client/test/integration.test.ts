@@ -1,4 +1,6 @@
 // Phase 3 acceptance (BUILD_SPEC §17): end-to-end on a local anvil with the real contract, client, server and redeemer.
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { flyingMoneyAbi, flyingMoneyBytecode, mockUsdcAbi, mockUsdcBytecode } from '@flying-money/abi'
 import { setLocalDeployment } from '@flying-money/chains'
 import {
@@ -201,6 +203,68 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     await Promise.all([a.tick({ force: true }), b.tick({ force: true })])
     expect(submissions).toHaveLength(1)
     expect((await readCertificate(pub, fm, id))!.redeemed).toBe(5n * PRICE)
+  }, 60_000)
+
+  it('F12: a broadcast error on a tx that did go out keeps the submission: no second batch while it is pending', async () => {
+    const spenderKey = generatePrivateKey()
+    const id = await issue(1_000_000n, privateKeyToAccount(spenderKey).address)
+    const store = sellerStore()
+    const { app } = seller(store)
+    const client = clientFor(spenderKey, [id], app)
+    for (let i = 0; i < 3; i++) expect((await client.fetch(`http://oracle.test/v1/tea?f12=${i}`)).status).toBe(200)
+
+    // an RPC in front of anvil: the broadcast reaches the chain but reports an error, and the node is slow to know
+    // the transaction (getTransactionByHash → null), exactly the lagging case
+    let broadcasts = 0
+    let lagging = true
+    const rpc = (body: unknown) =>
+      fetch(env.RPC_ANVIL!, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then((r) => r.json() as Promise<{ id: number; result?: unknown; error?: unknown }>)
+    const proxy = createServer(async (req, res) => {
+      let raw = ''
+      for await (const c of req) raw += c
+      const msg = JSON.parse(raw) as { id: number; method: string }
+      let out: unknown
+      if (msg.method === 'eth_sendRawTransaction') {
+        broadcasts++
+        await rpc(msg)
+        out = { jsonrpc: '2.0', id: msg.id, error: { code: -32000, message: 'upstream timeout' } }
+      } else if (msg.method === 'eth_getTransactionByHash' && lagging)
+        out = { jsonrpc: '2.0', id: msg.id, result: null }
+      else out = await rpc(msg)
+      res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(out))
+    })
+    await new Promise<void>((r) => proxy.listen(0, '127.0.0.1', r))
+    const url = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`
+    const errors: Error[] = []
+    const redeemer = createRedeemer({
+      chains: ['anvil'],
+      store,
+      redeemerAccount,
+      env: { RPC_ANVIL: url },
+      pollingIntervalMs: 50,
+      policy: { minAmount: 1n, maxAgeSeconds: 3600, safetyBeforeExpiry: 1800 },
+      onError: (e) => errors.push(e),
+    })
+    await rpc({ jsonrpc: '2.0', id: 1, method: 'evm_setAutomine', params: [false] })
+    try {
+      await redeemer.tick({ force: true }) // sends; the RPC says it failed; the tx sits in the mempool
+      await redeemer.tick({ force: true }) // still pending: must wait, never send a second batch
+      expect(broadcasts).toBe(1)
+      expect(await store.getSubmission(anvilChain.id)).not.toBeNull()
+      lagging = false
+      await rpc({ jsonrpc: '2.0', id: 2, method: 'evm_mine', params: [] })
+      await redeemer.tick({ force: true }) // mined: settled from the kept submission
+      expect(broadcasts).toBe(1)
+      expect(await store.getSubmission(anvilChain.id)).toBeNull()
+      expect((await readCertificate(pub, fm, id))!.redeemed).toBe(3n * PRICE)
+    } finally {
+      await rpc({ jsonrpc: '2.0', id: 3, method: 'evm_setAutomine', params: [true] })
+      await new Promise<void>((r) => proxy.close(() => r()))
+    }
   }, 60_000)
 
   it('overspend is refused at the cap; a note above face value is rejected', async () => {

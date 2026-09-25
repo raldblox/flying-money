@@ -75,6 +75,8 @@ export interface Redeemer {
  */
 export function createRedeemer(config: RedeemerConfig): Redeemer {
   const batchSize = config.batchSize ?? 20
+  /** A failed broadcast that the node still doesn't know after this long never reached the network (F12). */
+  const UNSEEN_GRACE_MS = 10 * 60_000
   const nowS = () => BigInt(Math.floor(config.now ? config.now() : Date.now() / 1000))
   const store = config.store
   const account = config.redeemerAccount
@@ -167,6 +169,16 @@ export function createRedeemer(config: RedeemerConfig): Redeemer {
     }
     if (sub.nonce !== undefined) {
       const mined = await ch.pub.getTransactionCount({ address: account.address, blockTag: 'latest' })
+      if (mined <= sub.nonce && sub.at !== undefined && Date.now() - sub.at > UNSEEN_GRACE_MS) {
+        // audit F12: still unknown to the node long after a failed broadcast, and its nonce is unused (so nothing
+        // else can be pending on it): it never reached the network. Forget it; the next batch reuses the nonce.
+        const known = await ch.pub.getTransaction({ hash: sub.txHash }).catch(() => null)
+        const queued = await ch.pub.getTransactionCount({ address: account.address, blockTag: 'pending' })
+        if (!known && queued <= sub.nonce) {
+          await store.setSubmission(ch.chainId, null)
+          return false
+        }
+      }
       if (mined > sub.nonce) {
         // our nonce was used by another tx and ours has no receipt: dropped/replaced. Never rebroadcast.
         await reconcile(ch, sub.keys, sub.txHash)
@@ -238,17 +250,12 @@ export function createRedeemer(config: RedeemerConfig): Redeemer {
     })
     const serialized = await account.signTransaction(request as never)
     const txHash = keccak256(serialized)
-    const sub: Submission = { txHash, keys: batch.map((b) => b.key), nonce: request.nonce }
+    const sub: Submission = { txHash, keys: batch.map((b) => b.key), nonce: request.nonce, at: Date.now() }
     await store.setSubmission(ch.chainId, sub) // record BEFORE broadcasting
-    try {
-      await ch.pub.sendRawTransaction({ serializedTransaction: serialized })
-    } catch (e) {
-      const known = await ch.pub.getTransaction({ hash: txHash }).catch(() => null)
-      if (!known) {
-        await store.setSubmission(ch.chainId, null) // never reached the network: safe to clear
-        throw e
-      }
-    }
+    // audit F12: if this throws, the submission is kept. An error doesn't prove the tx never went out, and a node may
+    // not know it yet. The next tick settles it from its receipt, reconciles it by nonce, or (long unseen, nonce
+    // unused) forgets it. Clearing it here could start a second batch racing this one.
+    await ch.pub.sendRawTransaction({ serializedTransaction: serialized })
     const receipt = await ch.pub.waitForTransactionReceipt({ hash: txHash, confirmations: ch.confirmations })
     await settle(ch, sub, receipt)
   }

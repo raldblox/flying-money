@@ -11,6 +11,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { loadCertificate } from './chain'
 import { idbKV } from './idb'
 import { type Sealed, seal, sealKey, unseal } from './pin-vault'
+import { openBackup, sealBackup } from './wallet-backup'
 
 /**
  * Customer wallet (§12.5): spender keys generated or received on this device, sealed with the PIN, in IndexedDB.
@@ -172,8 +173,8 @@ export function parseHandOver(fragment: string): HandOver | null {
 }
 
 // ── Backup (§12.5: storage can be wiped) ─────────────────────────────────────
-/** Everything in the wallet, keys still sealed with the PIN. */
-export async function exportBackup(): Promise<string> {
+/** Everything in the wallet (keys still sealed with the PIN), sealed again with a backup passphrase (audit F10). */
+export async function exportBackup(passphrase: string): Promise<string> {
   const db = kv()
   const dump: Record<string, string> = {}
   for (const p of ['cert:', 'state:', 'draft:', 'pin-check'])
@@ -181,18 +182,21 @@ export async function exportBackup(): Promise<string> {
       const v = await db.get(k)
       if (v !== undefined) dump[k] = v
     }
-  return JSON.stringify({ kind: 'flying-money-wallet-backup', v: 1, at: new Date().toISOString(), data: dump })
+  return sealBackup(dump, passphrase)
 }
 
-export async function importBackup(text: string) {
-  const j = JSON.parse(text) as { kind?: string; v?: number; data?: Record<string, string> }
-  if (j.kind !== 'flying-money-wallet-backup' || j.v !== 1 || !j.data)
-    throw new AddError('Not a Flying Money wallet backup.')
+export async function importBackup(text: string, passphrase?: string) {
+  let data: Record<string, string>
+  try {
+    data = await openBackup(text, passphrase)
+  } catch (e) {
+    throw new AddError((e as Error).message)
+  }
   const db = kv()
   // Keys in a backup are sealed with the backup's PIN, so it can only be restored into an empty wallet.
   if ((await db.keys('cert:')).length > 0 || (await db.keys('draft:')).length > 0)
     throw new AddError('Restore a backup into an empty wallet (on a new phone, or after the old data was wiped).')
-  for (const [k, v] of Object.entries(j.data)) {
+  for (const [k, v] of Object.entries(data)) {
     if (!/^(cert:|state:|draft:|pin-check$)/.test(k)) continue
     await db.set(k, v)
   }

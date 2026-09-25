@@ -42,6 +42,7 @@ import {
   type WalletEntry,
   walletStore,
 } from '@/lib/wallet'
+import { backupNeedsPassphrase, validBackupPassphrase } from '@/lib/wallet-backup'
 
 type Entry = WalletEntry & { state: CounterState | null }
 type View =
@@ -384,24 +385,40 @@ function InstallHint() {
 
 function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: boolean }) {
   const [msg, setMsg] = useState<string | null>(null)
+  const [pass, setPass] = useState('')
   const id = useId()
+  const ok = validBackupPassphrase(pass)
   return (
     <details className="sheet p-5">
       <summary className="cursor-pointer font-medium">Backup and restore</summary>
       <p className="mt-2 text-sm text-ink-2">
-        The backup file holds your budgets with their keys still locked by your PIN. Keep it somewhere private.
+        The backup file holds your budgets and their keys, locked with a backup passphrase you choose. Use a long one
+        you won’t forget: without it the file can’t be opened, by you or anyone else.
       </p>
+      <label htmlFor={`${id}-p`} className="mt-3 block text-sm font-medium">
+        Backup passphrase (12+ characters)
+      </label>
+      <input
+        id={`${id}-p`}
+        type="password"
+        autoComplete="new-password"
+        value={pass}
+        onChange={(e) => setPass(e.target.value)}
+        className="mt-1 min-h-11 w-full rounded border border-line bg-paper px-3"
+      />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
+          disabled={!ok}
           className={buttonClass('secondary')}
           onClick={async () => {
-            const url = URL.createObjectURL(new Blob([await exportBackup()], { type: 'application/json' }))
+            const url = URL.createObjectURL(new Blob([await exportBackup(pass)], { type: 'application/json' }))
             const a = document.createElement('a')
             a.href = url
             a.download = `flying-money-wallet-${new Date().toISOString().slice(0, 10)}.json`
             a.click()
-            URL.revokeObjectURL(url)
+            // let the download start before releasing the file
+            setTimeout(() => URL.revokeObjectURL(url), 10_000)
             setMsg('Backup downloaded.')
           }}
         >
@@ -421,7 +438,9 @@ function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: b
                 const f = e.target.files?.[0]
                 if (!f) return
                 try {
-                  await importBackup(await f.text())
+                  const text = await f.text()
+                  if (backupNeedsPassphrase(text) && !pass) return setMsg('Enter the backup passphrase first.')
+                  await importBackup(text, pass)
                   setMsg('Restored. Use the PIN you had when you made the backup.')
                   await onChanged()
                 } catch (err) {

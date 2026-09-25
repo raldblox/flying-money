@@ -228,6 +228,50 @@ describe('C1: no obligation growth on failure (§6.6), with S1 exactly-once', ()
     expect(st).toMatchObject({ accepted: 4n, consumed: 4n })
   })
 
+  it('F13: a 408/429 without a receipt is temporary: the same slip is resent, never dropped or re-signed', async () => {
+    for (const status of [408, 429]) {
+      const w = world({ face: 1_000n, price: () => 10n })
+      const signed: bigint[] = []
+      const sent: bigint[] = []
+      const spender = privateKeyToAccount(w.spenderKey)
+      const spy = {
+        ...spender,
+        signTypedData: async (p: Parameters<typeof spender.signTypedData>[0]) => {
+          signed.push((p.message as { cumulative: bigint }).cumulative)
+          return spender.signTypedData(p)
+        },
+      } as typeof spender
+      // a rate-limiting proxy in front of the seller turns the first paid call away, without a receipt
+      let limited = false
+      const base = flakyFetch(w.app, {
+        dropBefore: 0,
+        dropAfter: 0,
+        onSent: (h) => sent.push(decodeNote(h).cumulative),
+      })
+      const proxy = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (!limited && new Headers(init?.headers).get(NOTE_HEADER)) {
+          limited = true
+          return new Response('slow down', { status })
+        }
+        return base(input, init)
+      }) as typeof fetch
+      const client = createFlyingMoneyClient({
+        chains: ['anvil'],
+        spender: spy,
+        store: memoryStore(),
+        certificates: [w.cert.id],
+        maxPricePerRequest: 100n,
+        readCertificate: w.reader,
+        fetch: proxy,
+        retry: { attempts: 3, backoffMs: 0 },
+      })
+      expect((await client.fetch('http://oracle.test/v1/data')).status, `HTTP ${status}`).toBe(200)
+      expect(signed).toEqual([10n]) // signed once
+      expect(sent).toEqual([10n]) // the proxy's refusal never reached the seller; the resend did, unchanged
+      expect((await w.sellerStore.state(certKey(CHAIN_ID, w.cert.id)))!).toMatchObject({ accepted: 10n, consumed: 10n })
+    }
+  })
+
   it('S3 via the client: a failed service leaves credit and the next request signs no higher note', async () => {
     let fail = true
     const w = world({ face: 1_000n })

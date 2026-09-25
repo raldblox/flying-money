@@ -2,6 +2,11 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Audit fixes (25 Sep): ✅ `pnpm verify --e2e` green (D40)
+
+- Audit findings F1–F13 are fixed, each with a test written first: F6 (SSRF) and F7 (DNS rebinding) in the MCP server, F4, F5, F10 and F11 in the site, F12 in the redeemer and F13 in the client.
+- **Still open:** F14's minor items (see the audit), plus an external audit before any mainnet caps are raised.
+
 ## Warnings, unsaved payees, phones, C1 (25 Sep): ✅ `pnpm verify --e2e` green (D36, D37)
 
 - **Warnings like a banking app:** budget requests from an unsaved agent and/or service show a banner that stays up through funding. When both are unknown, Approve needs an explicit "I've checked" tick. The Fund form flags a new or unverified payee.
