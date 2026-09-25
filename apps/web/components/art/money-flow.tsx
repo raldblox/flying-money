@@ -11,14 +11,12 @@ const CAST = {
     owner: ['Owner', 'funds the budget'],
     agent: ['Agent', 'signs slips'],
     seller: ['Seller', 'checks slips'],
-    box: 'seller only',
     agentGlyph: 'agent',
   },
   people: {
     owner: ['Giver', 'gives the budget'],
     agent: ['Mia', 'shows her code'],
     seller: ['Café', 'the till checks'],
-    box: 'this café only',
     agentGlyph: 'person',
   },
 } as const
@@ -60,10 +58,10 @@ export function MoneyFlow({
       </text>
 
       {/* the locked budget */}
-      <g transform="translate(195 36)">
+      <g transform="translate(195 40)">
         <rect
           width="130"
-          height="84"
+          height="68"
           rx="8"
           fill="var(--paper)"
           stroke={step === 0 || step >= 3 ? 'var(--seal)' : 'var(--line)'}
@@ -75,13 +73,6 @@ export function MoneyFlow({
         </g>
         <text x="65" y="54" textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--ink)">
           {locked} USDC
-        </text>
-        {/* two short lines, so the label always fits inside the box */}
-        <text x="65" y="68" textAnchor="middle" fontSize="10" fill="var(--ink-2)">
-          {step === 4 ? 'closed' : c.box}
-        </text>
-        <text x="65" y="79" textAnchor="middle" fontSize="10" fill="var(--ink-2)">
-          {step === 4 ? 'nothing left' : 'until the end date'}
         </text>
       </g>
 
@@ -205,12 +196,6 @@ export function MoneyFlow({
           <g transform="translate(476 198)">
             <circle r="13" fill="var(--seal)" />
             <path d="M-6 0 l4 4 l8 -8" stroke="var(--on-seal)" strokeWidth="2.5" fill="none" />
-          </g>
-          <g transform="translate(355 140)">
-            <line x1="-50" y1="0" x2="50" y2="0" stroke="var(--ink-2)" strokeWidth="1" />
-            <text textAnchor="middle" y="-6" fontSize="10.5" fill="var(--ink-2)">
-              nothing sent to the blockchain
-            </text>
           </g>
         </>
       )}
