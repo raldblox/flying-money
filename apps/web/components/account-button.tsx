@@ -16,13 +16,14 @@ export function AccountButton({ compact = false }: { compact?: boolean }) {
     <Link
       href="/app"
       aria-current={here ? 'page' : undefined}
-      className={`inline-flex min-h-10 items-center gap-2 rounded-[3px] border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo ${here ? 'border-ink bg-ink text-paper' : 'border-ink/30 text-ink hover:border-ink'}`}
+      className={`inline-flex min-h-10 items-center gap-2 whitespace-nowrap rounded-[3px] border px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-indigo ${here ? 'border-ink bg-ink text-paper' : 'border-ink/30 text-ink hover:border-ink'}`}
     >
       <PersonIcon />
       {connected ? (
         <>
           <span className="size-2 rounded-full bg-celadon" aria-hidden />
-          <span className="font-mono">{short(address)}</span>
+          {/* on phones, the last four characters are enough to recognise your wallet */}
+          <span className="font-mono">{compact ? `…${address.slice(-4)}` : short(address)}</span>
           <span className="sr-only">(your account)</span>
         </>
       ) : (

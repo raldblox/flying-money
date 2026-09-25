@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { IssueWizard, type Place } from '@/components/app/issue-wizard'
+import { RiskBanner } from '@/components/app/risk-banner'
 import { WalletButton } from '@/components/app/wallet-button'
 import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
 import { buttonClass } from '@/components/section'
@@ -28,6 +29,9 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   const [step, setStep] = useState<'review' | 'fund' | 'declined'>('review')
   const [agentName, setAgentName] = useState<string | null>(null)
   const [place, setPlace] = useState<{ name: string; badge: string; verified: boolean } | null>(null)
+  // contacts are read asynchronously: no warnings until we know
+  const [known, setKnown] = useState(false)
+  const [vouched, setVouched] = useState(false)
   const { address, isConnected } = useAccount()
 
   useEffect(() => {
@@ -54,8 +58,8 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   }, [r, parsed])
   useEffect(() => {
     if (!r || !parsed?.ok) return
-    void listHolders().then((hs) => setAgentName(hs.find((h) => same(h.address, r.requester))?.name ?? null))
-    void listPlaces().then((ps) => {
+    const holders = listHolders().then((hs) => setAgentName(hs.find((h) => same(h.address, r.requester))?.name ?? null))
+    const places = listPlaces().then((ps) => {
       const saved = ps.find((p) => p.chain === parsed.chain.key && same(p.payee, r.payee))
       if (same(r.payee, oraclePayee))
         setPlace({ name: 'Silk Road Oracle', badge: '✓ Flying Money’s own demo service', verified: true })
@@ -63,6 +67,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         setPlace({ name: saved.name, badge: badgeOf(saved), verified: saved.verification !== 'unverified' })
       else setPlace(null)
     })
+    void Promise.all([holders, places]).then(() => setKnown(true))
   }, [r, parsed, oraclePayee])
 
   if (!parsed) return null
@@ -81,8 +86,8 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
       <div role="alert" className="sheet border-l-4 border-amber p-8">
         <p className="font-display text-3xl font-semibold">This is a request to top up an existing budget.</p>
         <p className="mt-2 text-lg text-ink-2">
-          Top-up requests can’t be approved from this page yet. Open the budget from your Dashboard and use Top up there
-          if you agree.
+          Top-up requests can’t be approved from this page yet. Open the budget from Budgets and use Top up there if you
+          agree.
         </p>
         <a className="mt-4 inline-block text-indigo underline" href={`/c/${chain.key}/${req.certificateId}`}>
           Open that budget
@@ -94,6 +99,28 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   const placeName = place?.name ?? short(req.payee)
   const wrongWallet = isConnected && !same(address, req.owner)
   const places: Place[] = [{ name: placeName, address: req.payee, verified: true, badge: place?.badge }]
+  // Like a bank flagging a new payee: say what we can't vouch for, and keep saying it through funding.
+  const agentUnknown = known && !agentName
+  const placeUnknown = known && !place
+  const placeUnverified = known && Boolean(place) && !place?.verified
+  const needsVouch = agentUnknown && placeUnknown
+  const risk = needsVouch ? (
+    <RiskBanner tone="danger" title="Check before you pay: you haven’t saved this agent or this service">
+      Anyone can send a request link. Only approve if you asked your agent for this yourself and you recognise both
+      addresses: agent <span className="font-mono">{short(req.requester)}</span>, service{' '}
+      <span className="font-mono">{short(req.payee)}</span>. If in doubt, decline: nothing moves.
+    </RiskBanner>
+  ) : agentUnknown ? (
+    <RiskBanner title="You haven’t saved this agent’s key">
+      The request is signed by <span className="font-mono">{short(req.requester)}</span>. Make sure it’s your agent’s
+      address (from its settings) before funding it. Its budget can only ever pay {placeName}.
+    </RiskBanner>
+  ) : placeUnknown || placeUnverified ? (
+    <RiskBanner title={placeUnknown ? 'This service isn’t one of your saved places' : `${placeName} isn’t verified`}>
+      Money in this budget can only go to <span className="font-mono">{short(req.payee)}</span>. Check that address with
+      the service itself; if it’s wrong, the money waits until the end date before it comes back.
+    </RiskBanner>
+  ) : null
 
   if (step === 'fund')
     return (
@@ -101,6 +128,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         <button type="button" onClick={() => setStep('review')} className="w-fit text-indigo underline">
           ← Back to the request
         </button>
+        {risk}
         <IssueWizard
           chain={chain}
           places={places}
@@ -129,6 +157,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
 
   return (
     <div className="grid gap-6">
+      {risk}
       <article className="sheet overflow-hidden">
         <div className="border-b border-line p-6 sm:p-8">
           <p className="smallcaps text-sm text-seal">Budget request · {chain.chain.name}</p>
@@ -198,6 +227,20 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         </p>
       ) : (
         <div className="sheet flex flex-wrap items-center justify-between gap-4 p-5">
+          {needsVouch && (
+            <label className="flex w-full cursor-pointer items-start gap-3 rounded-md border border-seal/40 p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-seal"
+                checked={vouched}
+                onChange={(e) => setVouched(e.target.checked)}
+              />
+              <span>
+                I asked my agent for this, and I’ve checked both addresses. I understand money for a wrong address only
+                comes back after the end date.
+              </span>
+            </label>
+          )}
           <WalletButton chain={chain} />
           <div className="flex flex-wrap gap-3">
             <button
@@ -213,7 +256,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             <button
               type="button"
               className={buttonClass('primary')}
-              disabled={!isConnected || wrongWallet}
+              disabled={!isConnected || wrongWallet || (needsVouch && !vouched)}
               onClick={() => setStep('fund')}
             >
               Approve and fund…
@@ -226,6 +269,11 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             </p>
           )}
           {!isConnected && <p className="w-full text-sm text-ink-2">Connect the wallet the request is addressed to.</p>}
+          {needsVouch && !vouched && (
+            <p className="w-full text-sm text-ink-2">
+              Tick the box above to approve a request from someone you haven’t saved.
+            </p>
+          )}
         </div>
       )}
     </div>

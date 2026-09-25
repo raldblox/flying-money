@@ -31,7 +31,7 @@ export function SiteHeader() {
           <BrandMark size={56} className="hidden shrink-0 transition-transform group-hover:-translate-y-0.5 md:block" />
           <span className="min-w-0 leading-none">
             <span className="flex items-center gap-2">
-              <span className="block font-display text-[1.45rem] font-semibold tracking-tight md:text-[1.7rem]">
+              <span className="sr-only font-display text-[1.45rem] font-semibold tracking-tight min-[400px]:not-sr-only min-[400px]:block md:text-[1.7rem]">
                 Flying Money
               </span>
               <span
@@ -65,10 +65,20 @@ export function SiteHeader() {
         {/* mobile: a fixed panel, so opening it never moves the header */}
         <div className="flex items-center gap-2 md:hidden">
           <AccountButton compact />
-          <Link href="/demo" className={`${buttonClass('primary')} min-h-10 px-3 text-sm`}>
-            Demo
-          </Link>
-          <MobileMenu items={[...nav, { href: '/app', label: 'Account' }, { href: '/wallet', label: 'Wallet' }]} />
+          {/* on the narrowest phones the Demo button moves into the menu so the Testnet badge stays readable */}
+          <span className="hidden min-[420px]:block">
+            <Link href="/demo" className={`${buttonClass('primary')} min-h-10 px-3 text-sm`}>
+              Demo
+            </Link>
+          </span>
+          <MobileMenu
+            items={[
+              { href: '/demo', label: 'Demo' },
+              ...nav,
+              { href: '/app', label: 'Account' },
+              { href: '/wallet', label: 'Wallet' },
+            ]}
+          />
         </div>
       </div>
       <hr className="ink-rule mx-auto max-w-6xl" />

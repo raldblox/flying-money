@@ -1,5 +1,4 @@
 'use client'
-import Link from 'next/link'
 import { useState } from 'react'
 import { useCertificates } from '@/components/app/certificate-lists'
 import { BudgetRow, type BudgetState, budgetState } from './budget-row'
@@ -24,12 +23,7 @@ export function BudgetsList() {
   const shown = filter === 'all' ? certs : certs.filter((c) => budgetState(c) === filter)
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-4xl font-semibold">Budgets</h1>
-        <Link href="/app/give" className="rounded-[3px] bg-seal px-4 py-2.5 font-medium text-on-seal hover:opacity-90">
-          + Give a budget
-        </Link>
-      </div>
+      <h1 className="font-display text-4xl font-semibold">Budgets</h1>
       <div role="tablist" aria-label="Filter budgets" className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button

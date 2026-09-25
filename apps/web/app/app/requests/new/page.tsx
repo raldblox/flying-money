@@ -17,7 +17,7 @@ export default function NewRequestPage() {
   const oraclePayee = payee && /^0x[0-9a-fA-F]{40}$/.test(payee) ? (payee as Hex) : undefined
   return (
     <div>
-      <p className="smallcaps text-sm text-seal">Counting House · Requests</p>
+      <p className="smallcaps text-sm text-seal">Account · Requests</p>
       <h1 className="mt-2 font-display text-4xl font-semibold">Your agent is asking.</h1>
       <p className="mt-3 max-w-2xl text-lg text-ink-2">
         Nothing moves unless you fund it from your own wallet. Check who can be paid, then decide how much.

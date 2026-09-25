@@ -35,6 +35,8 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await page.getByText('Paste a payee address').click()
   await page.getByRole('textbox', { name: 'Payee address' }).fill(funder)
   await page.getByText('I checked this address twice').click()
+  // a pasted payee keeps a "new payee" warning in view while funding
+  await expect(page.getByText('New payee: you haven’t verified this address')).toBeVisible()
   const spender = privateKeyToAccount(state().spenderKey).address
   await page.getByRole('textbox', { name: 'Agent (spender) address' }).fill(spender)
   await page.getByRole('button', { name: /Approve 5 USDC/ }).click()
@@ -54,6 +56,37 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await expect(page.getByText('5.00 / 5.00').first()).toBeVisible({ timeout: 30_000 })
 
   await shot(page, '3-budgets')
+  // an unnamed payee is flagged, and can be named in place
+  const row = page.locator('li', { hasText: '5.00 / 5.00' }).first()
+  await expect(row.getByText('Not saved')).toBeVisible()
+  await row.getByRole('button', { name: 'Save as a place…' }).click()
+  await row.getByRole('textbox').fill('My test shop')
+  await row.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(row.getByText('My test shop')).toBeVisible()
+  await expect(row.getByText('Not saved')).toHaveCount(0)
+
+  // phone width: the account screens fit without sideways scrolling
+  if (process.env.E2E_SHOTS) {
+    await page.setViewportSize({ width: 375, height: 812 })
+    const fits = async (name: string) => {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+      await shot(page, name)
+    }
+    await fits('m-budgets')
+    await page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Home' }).click()
+    await expect(page.getByText('Your budgets')).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByText('5.00 / 5.00').first()).toBeVisible({ timeout: 30_000 })
+    await fits('m-home')
+    await page.getByRole('link', { name: /Fund an agent/ }).click()
+    await expect(page.getByRole('heading', { name: 'Fund an agent' })).toBeVisible({ timeout: 90_000 })
+    await page.getByText('Paste a payee address').click()
+    await page.getByRole('textbox', { name: 'Payee address' }).fill(funder)
+    await expect(page.getByText('New payee: you haven’t verified this address')).toBeVisible()
+    await fits('m-fund')
+    await page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Budgets' }).click()
+    await expect(page.getByText('5.00 / 5.00').first()).toBeVisible({ timeout: 90_000 })
+    await page.setViewportSize({ width: 1280, height: 800 })
+  }
   // Collect 2.50 as the payee
   await page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Collect' }).click()
   const card = page.locator('article', { hasText: id.slice(0, 6) })

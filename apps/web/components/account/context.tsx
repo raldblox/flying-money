@@ -16,6 +16,8 @@ interface AccountCtx {
   oraclePayee?: Hex
   /** a readable name for a payee address: saved places, the demo service, else the short address */
   placeName: (payee: Hex) => string
+  /** true when the payee is a saved place on this network, or the demo service */
+  isKnownPlace: (payee: Hex) => boolean
   /** a readable name for a spending key: saved people & agents, else null */
   holderName: (spender: Hex, certificateId?: Hex) => string | null
   /** bump after a transaction so every list re-reads the chain */
@@ -74,6 +76,8 @@ export function AccountProvider({
       same(payee, oraclePayee)
         ? 'Silk Road Oracle'
         : (places.find((p) => p.chain === chain.key && same(p.payee, payee))?.name ?? short(payee)),
+    isKnownPlace: (payee) =>
+      same(payee, oraclePayee) || places.some((p) => p.chain === chain.key && same(p.payee, payee)),
     holderName: (spender, id) =>
       holders.find((h) => same(h.address, spender) || (id && h.ids.includes(id.toLowerCase())))?.name ?? null,
     refreshKey,

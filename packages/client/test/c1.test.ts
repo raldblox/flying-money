@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { getChain, setLocalDeployment } from '@flying-money/chains'
-import { type Certificate, certificateId, certKey, type Hex } from '@flying-money/core'
+import { type Certificate, certificateId, certKey, decodeNote, type Hex, NOTE_HEADER } from '@flying-money/core'
 import { createIdempotency, memoryStore as sellerMemoryStore } from '@flying-money/server'
 import { flyingMoney } from '@flying-money/server/hono'
 import { Hono } from 'hono'
@@ -24,7 +24,7 @@ const DAY = 86_400n
 
 class CrashError extends Error {}
 
-function world(opts: { face: bigint; failRate?: number; price?: () => bigint }) {
+function world(opts: { face: bigint; failRate?: number; price?: (url: string) => bigint }) {
   const payee = privateKeyToAccount(generatePrivateKey())
   const spenderKey = generatePrivateKey()
   const funder = privateKeyToAccount(generatePrivateKey()).address
@@ -49,7 +49,7 @@ function world(opts: { face: bigint; failRate?: number; price?: () => bigint }) 
     payee: payee.address,
     store: sellerStore,
     readCertificate: reader,
-    price: () => (opts.price ? opts.price() : 10n),
+    price: (c) => (opts.price ? opts.price(c.req.url) : 10n),
     requestStatus: async (rid) => jobs.status(rid),
   })
   app.use('/v1/*', mw)
@@ -67,9 +67,14 @@ function world(opts: { face: bigint; failRate?: number; price?: () => bigint }) 
 }
 
 /** Network with injected faults: request lost before the server, or response lost after it. */
-function flakyFetch(app: Hono, p: { dropBefore: number; dropAfter: number }): typeof fetch {
+function flakyFetch(
+  app: Hono,
+  p: { dropBefore: number; dropAfter: number; onSent?: (noteHeader: string) => void },
+): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (Math.random() < p.dropBefore) throw new TypeError('network: connection reset (before server)')
+    const note = new Headers(init?.headers).get(NOTE_HEADER)
+    if (note) p.onSent?.(note) // this slip reached the seller
     const res = await app.request(input instanceof Request ? input : String(input), init)
     if (Math.random() < p.dropAfter) {
       await res.text()
@@ -81,17 +86,30 @@ function flakyFetch(app: Hono, p: { dropBefore: number; dropAfter: number }): ty
 
 describe('C1: no obligation growth on failure (§6.6), with S1 exactly-once', () => {
   it('1,000 requests with drops, lost responses, service failures and crashes between sign/save/send', async () => {
-    const w = world({ face: 1_000_000n, failRate: 0.05, price: () => BigInt(5 + Math.floor(Math.random() * 11)) })
+    // prices vary 5–15 per request, but each request keeps its price: the quote and the paid call agree, as with a
+    // real seller. (A seller that re-prices between them refuses the slip without a receipt, D3: a final state, not a
+    // failure, so it is outside C1.)
+    const w = world({
+      face: 1_000_000n,
+      failRate: 0.05,
+      price: (url) => 5n + ((BigInt(new URL(url).searchParams.get('n') ?? 0) * 7n) % 11n),
+    })
     const clientStore = memoryStore() // durable across simulated crashes (the process dies; the store survives)
-    const signed: bigint[] = []
+    const signed: Array<{ cumulative: bigint; memo: string }> = []
+    // slips signed and then lost with the process (crash right after signing, before the durable save)
+    const lost = new Set<string>()
+    // slips that reached the seller
+    const sent = new Set<string>()
     const spender = privateKeyToAccount(w.spenderKey)
     const spyAccount = {
       ...spender,
       signTypedData: async (p: Parameters<typeof spender.signTypedData>[0]) => {
-        signed.push((p.message as { cumulative: bigint }).cumulative)
+        const m = p.message as { cumulative: bigint; memo: string }
+        signed.push({ cumulative: m.cumulative, memo: m.memo.toLowerCase() })
         return spender.signTypedData(p)
       },
     } as typeof spender
+    const onSent = (h: string) => sent.add(decodeNote(h).memo.toLowerCase())
 
     const crashAt = new Set(['afterSign', 'afterSave', 'afterSend'])
     let crashes = 0
@@ -103,12 +121,13 @@ describe('C1: no obligation growth on failure (§6.6), with S1 exactly-once', ()
         certificates: [w.cert.id],
         maxPricePerRequest: 100n,
         readCertificate: w.reader,
-        fetch: flakyFetch(w.app, { dropBefore: 0.08, dropAfter: 0.08 }),
+        fetch: flakyFetch(w.app, { dropBefore: 0.08, dropAfter: 0.08, onSent }),
         retry: { attempts: 4, backoffMs: 0 },
         hooks: {
           point: (name) => {
             if (crashAt.has(name) && Math.random() < 0.02) {
               crashes++
+              if (name === 'afterSign') lost.add(signed.at(-1)!.memo)
               throw new CrashError(name)
             }
           },
@@ -121,7 +140,7 @@ describe('C1: no obligation growth on failure (§6.6), with S1 exactly-once', ()
     while (completed < 1000 && guard++ < 5000) {
       try {
         await client.ready
-        await client.fetch('http://oracle.test/v1/data')
+        await client.fetch(`http://oracle.test/v1/data?n=${completed}`)
         completed++
       } catch (e) {
         if (e instanceof CrashError) {
@@ -138,25 +157,76 @@ describe('C1: no obligation growth on failure (§6.6), with S1 exactly-once', ()
       certificates: [w.cert.id],
       maxPricePerRequest: 100n,
       readCertificate: w.reader,
-      fetch: flakyFetch(w.app, { dropBefore: 0, dropAfter: 0 }),
+      fetch: flakyFetch(w.app, { dropBefore: 0, dropAfter: 0, onSent }),
     })
     await client.ready
 
     const st = (await w.sellerStore.state(certKey(CHAIN_ID, w.cert.id)))!
-    const maxSigned = signed.reduce((a, b) => (a > b ? a : b), 0n)
+    const max = (xs: bigint[]) => xs.reduce((a, b) => (a > b ? a : b), 0n)
+    // every slip that left the process (saved to the outbox and/or sent)
+    const escaped = signed.filter((s) => !lost.has(s.memo))
+    const maxEscaped = max(escaped.map((s) => s.cumulative))
     const credit = st.accepted - st.consumed - st.reserved
     expect(completed).toBe(1000)
     expect(crashes).toBeGreaterThan(5)
     expect(st.reserved).toBe(0n)
-    // C1: the highest cumulative ever signed equals Σ price(SERVED) + credit
-    expect(maxSigned).toBe(st.consumed + credit)
-    expect(maxSigned).toBe(st.accepted)
+    // a slip lost in a crash right after signing never reached the seller (so it creates no obligation)
+    for (const m of lost) expect(sent.has(m)).toBe(false)
+    // C1: the highest cumulative that ever left the process equals Σ price(SERVED) + credit
+    expect(maxEscaped).toBe(st.consumed + credit)
+    expect(maxEscaped).toBe(st.accepted)
+    // and nothing above that was ever signed, except slips that died unsent with the crashed process
+    for (const s of signed) if (s.cumulative > st.accepted) expect(lost.has(s.memo)).toBe(true)
     // the client's own view converged to the seller's
     const local = (await clientStore.load(certKey(CHAIN_ID, w.cert.id)))!
     expect(local.pending).toBeUndefined()
     expect(local.accepted).toBe(st.accepted)
     expect(local.consumed).toBe(st.consumed)
   }, 120_000)
+
+  it('C1, crash right after signing: the lost slip is never sent, and the retry never signs higher (DECISIONS D36)', async () => {
+    // prices 10, then 4: the first slip (total 10) dies with the process before it is saved; the retry is priced 4
+    const prices = [10n, 4n]
+    const w = world({ face: 1_000n, price: () => prices.shift() ?? 4n })
+    const store = memoryStore()
+    const signed: bigint[] = []
+    const sent: bigint[] = []
+    const spender = privateKeyToAccount(w.spenderKey)
+    const spy = {
+      ...spender,
+      signTypedData: async (p: Parameters<typeof spender.signTypedData>[0]) => {
+        signed.push((p.message as { cumulative: bigint }).cumulative)
+        return spender.signTypedData(p)
+      },
+    } as typeof spender
+    let crashNext = true
+    const make = () =>
+      createFlyingMoneyClient({
+        chains: ['anvil'],
+        spender: spy,
+        store,
+        certificates: [w.cert.id],
+        maxPricePerRequest: 100n,
+        readCertificate: w.reader,
+        fetch: flakyFetch(w.app, { dropBefore: 0, dropAfter: 0, onSent: (h) => sent.push(decodeNote(h).cumulative) }),
+        hooks: {
+          point: (name) => {
+            if (name === 'afterSign' && crashNext) {
+              crashNext = false
+              throw new CrashError(name)
+            }
+          },
+        },
+      })
+    await expect(make().fetch('http://oracle.test/v1/data')).rejects.toBeInstanceOf(CrashError)
+    expect(await store.load(certKey(CHAIN_ID, w.cert.id))).toBeNull() // nothing was saved
+    const restarted = make()
+    expect((await restarted.fetch('http://oracle.test/v1/data')).status).toBe(200)
+    expect(signed).toEqual([10n, 4n]) // the retry signed LOWER: no obligation growth (C1)
+    expect(sent).toEqual([4n]) // the lost slip never left the process
+    const st = (await w.sellerStore.state(certKey(CHAIN_ID, w.cert.id)))!
+    expect(st).toMatchObject({ accepted: 4n, consumed: 4n })
+  })
 
   it('S3 via the client: a failed service leaves credit and the next request signs no higher note', async () => {
     let fail = true

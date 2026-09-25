@@ -3,6 +3,7 @@ import type { Certificate } from '@flying-money/core'
 import Link from 'next/link'
 import { useState } from 'react'
 import { FunderActions } from '@/components/app/funder-actions'
+import { savePlace } from '@/lib/contacts'
 import { relTime, short, usdc } from '@/lib/fmt'
 import { useAccountCtx } from './context'
 
@@ -24,8 +25,11 @@ const BADGE: Record<BudgetState, { label: string; className: string }> = {
 
 /** One budget as a row: where, for whom, how much is left, and when it ends. Actions open in place. */
 export function BudgetRow({ cert, onChanged }: { cert: Certificate; onChanged: () => void }) {
-  const { chain, placeName, holderName } = useAccountCtx()
+  const { chain, placeName, holderName, isKnownPlace, refresh } = useAccountCtx()
   const [open, setOpen] = useState(false)
+  const [naming, setNaming] = useState(false)
+  const [newName, setNewName] = useState('')
+  const saved = isKnownPlace(cert.payee)
   const state = budgetState(cert)
   const left = cert.faceValue - cert.redeemed
   const pct = cert.faceValue > 0n ? Number((cert.redeemed * 1000n) / cert.faceValue) / 10 : 0
@@ -42,12 +46,21 @@ export function BudgetRow({ cert, onChanged }: { cert: Certificate; onChanged: (
           {place.startsWith('0x') ? '◎' : place[0]}
         </span>
         <div className="min-w-0">
-          <Link
-            href={`/c/${chain.key}/${cert.id}`}
-            className="block truncate font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-indigo"
-          >
-            {place}
-          </Link>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href={`/c/${chain.key}/${cert.id}`}
+              className={`truncate font-semibold text-ink hover:underline focus-visible:outline-2 focus-visible:outline-indigo ${
+                saved ? '' : 'font-mono'
+              }`}
+            >
+              {place}
+            </Link>
+            {!saved && (
+              <span className="shrink-0 rounded-full border border-amber/60 px-2 py-0.5 text-[0.7rem] font-medium text-amber">
+                Not saved
+              </span>
+            )}
+          </div>
           <p className="truncate text-sm text-ink-2">
             for {who ?? <span className="font-mono">{short(cert.spender)}</span>} ·{' '}
             {state === 'closed'
@@ -73,6 +86,54 @@ export function BudgetRow({ cert, onChanged }: { cert: Certificate; onChanged: (
           </span>
         </div>
       </div>
+      {!saved &&
+        (naming ? (
+          <form
+            className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const name = newName.trim()
+              if (!name) return
+              void savePlace({ name, chain: chain.key, payee: cert.payee, verification: 'unverified' }).then(() => {
+                setNaming(false)
+                refresh()
+              })
+            }}
+          >
+            <label className="sr-only" htmlFor={`name-${cert.id}`}>
+              Name for {short(cert.payee)}
+            </label>
+            <input
+              id={`name-${cert.id}`}
+              autoComplete="off"
+              placeholder="e.g. Weather API"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="min-h-9 min-w-0 flex-1 rounded-[3px] border border-ink/25 bg-paper px-2 text-sm focus-visible:outline-2 focus-visible:outline-indigo"
+            />
+            <button type="submit" className="min-h-9 text-sm font-medium text-indigo hover:underline">
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setNaming(false)}
+              className="min-h-9 text-sm text-ink-2 hover:underline"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <div className="border-t border-line px-4 py-2">
+            <button
+              type="button"
+              onClick={() => setNaming(true)}
+              className="min-h-9 text-sm font-medium text-indigo hover:underline"
+            >
+              Save as a place…
+            </button>
+            <span className="ml-2 text-xs text-ink-2">Give this address a name so you can recognise it next time.</span>
+          </div>
+        ))}
       {state !== 'closed' && (
         <div className="border-t border-line px-4 py-2">
           <button

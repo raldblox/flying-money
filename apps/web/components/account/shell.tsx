@@ -25,8 +25,8 @@ export function AccountShell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? '/app'
   const active = (href: string) => (href === '/app' ? path === '/app' : path.startsWith(href))
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:py-10">
-      <aside className="lg:sticky lg:top-6 lg:self-start">
+    <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:py-10">
+      <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
         <nav aria-label="Account" className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:overflow-visible lg:px-0">
           <ul className="flex gap-1 lg:grid">
             {NAV.map((n) => (

@@ -9,6 +9,7 @@ import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
 import { short, usdc } from '@/lib/fmt'
 import { HandOverLink } from './hand-over'
+import { RiskBanner } from './risk-banner'
 import { TxStatus, useTx } from './tx'
 
 export interface Place {
@@ -599,6 +600,15 @@ export function IssueWizard({
           <strong>{place?.name ?? (payee ? short(payee) : '…')}</strong> for{' '}
           <strong>{durations[durationIdx]!.label}</strong>.
         </p>
+        {payee && !locked && !place?.verified && (
+          <div className="mt-4">
+            <RiskBanner title="New payee: you haven’t verified this address">
+              Only <span className="font-mono">{short(payee)}</span> can ever be paid from this budget. Scammers swap
+              addresses in messages and web pages, so check it with the payee over a channel you trust. Money for a
+              wrong address comes back only after the end date.
+            </RiskBanner>
+          </div>
+        )}
         {wrongNetwork && (
           <button
             type="button"

@@ -2,6 +2,13 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Warnings, unsaved payees, phones, C1 (25 Sep): ✅ `pnpm verify --e2e` green (D36, D37)
+
+- **Warnings like a banking app:** budget requests from an unsaved agent and/or service show a banner that stays up through funding. When both are unknown, Approve needs an explicit "I've checked" tick. The Fund form flags a new or unverified payee.
+- **Unsaved payees** in budget rows are tagged **Not saved** and can be named in place.
+- **375 px:** there's no sideways scroll on Home, Budgets, Fund or the request page (asserted in e2e). The header fits on small phones.
+- **C1 flake fixed in the test** (the seller's random re-pricing and lost-after-sign slips), with the exact spec assertion; 0 failures in 60 runs.
+
 ## V4 link channel (25 Sep): ✅ `pnpm verify` green (D35)
 
 - The agent asks for a budget through a signed link; the owner reviews it and funds it from their wallet; the agent verifies the funding on-chain and pays. This passes end to end on anvil, and budgets meant as decoys (wrong spender, wrong payee, wrong funder) never count.
