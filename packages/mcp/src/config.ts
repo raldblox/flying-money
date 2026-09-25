@@ -5,12 +5,15 @@ import { createFlyingMoneyClient, type FlyingMoneyClient, fileRequestStore, file
 import type { Hex } from '@flying-money/core'
 import { parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { allowHostsFromEnv, guardedFetch } from './net-guard.js'
 
 export interface McpEnvConfig {
   client: FlyingMoneyClient
   maxPricePerRequest: bigint
   /** An owner is configured, so the agent may ask for budgets (§21.4). */
   canRequest: boolean
+  /** Public internet only (audit F6): used by the tools and by the payment client alike. */
+  fetch: typeof fetch
 }
 
 /** Where approval links open by default (§21.4.2 link channel). */
@@ -26,6 +29,7 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_OWNER             owner address to ask for budgets (§21.4); optional
  *   FM_REQUEST_LINK_BASE where approval links open (default https://useflyingmoney.vercel.app)
  *   RPC_<CHAIN>          optional RPC overrides
+ *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  */
 export function configFromEnv(env: Record<string, string | undefined> = process.env): McpEnvConfig {
   const key = env.AGENT_KEY?.trim()
@@ -47,7 +51,9 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
   for (const c of chains) if (!isChainKey(c)) throw new Error(`unknown chain in AGENT_CHAINS: ${c}`)
   const maxPricePerRequest = parseUnits(env.FM_MAX_PRICE ?? '0.05', 6)
   const storePath = env.FM_STORE ?? join(homedir(), '.flying-money', 'outbox.json')
+  const fetch = guardedFetch({ allowHosts: allowHostsFromEnv(env.FM_ALLOW_HOSTS) })
   const client = createFlyingMoneyClient({
+    fetch,
     chains: chains as ChainKey[],
     spender: privateKeyToAccount(key as Hex),
     store: fileStore(storePath),
@@ -62,5 +68,5 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
         }
       : {}),
   })
-  return { client, maxPricePerRequest, canRequest: Boolean(owner) }
+  return { client, maxPricePerRequest, canRequest: Boolean(owner), fetch }
 }

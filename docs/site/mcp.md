@@ -26,6 +26,8 @@ There is **no tool to issue or top up a certificate**, and no tool returns the s
 | `AGENT_CERTIFICATES` | Certificate ids issued to that key, comma-separated |
 | `AGENT_CHAINS` | Registry keys, comma-separated (default `arbitrum-sepolia`) |
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
+| `FM_ALLOW_HOSTS` | Optional. `host:port` pairs that may be private, for a seller on your own machine or network (e.g. `localhost:8787`). By default only public addresses can be fetched |
+| `FM_MCP_TOKEN` | Optional. With `--http`, every request must send `Authorization: Bearer <token>` |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
 
 The package is not on npm yet. Build it from the repository (`pnpm install && pnpm build`) and point your client at `packages/mcp/dist/bin.js`.
@@ -60,11 +62,12 @@ claude mcp add flying-money -e AGENT_KEY=0x… -e AGENT_CERTIFICATES=0x… -- no
 ## Any MCP client over HTTP
 
 ```bash
-node packages/mcp/dist/bin.js --http 8788   # streamable HTTP at http://127.0.0.1:8788/mcp (localhost only)
+node packages/mcp/dist/bin.js --http 8788   # streamable HTTP at http://127.0.0.1:8788/mcp (this machine only)
 ```
 
 ## Notes
 
 - The key sits in your MCP client's config in plain text. That is acceptable only because a spending key holds no money: at worst it can spend what is left on its certificates, and only at those sellers.
+- The tools only reach the public internet: private, loopback and cloud-metadata addresses are refused (also when a name resolves to one), and redirects are never followed. The HTTP mode refuses requests whose Host or Origin isn't this machine, so a web page can't reach it.
 - `max_price` is checked against the seller's quoted price before paying. The per-request cap (`FM_MAX_PRICE`) and the certificate's face value always apply.
 - Failed requests are not charged: the seller turns the price into credit for your next request.

@@ -11,6 +11,7 @@ import { decodeOffer, type Hex, OFFER_HEADER, type Offer, parseOffer } from '@fl
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { formatUnits, parseUnits } from 'viem'
 import { z } from 'zod'
+import { guardedFetch } from './net-guard.js'
 
 export interface FlyingMoneyMcpConfig {
   /** A configured buyer client (its spending key never leaves it; no tool reads or returns it). */
@@ -49,7 +50,8 @@ function httpUrl(u: string): URL {
  */
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   const fm = cfg.client
-  const doFetch = cfg.fetch ?? fetch
+  // public internet only unless the caller supplies its own fetch (audit F6)
+  const doFetch = cfg.fetch ?? guardedFetch()
   const maxBody = cfg.maxBodyChars ?? 8000
   const server = new McpServer({ name: 'flying-money', version: '0.1.0' })
 
@@ -120,7 +122,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     },
     async ({ url }) => {
       try {
-        const res = await doFetch(httpUrl(url))
+        const res = await doFetch(httpUrl(url), { redirect: 'manual' })
         if (res.status !== 402)
           return json({ paid: false, price: '0.00', status: res.status, note: 'No payment needed.' })
         const h = res.headers.get(OFFER_HEADER)
@@ -163,6 +165,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         const target = httpUrl(url)
         const init: RequestInit = {
           method: method ?? 'GET',
+          redirect: 'manual',
           ...(body ? { body, headers: { 'content-type': 'application/json' } } : {}),
         }
         if (max_price !== undefined) {
