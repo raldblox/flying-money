@@ -22,9 +22,9 @@ import { relTime, short, usdc } from '@/lib/fmt'
 import { FunderActions } from './funder-actions'
 import { TxStatus, useTx } from './tx'
 
-type Role = 'funder' | 'payee'
+export type Role = 'funder' | 'payee'
 
-async function loadCertificates(
+export async function loadCertificates(
   client: PublicClient,
   chain: ChainConfig,
   role: Role,
@@ -42,7 +42,7 @@ async function loadCertificates(
   return certs.filter((c): c is Certificate => c !== null)
 }
 
-function useCertificates(chain: ChainConfig, role: Role, refreshKey: number) {
+export function useCertificates(chain: ChainConfig, role: Role, refreshKey: number) {
   const { address } = useAccount()
   const client = usePublicClient({ chainId: chain.chain.id })
   return useQuery({
@@ -53,7 +53,7 @@ function useCertificates(chain: ChainConfig, role: Role, refreshKey: number) {
   })
 }
 
-const statusOf = (c: Certificate) =>
+export const statusOf = (c: Certificate) =>
   c.closed ? 'closed' : BigInt(Math.floor(Date.now() / 1000)) > c.expiresAt ? 'expired' : 'open'
 
 function Skeleton() {

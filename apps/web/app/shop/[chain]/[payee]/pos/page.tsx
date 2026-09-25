@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import '@/lib/e2e'
 import { notFound } from 'next/navigation'
 import { isAddress } from 'viem'
-import { Providers } from '@/app/app/providers'
 import { OfflineReady } from '@/components/offline-ready'
 import { Pos } from './pos-client'
 
@@ -30,9 +29,7 @@ export default async function PosPage({
         </p>
         <OfflineReady />
       </div>
-      <Providers>
-        <Pos chainKey={c.key} payee={payee} initialName={name?.slice(0, 60)} />
-      </Providers>
+      <Pos chainKey={c.key} payee={payee} initialName={name?.slice(0, 60)} />
     </div>
   )
 }

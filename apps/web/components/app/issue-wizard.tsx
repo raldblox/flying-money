@@ -148,9 +148,9 @@ export function IssueWizard({
   if (spender && payee && sameAddress(spender, payee)) problems.push('The spender key can’t be the payee.')
   if (spenderMode === 'generate' && generated && !keySaved && !preset?.holderName)
     problems.push('Save the generated key first.')
-  if (face === null || face === 0n) problems.push('Enter a face value above 0 (up to 6 decimals).')
+  if (face === null || face === 0n) problems.push('Enter an amount above 0 (up to 6 decimals).')
   if (face && chain.maxFaceValue > 0n && face > chain.maxFaceValue)
-    problems.push(`This deployment caps a certificate at ${usdc(chain.maxFaceValue)} USDC.`)
+    problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
   if (face && balance !== undefined && face > balance)
     problems.push(`Your wallet holds ${usdc(balance)} USDC on ${chain.chain.name}.`)
 
@@ -253,7 +253,7 @@ export function IssueWizard({
         <div className="mx-auto w-fit">
           <Seal size={72} animate label="Certificate issued and sealed on-chain" />
         </div>
-        <h3 className="mt-5 font-display text-3xl font-semibold">Certificate issued.</h3>
+        <h3 className="mt-5 font-display text-3xl font-semibold">Budget created.</h3>
         <p className="mt-2 font-mono text-sm break-all">{issued.id}</p>
         {preset?.holderName && generated ? (
           <p className="mt-4 text-ink-2">
@@ -286,7 +286,7 @@ export function IssueWizard({
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
           <a className="text-indigo underline" href={`/c/${chain.key}/${issued.id}`}>
-            Open the certificate page
+            Open the budget page
           </a>
           <a
             className="text-indigo underline"
@@ -307,7 +307,7 @@ export function IssueWizard({
               issueTx.reset()
             }}
           >
-            Issue another
+            Create another
           </button>
         </div>
       </div>
@@ -344,7 +344,7 @@ export function IssueWizard({
         <p className="smallcaps text-sm text-seal">Step 1</p>
         <h3 className="font-display text-2xl font-semibold">Who can be paid?</h3>
         <p className="mt-1 text-sm text-ink-2">
-          A certificate pays exactly one place. Nobody else can ever receive its money.
+          A budget pays exactly one place. Nobody else can ever receive its money.
         </p>
         <div className="mt-4 grid gap-2">
           {places.map((p, i) => (
@@ -464,10 +464,8 @@ export function IssueWizard({
         {spenderMode === 'paste' ? (
           <div className="mt-4">
             <p className="text-sm text-ink-2">
-              Create the key where the agent runs; it prints only the address:{' '}
-              <code className="rounded bg-paper-2 px-1.5 py-0.5 font-mono">
-                npx @flying-money/client keygen --out .env
-              </code>
+              Paste the address of your agent’s own spending key (from its settings, e.g. its MCP config). The key
+              itself never leaves the agent.
             </p>
             <label htmlFor={`${ids}-spender`} className="mt-3 block text-sm font-medium">
               Agent (spender) address
@@ -551,7 +549,7 @@ export function IssueWizard({
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor={`${ids}-amount`} className="text-sm font-medium">
-              {locked ? 'Amount (USDC): you can give less than asked' : 'Face value (USDC)'}
+              {locked ? 'Amount (USDC): you can give less than asked' : 'Amount (USDC)'}
             </label>
             <input
               id={`${ids}-amount`}
@@ -635,7 +633,7 @@ export function IssueWizard({
               disabled={problems.length > 0 || busy || !wallet}
               onClick={issue}
             >
-              {locked ? 'Fund the budget' : 'Issue certificate'}
+              {locked ? 'Fund the budget' : 'Create the budget'}
             </button>
           )}
         </div>

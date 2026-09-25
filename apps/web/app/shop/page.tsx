@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Providers } from '@/app/app/providers'
 import { OfflineReady } from '@/components/offline-ready'
 import { OpenShop } from './open-shop'
 
@@ -23,9 +22,7 @@ export default function ShopPage() {
         till shows a price code, scans the customer’s code, and tells you at once whether the payment is guaranteed. It
         keeps working when the Wi‑Fi drops, and you collect everything later in one transaction.
       </p>
-      <Providers>
-        <OpenShop />
-      </Providers>
+      <OpenShop />
     </div>
   )
 }

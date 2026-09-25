@@ -9,6 +9,7 @@ import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
 import { buttonClass } from '@/components/section'
 import { badgeOf, listHolders, listPlaces } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
+import { markRequest, rememberRequest } from '@/lib/seen-requests'
 import { type ParsedRequest, readRequestFromHash } from '@/lib/spend-request'
 
 const usdc = (v: bigint) => {
@@ -37,6 +38,20 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   }, [])
 
   const r = parsed?.ok ? parsed.signed.request : null
+  // keep a local note of the request for the Requests tab (the link itself carries it)
+  useEffect(() => {
+    if (!r || !parsed?.ok) return
+    void rememberRequest({
+      requestId: r.requestId,
+      link: window.location.href,
+      chain: parsed.chain.key,
+      requester: r.requester,
+      payee: r.payee,
+      amount: formatUnits(r.amount, 6),
+      days: Number(r.validFor / 86_400n),
+      reason: r.reason,
+    })
+  }, [r, parsed])
   useEffect(() => {
     if (!r || !parsed?.ok) return
     void listHolders().then((hs) => setAgentName(hs.find((h) => same(h.address, r.requester))?.name ?? null))
@@ -89,7 +104,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         <IssueWizard
           chain={chain}
           places={places}
-          onIssued={() => {}}
+          onIssued={(info) => void markRequest(req.requestId, 'funded', info.id)}
           preset={{
             placeAddress: req.payee,
             spender: req.requester,
@@ -185,7 +200,14 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         <div className="sheet flex flex-wrap items-center justify-between gap-4 p-5">
           <WalletButton chain={chain} />
           <div className="flex flex-wrap gap-3">
-            <button type="button" className={buttonClass('secondary')} onClick={() => setStep('declined')}>
+            <button
+              type="button"
+              className={buttonClass('secondary')}
+              onClick={() => {
+                void markRequest(req.requestId, 'declined')
+                setStep('declined')
+              }}
+            >
               Decline
             </button>
             <button
