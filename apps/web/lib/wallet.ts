@@ -98,12 +98,12 @@ export async function addCertificate(opts: { chain: ChainKey; id: Hex; key: Hex;
   try {
     cert = await loadCertificate(opts.chain, opts.id)
   } catch {
-    throw new AddError('You need a connection to add a certificate (it is checked on the blockchain once).')
+    throw new AddError('You need a connection to add a budget (it is checked on the blockchain once).')
   }
-  if (!cert) throw new AddError('No certificate with this id on this network.')
+  if (!cert) throw new AddError('No budget with this id on this network.')
   const spender = privateKeyToAccount(opts.key).address
   if (spender.toLowerCase() !== cert.spender.toLowerCase())
-    throw new AddError('This key is not the spending key of that certificate.')
+    throw new AddError('This key is not the spending key of that budget.')
   const entry: WalletEntry = {
     chain: opts.chain,
     chainId: ch.chain.id,
@@ -114,7 +114,7 @@ export async function addCertificate(opts: { chain: ChainKey; id: Hex; key: Hex;
     expiresAt: cert.expiresAt.toString(),
     spender,
     vault: await sealKey(opts.pin, opts.key),
-    label: opts.label?.trim() || 'Certificate',
+    label: opts.label?.trim() || 'Budget',
     addedAt: Date.now(),
   }
   await kv().set(`cert:${certKey(entry.chainId, entry.id)}`, JSON.stringify(entry))

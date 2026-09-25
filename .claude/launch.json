@@ -39,6 +39,20 @@
         "3001"
       ],
       "port": 3001
+    },
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@flying-money/web",
+        "exec",
+        "next",
+        "start",
+        "--port",
+        "3005"
+      ],
+      "port": 3005
     }
   ]
 }

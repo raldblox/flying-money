@@ -5,8 +5,7 @@ export function Claims() {
       n: '1',
       title: 'The money is really there',
       plain: 'When the budget is created, the USDC is set aside on the blockchain. Only this seller can collect it.',
-      exact:
-        'Every redeemable note is backed by funds reserved exclusively for its payee until the certificate expires.',
+      exact: 'Every redeemable note is backed by funds reserved exclusively for its payee until the budget expires.',
       art: <ArtReserved />,
     },
     {

@@ -96,7 +96,7 @@ const CARDS = {
     ],
     caption: (
       <>
-        5 USDC for one service. <em className="text-seal">Not a cent more, and nowhere else.</em>
+        A controlled budget for your agent. <em className="text-seal">One service, your limit.</em>
       </>
     ),
   },
@@ -114,7 +114,7 @@ const CARDS = {
     ],
     caption: (
       <>
-        20 USDC for Lantern Café. <em className="text-seal">It works there, and only there.</em>
+        A controlled budget for Mia. <em className="text-seal">One café, your limit.</em>
       </>
     ),
   },
@@ -127,7 +127,9 @@ function HeroCard() {
   return (
     <figure className="mx-auto w-full max-w-[34rem]">
       <LiveTally key={door} {...c} />
-      <figcaption className="mt-3 text-center font-display text-xl leading-snug text-ink">{c.caption}</figcaption>
+      <figcaption className="mt-3 min-h-[3.5rem] text-center font-display text-xl leading-snug text-ink">
+        {c.caption}
+      </figcaption>
     </figure>
   )
 }

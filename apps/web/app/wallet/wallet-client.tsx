@@ -103,9 +103,7 @@ export function Wallet() {
     return (
       <SetPin
         onDone={() => setReady('ok')}
-        intro={
-          view.k === 'handover' ? 'Someone gave you a certificate. First, choose a PIN for this wallet.' : undefined
-        }
+        intro={view.k === 'handover' ? 'Someone gave you a budget. First, choose a PIN for this wallet.' : undefined}
       />
     )
 
@@ -138,7 +136,7 @@ export function Wallet() {
         </Panel>
       )}
       {view.k === 'choose' && (
-        <Panel title="Pay with which certificate?" onBack={() => setView({ k: 'home' })}>
+        <Panel title="Pay with which budget?" onBack={() => setView({ k: 'home' })}>
           <Choose
             offer={view.offer}
             entries={entries}
@@ -167,7 +165,7 @@ export function Wallet() {
         />
       )}
       {view.k === 'add' && (
-        <Panel title="Add a certificate" onBack={() => setView({ k: 'home' })}>
+        <Panel title="Add a budget" onBack={() => setView({ k: 'home' })}>
           <AddCertificate
             onAdded={async () => {
               await refresh()
@@ -177,7 +175,7 @@ export function Wallet() {
         </Panel>
       )}
       {view.k === 'handover' && (
-        <Panel title="A certificate for you" onBack={() => setView({ k: 'home' })}>
+        <Panel title="A budget for you" onBack={() => setView({ k: 'home' })}>
           <AcceptHandOver
             h={view.h}
             onAdded={async () => {
@@ -228,8 +226,8 @@ function SetPin({ onDone, intro }: { onDone: () => void; intro?: string | undefi
     >
       <h1 className="font-display text-4xl font-semibold">Set up your wallet</h1>
       <p className="text-ink-2">
-        {intro ?? 'Your certificates live on this phone.'} Choose a PIN of 6 to 12 digits. It locks the keys that sign
-        your payments. Nobody can reset it for you, so write it down somewhere safe.
+        {intro ?? 'Your budgets live on this phone.'} Choose a PIN of 6 to 12 digits. It locks the keys that sign your
+        payments. Nobody can reset it for you, so write it down somewhere safe.
       </p>
       <PinInput id={`${ids}-a`} label="New PIN" value={a} onChange={setA} autoComplete="new-password" />
       <PinInput id={`${ids}-b`} label="Repeat the PIN" value={b} onChange={setB} autoComplete="new-password" />
@@ -295,7 +293,7 @@ function Home({
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-5xl font-semibold tracking-tight">Your certificates</h1>
+        <h1 className="font-display text-5xl font-semibold tracking-tight">Your budgets</h1>
         <div className="flex gap-3">
           <button type="button" className={buttonClass('primary')} onClick={onPay} disabled={entries.length === 0}>
             Pay
@@ -320,9 +318,9 @@ function Home({
 
       {entries.length === 0 ? (
         <div className="sheet p-8 text-center">
-          <p className="font-display text-2xl font-semibold">No certificates on this device yet.</p>
+          <p className="font-display text-2xl font-semibold">No budgets on this device yet.</p>
           <p className="mt-2 text-ink-2">
-            Open a link someone sent you, or tap Add to make a key for a certificate you will fund yourself.
+            Open a link someone sent you, or tap Add to make a key for a budget you will fund yourself.
           </p>
         </div>
       ) : (
@@ -371,7 +369,7 @@ function InstallHint() {
     <aside className="text-sm text-ink-2">
       <p>
         <strong className="text-ink">Add this wallet to your home screen.</strong> Browsers can clear data for sites you
-        haven’t installed (Safari after about a week of no use), and your certificates live only on this device.
+        haven’t installed (Safari after about a week of no use), and your budgets live only on this device.
       </p>
       {prompt ? (
         <button type="button" className={`${buttonClass('secondary')} mt-2`} onClick={() => void prompt.prompt()}>
@@ -391,7 +389,7 @@ function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: b
     <details className="sheet p-5">
       <summary className="cursor-pointer font-medium">Backup and restore</summary>
       <p className="mt-2 text-sm text-ink-2">
-        The backup file holds your certificates with their keys still locked by your PIN. Keep it somewhere private.
+        The backup file holds your budgets with their keys still locked by your PIN. Keep it somewhere private.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
@@ -475,7 +473,7 @@ function Choose({ offer, entries, onPick }: { offer: Offer; entries: Entry[]; on
   if (fits.length === 0)
     return (
       <p>
-        None of your certificates work at this shop. A certificate is only valid at the one shop it was made for (
+        None of your budgets work at this shop. A budget is only valid at the one shop it was made for (
         <span className="font-mono">{short(offer.accepts[0]!.payee)}</span>).
       </p>
     )
@@ -522,11 +520,11 @@ function Review({ offer, entry, onSealed }: { offer: Offer; entry: Entry; onSeal
     } catch (e) {
       setErr(
         e instanceof InsufficientBudgetError
-          ? 'Not enough left on this certificate.'
+          ? 'Not enough left on this budget.'
           : e instanceof PendingUnresolvedError
-            ? 'You have an open payment on this certificate. Settle it first.'
+            ? 'You have an open payment on this budget. Settle it first.'
             : e instanceof NoCertificateError
-              ? 'This certificate can’t pay here (another shop, or it expires too soon).'
+              ? 'This budget can’t pay here (another shop, or it expires too soon).'
               : (e as Error).message,
       )
     } finally {
@@ -760,7 +758,7 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
           onClick={() =>
             void run(async () => {
               const h = parseHandOver(link.slice(link.indexOf('#')))
-              if (!h) throw new AddError('That link has no certificate in it.')
+              if (!h) throw new AddError('That link has no budget in it.')
               await addCertificate({ chain: h.chain, id: h.id, key: h.key, pin, label: h.name })
               await onAdded()
             })
@@ -772,7 +770,7 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
 
       <section className="grid gap-3" aria-labelledby={`${ids}-b`}>
         <h2 id={`${ids}-b`} className="font-display text-2xl font-semibold">
-          A certificate you fund yourself
+          A budget you fund yourself
         </h2>
         <ol className="list-decimal space-y-1 pl-5 text-ink-2">
           <li>Make a spending key on this phone.</li>
@@ -781,7 +779,7 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
             <a className="text-indigo underline" href="/app">
               Counting House
             </a>
-            , issue a certificate for the shop and paste this key’s address as “who can spend”.
+            , issue a budget for the shop and paste this key’s address as “who can spend”.
           </li>
           <li>Paste the new certificate’s id here.</li>
         </ol>
@@ -820,10 +818,10 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
               </select>
             </div>
             <input
-              aria-label="Certificate id"
+              aria-label="Budget id"
               value={certId}
               onChange={(e) => setCertId(e.target.value.trim())}
-              placeholder="Certificate id (0x…)"
+              placeholder="Budget id (0x…)"
               spellCheck={false}
               autoComplete="off"
               className="min-h-11 rounded border border-line bg-paper px-3 font-mono text-sm"
@@ -851,7 +849,7 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
                 })
               }
             >
-              {busy ? 'Checking on the blockchain…' : 'Add the certificate'}
+              {busy ? 'Checking on the blockchain…' : 'Add the budget'}
             </button>
           </div>
         )}

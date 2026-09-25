@@ -37,7 +37,7 @@ export default async function ChainPage({ params }: { params: Promise<{ chain: s
   const caps =
     c.maxFaceValue === 0n
       ? 'None (test network)'
-      : `${usdc(c.maxFaceValue, { min: 0 })} USDC per certificate · ${usdc(c.maxTotalOutstanding, { min: 0 })} USDC for the whole deployment (immutable)`
+      : `${usdc(c.maxFaceValue, { min: 0 })} USDC per budget · ${usdc(c.maxTotalOutstanding, { min: 0 })} USDC for the whole deployment (immutable)`
 
   return (
     <article className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
@@ -113,7 +113,7 @@ export default async function ChainPage({ params }: { params: Promise<{ chain: s
         <div className="mt-4 flex flex-wrap gap-3">
           <ButtonLink href={`/demo${q}`}>Watch an agent pay</ButtonLink>
           <ButtonLink href={`/app${q}`} variant="secondary">
-            Give a certificate
+            Give a budget
           </ButtonLink>
           <ButtonLink href={`/shops${q}`} variant="secondary">
             Shops

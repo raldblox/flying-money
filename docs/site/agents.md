@@ -48,7 +48,7 @@ console.log(fm.status()) // remaining budget per certificate
 ## Rules the client follows (and your agent should too)
 
 - **You can only pay the seller named on the certificate**, and never more than its face value in total.
-- **A network failure never raises what you owe.** On a timeout the client resends the *same* note. It never signs a higher one because of a failure (invariant C1).
+- **A network failure never raises what you owe.** On a timeout the client resends the *same* note. It never signs a higher one because of a failure.
 - **Never ask a user for their main wallet key.** Agents only ever need their own spending key.
 - Amounts are integers in USDC base units (6 decimals): `10_000n` is 0.01 USDC.
 

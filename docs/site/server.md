@@ -5,7 +5,7 @@ description: Accept Flying Money notes on any HTTP API with one middleware, and 
 
 # Server SDK (`@flying-money/server`)
 
-The seller side (§6.5). Put the middleware in front of paid routes; run the redeemer to collect.
+The seller side of the [protocol](/docs/protocol). Put the middleware in front of paid routes; run the redeemer to collect.
 
 ## Hono middleware
 
@@ -33,9 +33,9 @@ What the middleware does for every paid request:
 
 1. No note → `402` with a `Flying-Money-Offer` header (price, chains, contract, token, payee).
 2. Parses the note, checks the chain and contract, reads the certificate (cached), checks payee, lifetime, signature and face value.
-3. A `requestId` it has seen returns the stored outcome (replays are never charged twice, S1).
-4. Reserves the price atomically against the best note it holds (concurrent requests can't overspend, S4).
-5. Runs your handler. A response with status ≥ 400 counts as a failed service: the price becomes **credit** for the buyer (S3).
+3. A `requestId` it has seen returns the stored outcome (replays are never charged twice).
+4. Reserves the price atomically against the best note it holds (concurrent requests can't overspend).
+5. Runs your handler. A response with status ≥ 400 counts as a failed service: the price becomes **credit** for the buyer.
 6. Adds a `Flying-Money-Receipt` header with accepted / consumed / credit / remaining.
 
 **Your handler must be idempotent on `requestId`** (`c.get('flyingMoney').requestId`). For side effects, use `createIdempotency()`.

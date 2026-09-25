@@ -23,7 +23,7 @@ export function CertificateCard({
     <figure className="mx-auto w-full max-w-md">
       <div className="tally-join relative flex select-none">
         <div className="half-left flex-1 rounded-l-md border border-r-0 border-line bg-paper-2 p-5 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-2">Certificate</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-ink-2">Budget</p>
           <p className="mt-2 font-display text-5xl font-semibold lining-nums tabular-nums">{face}</p>
           <p className="text-xs text-ink-2">USDC face value</p>
           <dl className="mt-4 space-y-1 text-sm">

@@ -71,7 +71,7 @@ function Skeleton() {
 function ErrorBox({ error, retry }: { error: unknown; retry: () => void }) {
   return (
     <div role="alert" className="sheet border-l-4 border-seal p-5">
-      <p>Couldn’t read certificates from the chain: {(error as Error).message.split('\n')[0]}</p>
+      <p>Couldn’t read budgets from the chain: {(error as Error).message.split('\n')[0]}</p>
       <button type="button" onClick={retry} className={`${buttonClass('secondary')} mt-3`}>
         Try again
       </button>
@@ -86,7 +86,7 @@ export function IssuedList({ chain, refreshKey }: { chain: ChainConfig; refreshK
   if (q.data.length === 0)
     return (
       <div className="sheet p-8 text-center text-ink-2">
-        <p className="font-display text-2xl text-ink">No certificates yet.</p>
+        <p className="font-display text-2xl text-ink">No budgets yet.</p>
         <p className="mt-2">Issue one above: pick a place, a spender and a budget.</p>
       </div>
     )
@@ -143,8 +143,8 @@ export function PayeeList({ chain, refreshKey }: { chain: ChainConfig; refreshKe
   if (q.data.length === 0)
     return (
       <div className="sheet p-8 text-center text-ink-2">
-        <p className="font-display text-2xl text-ink">No certificates name you as the payee.</p>
-        <p className="mt-2">When a funder issues a certificate to your address, it appears here.</p>
+        <p className="font-display text-2xl text-ink">No budgets name you as the payee.</p>
+        <p className="mt-2">When a funder issues a budget to your address, it appears here.</p>
       </div>
     )
   return (
@@ -176,12 +176,12 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       if (note.chainId !== chain.chain.id || !sameAddress(note.contract, chain.flyingMoney!))
         problem = 'This note is for another chain or contract.'
       else if (note.certificateId.toLowerCase() !== cert.id.toLowerCase())
-        problem = 'This note is for a different certificate.'
+        problem = 'This note is for a different budget.'
       else if (!verifyNoteSignature(note, cert.spender))
         problem = 'The signature isn’t from this certificate’s spender.'
       else if (note.cumulative > cert.faceValue) problem = 'The note is above the face value.'
       else if (note.cumulative <= cert.redeemed) problem = 'Already redeemed: this note adds nothing.'
-      else if (st !== 'open') problem = `The certificate is ${st}.`
+      else if (st !== 'open') problem = `The budget is ${st}.`
     } catch (e) {
       problem = `Not a valid payment slip: ${(e as Error).message}`
       note = null
@@ -212,7 +212,7 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id={`${ids}-t`} className="font-mono text-sm">
           <a className="text-indigo underline" href={`/c/${chain.key}/${cert.id}`}>
-            Certificate {short(cert.id)}
+            Budget {short(cert.id)}
           </a>
         </h3>
         <StatusChip kind={st}>{st[0]!.toUpperCase() + st.slice(1)}</StatusChip>

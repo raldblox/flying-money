@@ -4,7 +4,8 @@ import { WhatIf } from '@/components/guarantees/what-if'
 
 export const metadata: Metadata = {
   title: 'Guarantees',
-  description: 'What Flying Money guarantees, what it does not, the threat model, and what we removed and why.',
+  description:
+    'What Flying Money guarantees, what it does not, the risks it is built against, and what it leaves out on purpose.',
 }
 
 const PARTY = [
@@ -14,7 +15,7 @@ const PARTY = [
     'Redeems before expiry; token not frozen; chain live; its acceptance state is authoritative.',
   ],
   ['Funder', 'Never loses more than the face value; gets the remainder back after expiry.', '—'],
-  ['Funder (spender key stolen)', 'Loss ≤ the remaining face value of certificates bound to that key.', '—'],
+  ['Funder (spender key stolen)', 'Loss ≤ the remaining face value of budgets bound to that key.', '—'],
   [
     'Spender (agent or person)',
     'Cannot be charged more than the highest cumulative it signed; retries never create extra charges; network failures never raise its obligation.',
@@ -85,14 +86,10 @@ const THREATS = [
   [
     'Unaudited contract bug on mainnet',
     'Exposure bounded deployment-wide',
-    '1,000 USDC deployment cap + 100 USDC per certificate',
+    '1,000 USDC deployment cap + 100 USDC per budget',
   ],
   ['Stablecoin freeze or blocklist', 'Funds stuck', 'Inherent to the token; disclosed'],
-  [
-    'The RPC lies to the seller',
-    'The seller may accept notes against a fake certificate',
-    'Use a trusted RPC; disclosed',
-  ],
+  ['The RPC lies to the seller', 'The seller may accept notes against a fake budget', 'Use a trusted RPC; disclosed'],
   [
     'Customer’s phone stolen',
     'The thief can spend only at the named shop(s), up to the remaining face value',
@@ -106,7 +103,7 @@ const THREATS = [
   ['Gift link forwarded or leaked', 'Whoever holds it can spend it, at that shop only', 'Treat gift links like cash'],
   [
     'First-time customer while the POS is offline',
-    'A fabricated certificate is possible',
+    'A fabricated budget is possible',
     'Shown as UNVERIFIED · merchant risk, capped by the first-visit limit',
   ],
   [
@@ -138,8 +135,9 @@ export default function GuaranteesPage() {
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">What’s guaranteed, and what isn’t.</h1>
 
       <p className="mt-6 sheet p-5 text-ink-2">
-        <strong className="text-ink">Audit status: not audited.</strong> Invariant- and property-tested. Testnets only
-        for now. Mainnets will launch with immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide).
+        <strong className="text-ink">Audit status: not audited.</strong> Its safety rules are checked by automated tests
+        that run thousands of random scenarios. Test networks only for now. Real-money networks will launch with fixed
+        caps (100 USDC per budget, 1,000 USDC in total).
       </p>
 
       <h2 className="mt-12 font-display text-3xl font-semibold">The three claims we make, and no stronger ones</h2>
@@ -194,13 +192,13 @@ export default function GuaranteesPage() {
         <h2 className="mt-12 font-display text-3xl font-semibold">Control: what a funder can and can’t do</h2>
         <div className="mt-4 grid gap-6 md:grid-cols-2">
           <ul className="list-disc space-y-2 pl-5">
-            <li>Choose exactly where money can be spent (one certificate per place).</li>
+            <li>Choose exactly where money can be spent (one budget per place).</li>
             <li>Choose how much, and top up at any time.</li>
             <li>Choose how long, and extend it.</li>
             <li>Not renew: small amounts on short cycles work as an allowance.</li>
           </ul>
           <ul className="list-disc space-y-2 pl-5 text-ink-2">
-            <li>Can’t freeze or cancel a certificate before expiry.</li>
+            <li>Can’t freeze or cancel a budget before expiry.</li>
             <li>Can’t lower a limit after issuing.</li>
             <li>Can’t block one purchase at an allowed place.</li>
             <li>Can’t see purchases before the shop collects, unless the holder’s app sends receipts.</li>
@@ -252,34 +250,35 @@ export default function GuaranteesPage() {
         </details>
         <p className="mt-4 text-ink-2">
           <strong className="text-ink">Out of scope, stated plainly:</strong> paying strangers offline; strong privacy;
-          freezing a certificate early (by design); disputes and refunds.
+          freezing a budget early (by design); disputes and refunds.
         </p>
 
-        <h2 className="mt-12 font-display text-3xl font-semibold">What we removed, and why</h2>
+        <h2 className="mt-12 font-display text-3xl font-semibold">What we left out, and why</h2>
         <p className="mt-4 text-lg">
-          We began by building offline cash. Our own adversarial review showed that software alone cannot stop someone
-          paying two offline strangers with the same money. So we cut everything that couldn’t be guaranteed:
+          Some features sound useful but can’t be made safe with software alone. Flying Money doesn’t offer them:
         </p>
         <ul className="mt-4 list-disc space-y-2 pl-5 text-ink-2">
           <li>
-            <strong className="text-ink">Shared spending pools.</strong> One reservation could pay any receiver, so only
-            the first to redeem got paid. Replaced by payee-scoped certificates.
+            <strong className="text-ink">Paying strangers offline.</strong> Without a connection, nothing stops the same
+            money being shown to two people at once. Offline, a shop only accepts customers it has already checked, up
+            to a limit it chooses.
           </li>
           <li>
-            <strong className="text-ink">Endorsement chains.</strong> An endorser could redeem first and cancel the
-            downstream holder’s value. Deleted.
+            <strong className="text-ink">One pot that pays anyone.</strong> If one balance could pay many places, only
+            the first to collect would be paid. Every budget pays exactly one place, so its money is really there for
+            that place.
           </li>
           <li>
-            <strong className="text-ink">The master key signing everything.</strong> Replaced by a separate spender key
-            per certificate, so a compromise is bounded by the face value.
+            <strong className="text-ink">Passing a budget along.</strong> A chain of hand-offs would let an earlier
+            holder take the money back from a later one. A budget stays with the key you gave it to.
           </li>
           <li>
-            <strong className="text-ink">One redemption per payment.</strong> Replaced by cumulative notes: one
-            redemption covers any number of payments.
+            <strong className="text-ink">One key for everything.</strong> Each budget has its own spending key, so if
+            one leaks, the loss can’t exceed that budget.
           </li>
           <li>
-            <strong className="text-ink">“Payment complete ✓ / No double spends” marketing</strong> for offline
-            acceptance, which was false. Replaced by this page.
+            <strong className="text-ink">A blockchain transaction per payment.</strong> Too slow and too costly for
+            small payments. One collection covers any number of them.
           </li>
         </ul>
       </div>

@@ -44,7 +44,7 @@ export function TallyArt({
         </clipPath>
       </defs>
 
-      {/* LEFT half: the certificate */}
+      {/* LEFT half: the budget */}
       <g className="tally-left">
         <g clipPath={`url(#${L})`}>
           <rect x="12" y="12" width="500" height="296" rx="3" fill="var(--paper)" filter="url(#deckle)" />

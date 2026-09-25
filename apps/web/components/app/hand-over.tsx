@@ -32,7 +32,7 @@ export function HandOverLink({
       <h4 className="font-display text-2xl font-semibold">Give it to someone</h4>
       <p className="mt-1 text-sm text-ink-2">
         For a child, an employee or a friend: they open the link on their phone and pay at the shop with a QR code. No
-        crypto wallet or fees for them. Anyone holding this link can spend the certificate, so send it privately.
+        crypto wallet or fees for them. Anyone holding this link can spend the budget, so send it privately.
       </p>
       <label htmlFor={`${ids}-n`} className="mt-4 block text-sm font-medium">
         What should it be called in their wallet?

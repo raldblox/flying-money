@@ -199,7 +199,7 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
       </div>
 
       {/* what just happened, newest first; a fixed height so nothing below ever moves */}
-      <div className="mt-3 flex min-h-[5.25rem] flex-col gap-1.5" aria-hidden>
+      <div className="mt-3 flex h-28 flex-col gap-1.5 overflow-hidden" aria-hidden>
         {log.map((f, i) => (
           <div
             key={f.id}
@@ -213,8 +213,8 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
         ))}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-ink-2">{status}</p>
+      <div className="mt-2 flex min-h-[4.75rem] flex-wrap items-start justify-between gap-2 sm:min-h-11 sm:items-center">
+        <p className="min-w-0 flex-1 text-sm text-ink-2">{status}</p>
         {/* announce only what a click caused, not every automatic payment */}
         <p role="status" className="sr-only">
           {phase === 'refused' ? status : ''}

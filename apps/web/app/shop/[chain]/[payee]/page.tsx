@@ -27,11 +27,11 @@ export default async function ShopPublicPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <article className="sheet p-8 text-center sm:p-12">
-        <p className="smallcaps text-sm text-seal">Pay with a certificate · {c.chain.name}</p>
+        <p className="smallcaps text-sm text-seal">Pay with a budget · {c.chain.name}</p>
         <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">{name}</h1>
         <p className="mx-auto mt-4 max-w-md text-lg text-ink-2">
-          Have a Flying Money certificate for {name}? Open your wallet, scan the price code at the till, and show your
-          code. No fees for you, no crypto wallet needed.
+          Have a Flying Money budget for {name}? Open your wallet, scan the price code at the till, and show your code.
+          No fees for you, no crypto wallet needed.
         </p>
         <div className="mx-auto mt-8 max-w-60">
           <QrCode
@@ -44,8 +44,8 @@ export default async function ShopPublicPage({
           shop as a verified place.
         </p>
         <p className="mt-6 text-xs text-ink-2">
-          Payments go only to <span className="font-mono">{short(payee)}</span>. Only certificates made for this shop
-          work here.
+          Payments go only to <span className="font-mono">{short(payee)}</span>. Only budgets made for this shop work
+          here.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3 print:hidden">
           <ButtonLink href="/wallet">Open my wallet</ButtonLink>

@@ -15,8 +15,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'monochrome' },
     ],
     shortcuts: [
-      { name: 'Wallet', url: '/wallet', description: 'Pay at a shop with a certificate' },
-      { name: 'Open a till', url: '/shop', description: 'Take certificate payments at the counter' },
+      { name: 'Wallet', url: '/wallet', description: 'Pay at a shop with a budget' },
+      { name: 'Open a till', url: '/shop', description: 'Take budget payments at the counter' },
     ],
   }
 }

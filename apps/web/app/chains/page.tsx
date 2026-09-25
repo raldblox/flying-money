@@ -39,7 +39,7 @@ export default function ChainsPage() {
                 USDC
               </th>
               <th scope="col" className="px-4 py-3 font-medium">
-                Caps (per certificate · deployment)
+                Caps (per budget · deployment)
               </th>
               <th scope="col" className="px-4 py-3 font-medium">
                 Gas

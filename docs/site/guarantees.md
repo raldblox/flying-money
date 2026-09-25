@@ -49,6 +49,6 @@ There is no freeze button on purpose: a shop can accept a note instantly, even o
 
 Payments are public on the blockchain but not linked to names. The spending address is random and holds nothing; names and labels never leave your device. We don't claim anonymity: flows between addresses are public.
 
-## What we removed, and why
+## What we left out, and why
 
-We started out building offline cash between strangers. Our own review showed that software alone can't stop someone spending the same money twice with two people who are both offline, without an online authority, trusted hardware or an identity system. So we removed it, together with shared spending pools, endorsement chains and bundle settlement. Flying Money only ships what the math guarantees.
+Some features sound useful but can’t be made safe with software alone. Paying strangers offline is one: without a connection, nothing stops the same money being shown to two people at once, short of an online authority, trusted hardware or an identity system. So Flying Money doesn’t offer it, and it doesn’t offer shared spending pools, passing a budget along, or bundled settlement either. It only offers what the math guarantees.

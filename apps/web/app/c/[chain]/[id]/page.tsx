@@ -54,7 +54,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-4">
         <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
-          Certificate <span className="font-mono text-3xl sm:text-4xl">{short(id, 6, 4)}</span>
+          Budget <span className="font-mono text-3xl sm:text-4xl">{short(id, 6, 4)}</span>
         </h1>
         <StatusChip kind={status}>{status[0]!.toUpperCase() + status.slice(1)}</StatusChip>
         <Seal size={40} label="Issued on-chain" />
@@ -105,8 +105,8 @@ export default async function CertificatePage({ params }: { params: Params }) {
               {utcDate(cert.expiresAt)} <span className="text-ink-2">({relTime(cert.expiresAt)})</span>
             </span>
           </Row>
-          <Row label="Certificate id">
-            <AddressPill value={id} label="certificate id" />
+          <Row label="Budget id">
+            <AddressPill value={id} label="budget id" />
           </Row>
         </dl>
         <div className="mt-6">
@@ -155,7 +155,7 @@ export default async function CertificatePage({ params }: { params: Params }) {
 
       <details className="mt-10 sheet p-6">
         <summary className="cursor-pointer font-display text-xl font-semibold">Verify it yourself</summary>
-        <p className="mt-3 text-ink-2">Read this certificate directly from the chain, no website needed:</p>
+        <p className="mt-3 text-ink-2">Read this budget directly from the chain, no website needed:</p>
         <pre className="mt-3 overflow-x-auto rounded bg-paper-2 p-4 font-mono text-sm">
           <code>{`cast call ${chain.flyingMoney} \\
   "getCertificate(bytes32)((address,address,address,uint128,uint128,uint64,bool))" \\
@@ -249,7 +249,7 @@ function Unavailable({ chainName }: { chainName: string }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-24 text-center sm:px-6">
       <h1 className="font-display text-4xl font-semibold">{chainName} is unreachable</h1>
-      <p className="mt-4 text-ink-2">We couldn’t read this certificate from the chain. Try again in a moment.</p>
+      <p className="mt-4 text-ink-2">We couldn’t read this budget from the chain. Try again in a moment.</p>
     </div>
   )
 }

@@ -10,8 +10,8 @@ export default function PlacesPage() {
         Places, <em className="text-seal">where</em> money can go.
       </h1>
       <p className="mt-3 max-w-2xl text-lg text-ink-2">
-        Every certificate pays exactly one place. Save the places you use, verified by scanning their code in person or
-        by their web domain.
+        Every budget pays exactly one place. Save the places you use, verified by scanning their code in person or by
+        their web domain.
       </p>
       <Places />
     </div>

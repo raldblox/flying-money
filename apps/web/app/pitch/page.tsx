@@ -126,7 +126,7 @@ export default function PitchPage() {
         <Block title="Ask">
           <p>
             Pilot partners (a paid API or data service, and one canteen or café) and funding for a security audit before
-            a capped mainnet launch (100 USDC per certificate, 1,000 USDC per deployment).
+            a capped mainnet launch (100 USDC per budget, 1,000 USDC per deployment).
           </p>
         </Block>
         <Block title="Team">

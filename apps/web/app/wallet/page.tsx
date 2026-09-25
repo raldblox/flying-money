@@ -4,7 +4,7 @@ import { Wallet } from './wallet-client'
 
 export const metadata: Metadata = {
   title: 'Wallet',
-  description: 'Your Flying Money certificates on this device. Pay at the counter by showing a QR code.',
+  description: 'Your Flying Money budgets on this device. Pay at the counter by showing a QR code.',
   robots: { index: false },
 }
 

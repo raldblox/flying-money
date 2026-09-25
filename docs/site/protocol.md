@@ -3,7 +3,7 @@ title: Protocol
 description: EIP-712 notes, HTTP headers, the seller's verification algorithm and the buyer's durable outbox.
 ---
 
-# Protocol (v1.4.1)
+# Protocol
 
 ## Objects
 
@@ -42,21 +42,21 @@ Every object on the wire is `fm1.` + base64url(JSON), with integers as decimal s
 
 Headers are at most 2,048 bytes. A signed note (the “payment slip” in the app) is about 544 characters, small enough for one QR code at error-correction level M.
 
-## Seller algorithm (§6.5)
+## Seller algorithm
 
 The seller keeps, per certificate: `accepted` (the best total it holds), `consumed` (value served), `reserved` (in flight), and one outcome per `requestId`.
 
 1. Parse the note. Unknown chain or contract → `402` offer.
 2. Read the certificate (cached; payee and spender never change).
-3. A known `requestId` returns its stored outcome, after an ECDSA check (replays are free, S1).
+3. A known `requestId` returns its stored outcome, after an ECDSA check (replays are free).
 4. Check payee, `closed`, remaining lifetime ≥ `minRemainingLifetime`, signature, `cumulative ≤ faceValue`.
-5. Atomically: `consumed + reserved + price ≤ max(accepted, cumulative)`, then `reserved += price` and `accepted = max(accepted, cumulative)` (no overspend under concurrency, S4).
-6. Serve. Success → `consumed += price`; failure → the price becomes **credit** (S3).
+5. Atomically: `consumed + reserved + price ≤ max(accepted, cumulative)`, then `reserved += price` and `accepted = max(accepted, cumulative)` (no overspend under concurrency).
+6. Serve. Success → `consumed += price`; failure → the price becomes **credit**.
 7. Return a receipt.
 
 The redeemer only ever redeems served value, before `expiresAt − 30 min`.
 
-## Buyer algorithm (§6.6)
+## Buyer algorithm
 
 Per certificate, the buyer durably stores `accepted`, `consumed` and at most one pending note.
 
@@ -67,8 +67,8 @@ Per certificate, the buyer durably stores `accepted`, `consumed` and at most one
 5. On a timeout, resend the same note. Never sign a new one.
 6. On a receipt, update `accepted` and `consumed` and clear the pending note.
 
-**Invariant C1:** a network failure, timeout or crash never makes the spender sign a higher total.
+**No growth on failure:** a network failure, timeout or crash never makes the spender sign a higher total.
 
-## At a counter (§6.8)
+## At a counter
 
 The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a payment-slip QR (the signed note) with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED · merchant risk** (offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).

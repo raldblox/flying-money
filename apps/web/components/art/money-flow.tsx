@@ -60,22 +60,28 @@ export function MoneyFlow({
       </text>
 
       {/* the locked budget */}
-      <g transform="translate(200 38)">
+      <g transform="translate(195 36)">
         <rect
-          width="120"
-          height="72"
+          width="130"
+          height="84"
           rx="8"
           fill="var(--paper)"
           stroke={step === 0 || step >= 3 ? 'var(--seal)' : 'var(--line)'}
           strokeWidth="2"
         />
-        <path d="M52 16 v-6 a8 8 0 0 1 16 0 v6" fill="none" stroke="var(--ink)" strokeWidth="2" />
-        <rect x="47" y="16" width="26" height="18" rx="3" fill="var(--ink)" />
-        <text x="60" y="54" textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--ink)">
+        <g transform="translate(5 0)">
+          <path d="M52 16 v-6 a8 8 0 0 1 16 0 v6" fill="none" stroke="var(--ink)" strokeWidth="2" />
+          <rect x="47" y="16" width="26" height="18" rx="3" fill="var(--ink)" />
+        </g>
+        <text x="65" y="54" textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--ink)">
           {locked} USDC
         </text>
-        <text x="60" y="68" textAnchor="middle" fontSize="10" fill="var(--ink-2)">
-          {step === 4 ? 'closed · nothing left' : `${c.box} · until the end date`}
+        {/* two short lines, so the label always fits inside the box */}
+        <text x="65" y="68" textAnchor="middle" fontSize="10" fill="var(--ink-2)">
+          {step === 4 ? 'closed' : c.box}
+        </text>
+        <text x="65" y="79" textAnchor="middle" fontSize="10" fill="var(--ink-2)">
+          {step === 4 ? 'nothing left' : 'until the end date'}
         </text>
       </g>
 

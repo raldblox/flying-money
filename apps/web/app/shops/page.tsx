@@ -26,14 +26,14 @@ const SECTIONS = [
       'Pick the place, the amount and the end date, then send it as a link or QR code.',
       'Top up or extend at any time. When the end date comes, take back the leftovers.',
       'The holder needs no crypto wallet and pays no fees. You need USDC to give.',
-      'What you can’t do: cancel a certificate early or block one purchase. That is what lets the shop accept on the spot.',
+      'What you can’t do: cancel a budget early or block one purchase. That is what lets the shop accept on the spot.',
     ],
   },
   {
     eyebrow: 'For holders',
     title: 'Pay by showing your phone.',
     items: [
-      'Open the link and choose a PIN. Your certificate lives on this phone.',
+      'Open the link and choose a PIN. Your budget lives on this phone.',
       'At the counter: tap Pay, scan the price, check the amount, enter your PIN, show your code.',
       'Add the wallet to your home screen and save a backup, so your phone doesn’t clear it.',
     ],
@@ -67,7 +67,7 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
             They pay with their phone. The shop gets paid from money already set aside for it.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href={`/app${q}`}>Give a certificate →</ButtonLink>
+            <ButtonLink href={`/app${q}`}>Give a budget →</ButtonLink>
             <ButtonLink href={`/shop${q}`} variant="secondary">
               Open a till
             </ButtonLink>
@@ -131,7 +131,7 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap gap-3">
           <ButtonLink href={`/shop${q}`}>Open a till</ButtonLink>
           <ButtonLink href={`/app${q}`} variant="secondary">
-            Give a certificate
+            Give a budget
           </ButtonLink>
           <ButtonLink href="/wallet" variant="secondary">
             Open my wallet

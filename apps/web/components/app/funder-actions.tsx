@@ -107,7 +107,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
   if (panel === 'topup') {
     if (!add) problems.push('Enter an amount above 0 (up to 6 decimals).')
     if (add && chain.maxFaceValue > 0n && cert.faceValue + add > chain.maxFaceValue)
-      problems.push(`This deployment caps a certificate at ${usdc(chain.maxFaceValue)} USDC.`)
+      problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
     if (add && balance !== undefined && add > balance) problems.push(`Your wallet holds ${usdc(balance)} USDC.`)
   }
   const needsApproval = panel === 'topup' && add !== null && allowance !== undefined && allowance < add
@@ -115,7 +115,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
   return (
     <div className="mt-4">
       <fieldset className="flex flex-wrap gap-2">
-        <legend className="sr-only">Certificate actions</legend>
+        <legend className="sr-only">Budget actions</legend>
         {(
           [
             ['topup', 'Top up'],
@@ -205,7 +205,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
                   key={x.label}
                   type="button"
                   disabled={busy || tooFar || !wallet}
-                  title={tooFar ? 'A certificate can last at most 365 days from now.' : undefined}
+                  title={tooFar ? 'A budget can last at most 365 days from now.' : undefined}
                   onClick={() => void send('extend', [cert.id, next])}
                   className={buttonClass('secondary')}
                 >

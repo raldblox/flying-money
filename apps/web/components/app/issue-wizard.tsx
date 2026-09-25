@@ -252,7 +252,7 @@ export function IssueWizard({
     return (
       <div className="sheet p-8 text-center">
         <div className="mx-auto w-fit">
-          <Seal size={72} animate label="Certificate issued and sealed on-chain" />
+          <Seal size={72} animate label="Budget issued and sealed on-chain" />
         </div>
         <h3 className="mt-5 font-display text-3xl font-semibold">Budget created.</h3>
         <p className="mt-2 font-mono text-sm break-all">{issued.id}</p>
@@ -274,7 +274,7 @@ export function IssueWizard({
             className={`${buttonClass('secondary')} mt-4`}
             onClick={() => downloadEnv(generated.key, issued.id)}
           >
-            Download the agent .env again (with the certificate id)
+            Download the agent .env again (with the budget id)
           </button>
         )}
         {generated && (
@@ -320,7 +320,7 @@ export function IssueWizard({
     <form
       className="grid gap-8"
       onSubmit={(e) => e.preventDefault()}
-      aria-label={locked ? 'Fund the budget' : 'Issue a certificate'}
+      aria-label={locked ? 'Fund the budget' : 'Issue a budget'}
     >
       {locked && preset?.request && (
         <div className="sheet grid gap-3 p-6 sm:grid-cols-2">
@@ -564,7 +564,7 @@ export function IssueWizard({
             <p id={`${ids}-amount-hint`} className="mt-1 text-xs text-ink-2">
               {balance !== undefined ? `You hold ${usdc(balance)} USDC. ` : ''}
               {chain.maxFaceValue > 0n
-                ? `Cap: ${usdc(chain.maxFaceValue)} USDC per certificate.`
+                ? `Cap: ${usdc(chain.maxFaceValue)} USDC per budget.`
                 : 'No cap on this testnet.'}
             </p>
           </div>

@@ -16,11 +16,11 @@ import { short, usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, parsePriceList, type Till, TillBusyError, type TillSettings } from '@/lib/till'
 
 const REASON: Record<RejectReason, string> = {
-  'wrong-payee': 'This certificate is for a different shop.',
-  insufficient: 'Not enough left on this certificate for this order.',
-  expiring: 'This certificate has ended, or ends too soon to accept.',
-  closed: 'This certificate has ended.',
-  'unknown-certificate': 'There is no such certificate.',
+  'wrong-payee': 'This budget is for a different shop.',
+  insufficient: 'Not enough left on this budget for this order.',
+  expiring: 'This budget has ended, or ends too soon to accept.',
+  closed: 'This budget has ended.',
+  'unknown-certificate': 'There is no such budget.',
   'bad-signature': 'This code wasn’t signed by the certificate’s holder. Don’t hand over the goods.',
   malformed: 'That isn’t a Flying Money payment code.',
   'different-order': 'This code was made for a different order. Ask the customer to scan the current price.',
@@ -427,7 +427,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
 
       <section className="sheet overflow-x-auto p-6" aria-labelledby="ledger-t">
         <h2 id="ledger-t" className="font-display text-2xl font-semibold">
-          Certificates at this till
+          Budgets at this till
         </h2>
         {rows.length === 0 ? (
           <p className="mt-2 text-ink-2">No guaranteed payments yet.</p>
@@ -435,7 +435,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
           <table className="ledger-table mt-4 w-full text-left text-sm">
             <thead>
               <tr>
-                <th className="py-2 pr-3">Certificate</th>
+                <th className="py-2 pr-3">Budget</th>
                 <th className="px-3 py-2 text-right">Accepted by you</th>
                 <th className="px-3 py-2 text-right">Collected</th>
                 <th className="px-3 py-2 text-right">To collect</th>
@@ -555,7 +555,7 @@ function Settings({ till }: { till: Till }) {
           aria-describedby={`${ids}-lh`}
         />
         <p id={`${ids}-lh`} className="text-sm text-ink-2">
-          When you are offline, a customer this till has never seen can pay up to this much per certificate, at your own
+          When you are offline, a customer this till has never seen can pay up to this much per budget, at your own
           risk. It is checked when you reconnect.
         </p>
       </div>

@@ -81,7 +81,7 @@ export function HolderControl({ id }: { id: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="smallcaps text-sm text-ink-2">
-            {holder.type} · {holder.keyPolicy === 'per-certificate' ? 'fresh key per certificate' : 'one key'}
+            {holder.type} · {holder.keyPolicy === 'per-certificate' ? 'fresh key per budget' : 'one key'}
           </p>
           <h1 className="font-display text-5xl font-semibold tracking-tight">
             <span aria-hidden className="mr-2">
@@ -97,7 +97,7 @@ export function HolderControl({ id }: { id: string }) {
             className={buttonClass('primary')}
             onClick={() => setGive({ chain: chainKey, preset: { ...spenderPreset(), holderName: holder.name } })}
           >
-            Give a certificate
+            Give a budget
           </button>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function HolderControl({ id }: { id: string }) {
           <span className="font-display text-3xl font-semibold lining-nums">{usdc(collected)}</span> USDC
         </p>
         <p>
-          <span className="smallcaps block text-xs text-ink-2">Open certificates</span>
+          <span className="smallcaps block text-xs text-ink-2">Open budgets</span>
           <span className="font-display text-3xl font-semibold lining-nums">{open.length}</span>
         </p>
       </div>
@@ -121,7 +121,7 @@ export function HolderControl({ id }: { id: string }) {
         <section className="grid gap-4" aria-labelledby="give-t">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="give-t" className="font-display text-3xl font-semibold">
-              Give {holder.name} a certificate
+              Give {holder.name} a budget
             </h2>
             <div className="flex items-center gap-3">
               <label htmlFor="give-chain" className="text-sm">
@@ -178,7 +178,7 @@ export function HolderControl({ id }: { id: string }) {
 
       <section aria-labelledby="certs-t">
         <h2 id="certs-t" className="font-display text-3xl font-semibold">
-          Certificates
+          Budgets
         </h2>
         {rows === null ? (
           <p className="mt-3 text-ink-2">Reading the blockchain…</p>

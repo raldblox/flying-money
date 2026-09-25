@@ -9,7 +9,7 @@ export function GiftForward() {
   }, [])
   return missing ? (
     <p className="mt-4 text-ink-2">
-      This link has no certificate in it. Ask the sender for the full link, or open your{' '}
+      This link has no budget in it. Ask the sender for the full link, or open your{' '}
       <a className="text-indigo underline" href="/wallet">
         wallet
       </a>

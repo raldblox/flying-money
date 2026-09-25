@@ -55,7 +55,7 @@ export function People() {
                       <span className="block font-display text-2xl font-semibold">{h.name}</span>
                       <span className="text-sm text-ink-2">
                         {TYPES.find((t) => t[0] === h.type)?.[1]} ·{' '}
-                        {h.keyPolicy === 'per-certificate' ? 'fresh key per certificate' : 'one key'}
+                        {h.keyPolicy === 'per-certificate' ? 'fresh key per budget' : 'one key'}
                         {h.address && <span className="font-mono"> · {short(h.address)}</span>}
                       </span>
                     </span>
@@ -217,10 +217,10 @@ function AddHolder({ onAdded }: { onAdded: () => Promise<void> }) {
           [
             [
               'per-certificate',
-              'A fresh key for every certificate',
+              'A fresh key for every budget',
               'Recommended for people: different places can’t be linked to one address.',
             ],
-            ['one-key', 'One key for all their certificates', 'Simpler; the default for agents and employees.'],
+            ['one-key', 'One key for all their budgets', 'Simpler; the default for agents and employees.'],
           ] as const
         ).map(([k, label, hint]) => (
           <label
