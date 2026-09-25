@@ -33,6 +33,20 @@ describe('demo story', () => {
       }
   })
 
+  it('slips fly labelled with what each adds, never with a running total', () => {
+    let s = initialStory
+    const labels: string[] = []
+    for (const e of illustrationScript({ cutNetwork: false, stealKey: false })) {
+      s = reduceStory(s, e)
+      if (e.type === 'sealed') labels.push(s.flights.at(-1)!.label)
+    }
+    expect(labels.length).toBeGreaterThan(0)
+    for (const l of labels) expect(l === 'slip' || /^\+\d/.test(l), l).toBe(true)
+    // the labels add up to the total signed, so no single slip shows the total
+    const sum = labels.filter((l) => l !== 'slip').reduce((t, l) => t + Number(l.slice(1)), 0)
+    expect(Math.round(sum * 1e6)).toBe(Number(s.signed))
+  })
+
   it('a network cut shows as down until restored, and the restore collects the queued calls in one go', () => {
     const ev = illustrationScript({ cutNetwork: true, stealKey: false })
     let s = initialStory

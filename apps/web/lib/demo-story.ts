@@ -178,7 +178,14 @@ export function reduceStory(s: Story, e: DemoEvent): Story {
       }
     case 'sealed': {
       const cum = BigInt(e.cumulative)
-      return { ...n, signed: cum > s.signed ? cum : s.signed, flights: push(n, { lane: 'a', label: money(cum) }) }
+      // each slip is labelled with what it adds, like a price tag, not with the running total (which read like a
+      // bank balance to visitors); a resend or a request covered by credit adds nothing new
+      const adds = cum > s.signed ? cum - s.signed : 0n
+      return {
+        ...n,
+        signed: cum > s.signed ? cum : s.signed,
+        flights: push(n, { lane: 'a', label: adds > 0n ? `+${money(adds)}` : 'slip' }),
+      }
     }
     case 'accepted': {
       if (e.status !== 'SERVED') return n
