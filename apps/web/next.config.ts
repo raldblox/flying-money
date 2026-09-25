@@ -25,6 +25,17 @@ const config: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'DENY' },
+          // audit F11: HTTPS only, the camera only for this site (scanning codes), nothing else
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+          },
+          // a baseline for every page; the key-holding pages add a strict nonce policy in proxy.ts
+          {
+            key: 'Content-Security-Policy',
+            value: "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+          },
         ],
       },
     ]

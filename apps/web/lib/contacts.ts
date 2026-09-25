@@ -98,11 +98,15 @@ export const deletePlace = (id: string) => db().del(`place:${id}`)
 export const badgeOf = (p: PlaceContact) =>
   p.verification === 'scanned' ? '✓ Scanned' : p.verification === 'domain' ? `✓ ${p.domain}` : '⚠ Unverified'
 
+/** Only the camera reading a shop's code in person counts as verified; a pasted code proves nothing (audit F4). */
+export const verificationFor = (source: 'camera' | 'paste'): Verification =>
+  source === 'camera' ? 'scanned' : 'unverified'
+
 /**
- * "Verified in person": the shop's till price code (fm1 offer) or its shop page URL (/shop/<chain>/<payee>?name=).
- * Returns the place's chain, payee and (from a shop URL) its name.
+ * A place from the shop's till price code (fm1 offer) or its shop page URL (/shop/<chain>/<payee>) on this site
+ * (`ownHost`). Returns the chain and payee only: a name in the link is never trusted (audit F4).
  */
-export function placeFromScan(text: string): { chain: ChainKey; payee: Hex; name?: string } | null {
+export function placeFromScan(text: string, ownHost: string): { chain: ChainKey; payee: Hex } | null {
   const t = text.trim()
   if (t.startsWith('fm1.')) {
     try {
@@ -116,10 +120,10 @@ export function placeFromScan(text: string): { chain: ChainKey; payee: Hex; name
   }
   try {
     const u = new URL(t)
+    if (u.host.toLowerCase() !== ownHost.toLowerCase()) return null
     const m = /^\/shop\/([a-z0-9-]+)\/(0x[0-9a-fA-F]{40})\/?(?:pos)?$/.exec(u.pathname)
     if (!m || !isChainKey(m[1]!) || !isAddress(m[2]!)) return null
-    const name = u.searchParams.get('name')?.slice(0, 60)
-    return { chain: m[1] as ChainKey, payee: m[2] as Hex, ...(name ? { name } : {}) }
+    return { chain: m[1] as ChainKey, payee: m[2] as Hex }
   } catch {
     return null
   }

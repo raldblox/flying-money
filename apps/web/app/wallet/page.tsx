@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { OfflineReady } from '@/components/offline-ready'
 import { Wallet } from './wallet-client'
 
+// per request, so the strict CSP nonce (proxy.ts, audit F11) reaches every script
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Wallet',
   description: 'Your Flying Money budgets on this device. Pay at the counter by showing a QR code.',

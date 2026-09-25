@@ -2,7 +2,7 @@
 import type { ChainConfig } from '@flying-money/chains'
 import { flyingMoneyAbi, sameAddress } from '@flying-money/core'
 import { useEffect, useId, useState } from 'react'
-import { erc20Abi, formatUnits, type Hex, isAddress, parseEventLogs, parseUnits } from 'viem'
+import { erc20Abi, formatUnits, type Hex, isAddress, parseEventLogs, parseUnits, type TransactionReceipt } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { useAccount, useChainId, usePublicClient, useReadContract, useSwitchChain, useWalletClient } from 'wagmi'
 import { Seal } from '@/components/seal'
@@ -48,6 +48,36 @@ const DURATIONS = [
   { label: '7 days', seconds: 7n * 86_400n },
   { label: '30 days', seconds: 30n * 86_400n },
 ]
+
+/**
+ * A sent issue transaction waiting for its receipt (audit F5), kept in this tab's session so a slow receipt, a
+ * reload or "Check status" can still finish it, including a key generated here that hasn't been handed over yet.
+ * Cleared once the result screen is shown, or when the transaction reverted.
+ */
+interface PendingIssue {
+  chain: string
+  hash: Hex
+  payee: Hex
+  spender: Hex
+  face: string
+  durationIdx: number
+  generated?: { key: Hex; address: Hex }
+}
+const PENDING_KEY = 'fm-pending-issue'
+const loadPending = (): PendingIssue | null => {
+  try {
+    const v = sessionStorage.getItem(PENDING_KEY)
+    return v ? (JSON.parse(v) as PendingIssue) : null
+  } catch {
+    return null
+  }
+}
+const savePending = (p: PendingIssue | null) => {
+  try {
+    if (p) sessionStorage.setItem(PENDING_KEY, JSON.stringify(p))
+    else sessionStorage.removeItem(PENDING_KEY)
+  } catch {}
+}
 
 const field =
   'mt-1 block w-full rounded-[3px] border border-ink/25 bg-paper px-3 py-2.5 font-mono text-sm focus-visible:outline-2 focus-visible:outline-indigo'
@@ -102,8 +132,40 @@ export function IssueWizard({
   )
   const [issued, setIssued] = useState<{ id: Hex; hash: Hex } | null>(null)
 
-  // Forget a generated key when leaving the page (it is never stored).
+  // Forget a generated key when leaving the page (only a sent, unfinished budget keeps it, in this tab's session).
   useEffect(() => () => setGenerated(null), [])
+
+  function finishIssue(receipt: TransactionReceipt, p: PendingIssue) {
+    const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
+    if (!log) return
+    if (p.generated) setGenerated(p.generated)
+    setIssued({ id: log.args.id, hash: receipt.transactionHash })
+    onIssued({
+      id: log.args.id,
+      chain: chain.key,
+      payee: p.payee,
+      spender: p.spender,
+      faceValue: BigInt(p.face),
+      durationIdx: p.durationIdx,
+    })
+    savePending(null)
+  }
+  // a budget sent before a reload (or a lost receipt): pick it up and finish it
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the chain's client is ready
+  useEffect(() => {
+    const p = loadPending()
+    if (!p || p.chain !== chain.key || !publicClient) return
+    if (p.generated) {
+      setGenerated(p.generated)
+      setSpenderMode('generate')
+      setKeySaved(true)
+    }
+    void issueTx.watch(p.hash).then((r) => r && finishIssue(r, p))
+  }, [publicClient, chain.key])
+  // a reverted issue locked nothing: forget it
+  useEffect(() => {
+    if (issueTx.state.phase === 'failed' && issueTx.state.receipt) savePending(null)
+  }, [issueTx.state])
 
   const place = placeIdx === 'custom' ? null : places[placeIdx]
   const payee = (place?.address ?? (isAddress(customPayee) ? customPayee : undefined)) as Hex | undefined
@@ -159,6 +221,11 @@ export function IssueWizard({
   const busy = [approveTx.state, issueTx.state].some((s) =>
     ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(s.phase),
   )
+  // once an issue transaction is out, never offer to send another (it would lock the money twice); only a revert
+  // frees the button (audit F5)
+  const issueSent = Boolean(issueTx.state.hash) && !(issueTx.state.phase === 'failed' && issueTx.state.receipt)
+  if (issueSent && issueTx.state.phase === 'failed')
+    problems.push('Your budget was already sent. Use Check status below; don’t send it again.')
 
   // Gas is estimated here through the site's own RPC and handed to the wallet, so a wallet whose own RPC
   // mis-estimates (seen live: MetaMask reporting an empty "revert" for a valid approve) can still send.
@@ -190,6 +257,7 @@ export function IssueWizard({
     if (!wallet || !publicClient || !face || !payee || !spender || !chain.flyingMoney || !address) return
     const { timestamp } = await publicClient.getBlock()
     const expiresAt = timestamp + durations[durationIdx]!.seconds
+    let pending: PendingIssue | undefined
     const receipt = await issueTx.run(async () => {
       const { request } = await publicClient.simulateContract({
         account: address,
@@ -199,14 +267,20 @@ export function IssueWizard({
         args: [payee, spender, face!, expiresAt],
       })
       const gas = await publicClient.estimateContractGas(request)
-      return wallet.writeContract({ ...request, chain: chain.chain, gas: withMargin(gas) })
+      const hash = await wallet.writeContract({ ...request, chain: chain.chain, gas: withMargin(gas) })
+      pending = {
+        chain: chain.key,
+        hash,
+        payee,
+        spender,
+        face: face!.toString(),
+        durationIdx,
+        ...(spenderMode === 'generate' && generated ? { generated } : {}),
+      }
+      savePending(pending)
+      return hash
     })
-    if (!receipt) return
-    const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
-    if (log) {
-      setIssued({ id: log.args.id, hash: receipt.transactionHash })
-      onIssued({ id: log.args.id, chain: chain.key, payee, spender, faceValue: face, durationIdx })
-    }
+    if (receipt && pending) finishIssue(receipt, pending)
   }
 
   function downloadEnv(key: Hex, certificateId?: Hex) {
@@ -640,7 +714,7 @@ export function IssueWizard({
             <button
               type="button"
               className={buttonClass('primary')}
-              disabled={problems.length > 0 || busy || !wallet}
+              disabled={problems.length > 0 || busy || !wallet || issueSent}
               onClick={issue}
             >
               {locked ? 'Fund the budget' : 'Create the budget'}
@@ -648,7 +722,16 @@ export function IssueWizard({
           )}
         </div>
         <TxStatus state={approveTx.state} explorer={chain.explorer} onCheck={(h) => approveTx.watch(h)} />
-        <TxStatus state={issueTx.state} explorer={chain.explorer} onCheck={(h) => issueTx.watch(h)} />
+        <TxStatus
+          state={issueTx.state}
+          explorer={chain.explorer}
+          onCheck={async (h) => {
+            // "Check status" finishes the job too: the result screen, the hand-over link, the callback (audit F5)
+            const r = await issueTx.watch(h)
+            const p = loadPending()
+            if (r && p && p.hash === h) finishIssue(r, p)
+          }}
+        />
       </section>
     </form>
   )

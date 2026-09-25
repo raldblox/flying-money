@@ -1,8 +1,8 @@
-import { marked } from 'marked'
+import { renderMarkdown } from '@/lib/markdown'
 
 /**
- * Renders Markdown from this repository (docs/site/*.md) — trusted, reviewed content, never user input.
- * The only place the site sets HTML directly.
+ * Renders Markdown from this repository (docs/site/*.md). The only place the site sets HTML directly, and the HTML
+ * is sanitised first (raw HTML shown as text, safe link targets only; audit F11).
  */
 export function Markdown({
   source,
@@ -13,8 +13,8 @@ export function Markdown({
   inline?: boolean
   className?: string
 }) {
-  const html = inline ? marked.parseInline(source, { async: false }) : marked.parse(source, { async: false, gfm: true })
+  const html = renderMarkdown(source, inline)
   const Tag = inline ? 'p' : 'div'
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted repository Markdown (see above)
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitised by renderMarkdown (see above)
   return <Tag className={`doc-prose ${className}`} dangerouslySetInnerHTML={{ __html: html }} />
 }

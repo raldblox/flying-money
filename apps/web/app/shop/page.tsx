@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { OfflineReady } from '@/components/offline-ready'
 import { OpenShop } from './open-shop'
 
+// per request, so the strict CSP nonce (proxy.ts, audit F11) reaches every script
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Shop mode',
   description: 'Take Flying Money budgets at your counter: a till that works offline, and a QR for customers.',

@@ -6,6 +6,9 @@ import { isAddress } from 'viem'
 import { OfflineReady } from '@/components/offline-ready'
 import { Pos } from './pos-client'
 
+// per request, so the strict CSP nonce (proxy.ts, audit F11) reaches every script
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = { title: 'Till', robots: { index: false } }
 
 export default async function PosPage({

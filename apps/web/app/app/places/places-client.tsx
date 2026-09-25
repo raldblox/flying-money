@@ -12,6 +12,7 @@ import {
   placeFromScan,
   placesFromDomain,
   savePlace,
+  verificationFor,
 } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
 import { e2eMode } from '@/lib/wagmi'
@@ -127,7 +128,9 @@ function NameField({ id, value, onChange }: { id: string; value: string; onChang
 }
 
 function AddByScan({ onAdded }: { onAdded: () => Promise<void> }) {
-  const [found, setFound] = useState<ReturnType<typeof placeFromScan>>(null)
+  const [found, setFound] = useState<
+    (NonNullable<ReturnType<typeof placeFromScan>> & { via: 'camera' | 'paste' }) | null
+  >(null)
   const [name, setName] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const id = useId()
@@ -141,12 +144,12 @@ function AddByScan({ onAdded }: { onAdded: () => Promise<void> }) {
         <QrScanner
           prompt="Point the camera at the shop’s code."
           pasteLabel="Or paste the shop’s code or shop page link"
-          onResult={(t) => {
-            const f = placeFromScan(t)
-            if (!f) return setErr('That isn’t a Flying Money shop code.')
+          onResult={(t, via) => {
+            const f = placeFromScan(t, window.location.host)
+            if (!f) return setErr('That isn’t a Flying Money shop code from this site.')
             setErr(null)
-            setFound(f)
-            setName(f.name ?? '')
+            setFound({ ...f, via })
+            setName('')
           }}
         />
         {err && <p className="mt-2 text-sm text-seal">{err}</p>}
@@ -161,15 +164,23 @@ function AddByScan({ onAdded }: { onAdded: () => Promise<void> }) {
           name: name.trim() || 'Shop',
           chain: found.chain,
           payee: found.payee,
-          verification: 'scanned',
+          verification: verificationFor(found.via),
         })
         setFound(null)
         await onAdded()
       }}
     >
-      <p className="text-sm">
-        ✓ Scanned: <span className="font-mono">{short(found.payee)}</span> on {getChain(found.chain).chain.name}
-      </p>
+      {found.via === 'camera' ? (
+        <p className="text-sm">
+          ✓ Scanned: <span className="font-mono">{short(found.payee)}</span> on {getChain(found.chain).chain.name}
+        </p>
+      ) : (
+        <p className="text-sm text-amber">
+          ⚠ Pasted, so not verified: <span className="font-mono">{short(found.payee)}</span> on{' '}
+          {getChain(found.chain).chain.name}. Anyone can send a link. Check this address with the shop, or scan its code
+          in person to verify it.
+        </p>
+      )}
       <NameField id={id} value={name} onChange={setName} />
       <button type="submit" className={buttonClass('primary')}>
         Save place

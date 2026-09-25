@@ -21,7 +21,8 @@ export function QrScanner({
   prompt,
   pasteLabel = 'Or paste the code',
 }: {
-  onResult: (text: string) => void
+  /** `source` says whether the camera read it in person or it was pasted (a paste proves nothing about origin) */
+  onResult: (text: string, source: 'camera' | 'paste') => void
   prompt: string
   pasteLabel?: string
 }) {
@@ -70,7 +71,7 @@ export function QrScanner({
         }
         if (text) {
           stop()
-          onResult(text)
+          onResult(text, 'camera')
           return
         }
         raf.current = requestAnimationFrame(() => void tick())
@@ -122,7 +123,7 @@ export function QrScanner({
         className="grid gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          if (pasted.trim()) onResult(pasted.trim())
+          if (pasted.trim()) onResult(pasted.trim(), 'paste')
         }}
       >
         <label htmlFor={id} className="text-sm font-medium">

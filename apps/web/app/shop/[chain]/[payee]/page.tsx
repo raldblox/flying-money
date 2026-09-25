@@ -8,6 +8,9 @@ import { ButtonLink } from '@/components/section'
 import { short } from '@/lib/fmt'
 import { SITE } from '@/lib/site'
 
+// per request, so the strict CSP nonce (proxy.ts, audit F11) reaches every script
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = { title: 'Shop', robots: { index: false } }
 
 /** The shop's public page (§12.5): print its QR at the counter so customers can open their wallet. */
@@ -29,6 +32,11 @@ export default async function ShopPublicPage({
       <article className="sheet p-8 text-center sm:p-12">
         <p className="smallcaps text-sm text-seal">Pay with a budget · {c.chain.name}</p>
         <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">{name}</h1>
+        {rawName && (
+          <p className="mt-1 text-xs text-amber">
+            The name comes from the link and isn’t verified. The address below is.
+          </p>
+        )}
         <p className="mx-auto mt-4 max-w-md text-lg text-ink-2">
           Have a Flying Money budget for {name}? Open your wallet, scan the price code at the till, and show your code.
           No fees for you, no crypto wallet needed.
@@ -40,8 +48,8 @@ export default async function ShopPublicPage({
           />
         </div>
         <p className="mt-2 text-sm text-ink-2">
-          The shop’s code. Customers open it to reach their wallet; givers scan it in the Counting House to add this
-          shop as a verified place.
+          The shop’s code. Customers open it to reach their wallet; givers scan it in their account to add this shop as
+          a verified place.
         </p>
         <p className="mt-6 text-xs text-ink-2">
           Payments go only to <span className="font-mono">{short(payee)}</span>. Only budgets made for this shop work
