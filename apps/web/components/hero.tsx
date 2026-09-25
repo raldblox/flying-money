@@ -1,7 +1,7 @@
 'use client'
 import { InkMountains } from './art/ink-mountains'
-import { TallyArt } from './art/tally'
-import { DoorStack, DoorToggle } from './door'
+import { LiveTally } from './art/live-tally'
+import { DoorStack, DoorToggle, useDoor } from './door'
 import { ButtonLink } from './section'
 
 const H1 = 'mt-4 font-display text-[2.6rem] font-semibold leading-[1.04] tracking-tight text-balance sm:text-[3.9rem]'
@@ -51,9 +51,9 @@ export function Hero() {
             people={
               <>
                 <p className="max-w-xl text-lg leading-relaxed text-ink-2">
-                  Load a certificate for one place (a canteen, a café, a supplier) with a limit and an end date. Your
-                  kid, employee or friend pays by showing a QR code on their phone. They don’t need a crypto wallet and
-                  never pay a fee. Whatever they don’t spend comes back to you.
+                  Load a budget for one place (a canteen, a café, a supplier) with a limit and an end date. Your kid,
+                  employee or friend pays by showing a QR code on their phone. They don’t need a crypto wallet and never
+                  pay a fee. Whatever they don’t spend comes back to you.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <ButtonLink href="/shops">See how a café uses it →</ButtonLink>
@@ -74,38 +74,60 @@ export function Hero() {
             </a>
           </p>
         </div>
-        <DoorStack
-          className="mx-auto w-full max-w-[34rem]"
-          agents={
-            <figure>
-              <TallyArt
-                face="5.00"
-                payee="Silk Road Oracle"
-                holder="Research agent"
-                expires="7 days"
-                className="w-full drop-shadow-[0_18px_30px_rgb(60_40_10/0.22)]"
-              />
-              <figcaption className="mt-2 text-center text-sm italic text-ink-2">
-                A budget of 5.00 USDC for one service, spendable only by the agent’s key.
-              </figcaption>
-            </figure>
-          }
-          people={
-            <figure>
-              <TallyArt
-                face="20.00"
-                payee="Lantern Café"
-                holder="Mia"
-                expires="30 days"
-                className="w-full drop-shadow-[0_18px_30px_rgb(60_40_10/0.22)]"
-              />
-              <figcaption className="mt-2 text-center text-sm italic text-ink-2">
-                20.00 USDC that only works at Lantern Café, for 30 days.
-              </figcaption>
-            </figure>
-          }
-        />
+        <HeroCard />
       </div>
     </section>
+  )
+}
+
+const CARDS = {
+  agents: {
+    face: 500,
+    payee: 'Silk Road Oracle',
+    holder: 'Research agent',
+    expires: '7 days',
+    floor: 180,
+    items: [
+      ['Weather lookup', 12],
+      ['Market data', 25],
+      ['Web search', 8],
+      ['Map tiles', 15],
+      ['Translation', 10],
+    ],
+    caption: (
+      <>
+        5 USDC for one service. <em className="text-seal">Not a cent more, and nowhere else.</em>
+      </>
+    ),
+  },
+  people: {
+    face: 2000,
+    payee: 'Lantern Café',
+    holder: 'Mia',
+    expires: '30 days',
+    floor: 650,
+    items: [
+      ['Oat latte', 350],
+      ['Croissant', 280],
+      ['Iced tea', 300],
+      ['Soup of the day', 420],
+    ],
+    caption: (
+      <>
+        20 USDC for Lantern Café. <em className="text-seal">It works there, and only there.</em>
+      </>
+    ),
+  },
+} as const
+
+/** One live card for the chosen door. Switching doors re-mounts it, so its two halves join again. */
+function HeroCard() {
+  const { door } = useDoor()
+  const c = CARDS[door]
+  return (
+    <figure className="mx-auto w-full max-w-[34rem]">
+      <LiveTally key={door} {...c} />
+      <figcaption className="mt-3 text-center font-display text-xl leading-snug text-ink">{c.caption}</figcaption>
+    </figure>
   )
 }

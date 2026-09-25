@@ -16,9 +16,8 @@ export default function HowItWorksPage() {
         The life of a <em className="text-seal">budget</em>.
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-2">
-        Only three moments touch the blockchain: locking the budget, collecting, and taking back what was left. Every
-        payment in between is a signed slip checked in milliseconds. Scroll to watch the money move, or switch to
-        Technical for the exact data.
+        You set money aside once. Your agent pays for each request with a signed slip: instant, and free. The service
+        collects later, and anything left comes back to you. Scroll to watch the money move.
       </p>
       <div className="mt-10">
         <Lifecycle />

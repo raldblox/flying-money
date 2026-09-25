@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 /**
  * The money flow in one picture (§11): the owner, the locked budget on the blockchain, the agent and the seller.
@@ -34,6 +34,9 @@ export function MoneyFlow({
 }) {
   const c = CAST[cast]
   const reduced = useReducedMotion()
+  // unique per drawing: the page can hold several, and SVG ids are document-wide
+  const uid = `mf${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const ref = (n: string) => `${uid}-${n}`
   const locked = step === 0 ? '5.00' : step >= 3 ? (step === 4 ? '0.00' : '4.63') : '5.00'
   const sellerGot = step >= 3 ? '0.37' : '0.00'
   const ownerBack = step === 4 ? '4.63' : ''
@@ -97,7 +100,7 @@ export function MoneyFlow({
 
       {/* the guide lines each step uses */}
       <path
-        id="mf-owner-box"
+        id={ref('owner-box')}
         d="M80 206 C 110 140, 170 90, 206 76"
         fill="none"
         stroke={lit(step === 0)}
@@ -105,7 +108,7 @@ export function MoneyFlow({
         strokeDasharray="4 6"
       />
       <path
-        id="mf-agent-seller"
+        id={ref('agent-seller')}
         d="M292 236 H 418"
         fill="none"
         stroke={lit(step === 2)}
@@ -113,25 +116,31 @@ export function MoneyFlow({
         strokeDasharray="4 6"
       />
       <path
-        id="mf-seller-box"
+        id={ref('seller-box')}
         d="M440 206 C 420 150, 360 100, 322 82"
         fill="none"
         stroke={lit(step === 3)}
         strokeWidth="1.5"
         strokeDasharray="4 6"
       />
-      <path id="mf-box-seller" d="M322 96 C 370 120, 420 160, 446 204" fill="none" stroke="none" />
-      <path id="mf-box-owner" d="M204 96 C 160 120, 110 160, 76 204" fill="none" stroke="none" />
+      <path id={ref('box-seller')} d="M322 96 C 370 120, 420 160, 446 204" fill="none" stroke="none" />
+      <path id={ref('box-owner')} d="M204 96 C 160 120, 110 160, 76 204" fill="none" stroke="none" />
 
       {/* step 0 · locking: the owner's coins go into the box on the blockchain */}
-      {step === 0 && !reduced && <Coins path="#mf-owner-box" />}
+      {step === 0 && !reduced && <Coins path={`#${ref('owner-box')}`} />}
 
-      {/* step 1 · signing: each new slip carries the running total and replaces the one before */}
+      {/* step 1 · paying: a signed slip goes with each request, nothing touches the blockchain */}
       {step === 1 &&
-        ['0.12', '0.25', '0.37'].map((v, i) => {
+        (
+          [
+            ['first', '0.12'],
+            ['second', '0.13'],
+            ['third', '0.12'],
+          ] as const
+        ).map(([slip, v], i) => {
           const latest = i === 2
           return (
-            <g key={v} transform={`translate(${178 + i * 60} 158)`}>
+            <g key={slip} transform={`translate(${178 + i * 60} 158)`}>
               <rect
                 width="52"
                 height="26"
@@ -150,7 +159,6 @@ export function MoneyFlow({
               >
                 {v}
               </text>
-              {!latest && <line x1="6" y1="13" x2="46" y2="13" stroke="var(--ink-2)" strokeWidth="1" />}
               {!reduced && (
                 <animate
                   attributeName="opacity"
@@ -165,7 +173,7 @@ export function MoneyFlow({
         })}
       {step === 1 && (
         <text x="260" y="198" textAnchor="middle" fontSize="10.5" fill="var(--ink-2)">
-          total so far, signed: each slip replaces the last
+          a signed slip with each request · no fee, no wait
         </text>
       )}
 
@@ -175,16 +183,16 @@ export function MoneyFlow({
           <g>
             <rect x="-26" y="-11" width="52" height="22" rx="3" fill="var(--paper)" stroke="var(--seal)" />
             <text textAnchor="middle" y="4" fontSize="10" fontFamily="var(--font-mono)" fill="var(--ink)">
-              0.37
+              0.12
             </text>
             {!reduced && (
               <animateMotion dur="1.4s" repeatCount="indefinite" rotate="0">
-                <mpath href="#mf-agent-seller" />
+                <mpath href={`#${ref('agent-seller')}`} />
               </animateMotion>
             )}
             {reduced && (
               <animateMotion dur="0.01s" fill="freeze" keyPoints="0.5;0.5" keyTimes="0;1">
-                <mpath href="#mf-agent-seller" />
+                <mpath href={`#${ref('agent-seller')}`} />
               </animateMotion>
             )}
           </g>
@@ -210,17 +218,17 @@ export function MoneyFlow({
               0.37
             </text>
             <animateMotion dur="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.45;1" calcMode="linear">
-              <mpath href="#mf-seller-box" />
+              <mpath href={`#${ref('seller-box')}`} />
             </animateMotion>
           </g>
-          <Coins path="#mf-box-seller" />
+          <Coins path={`#${ref('box-seller')}`} />
         </>
       )}
 
       {/* step 4 · leftovers: what was not spent flows back to the owner */}
       {step === 4 && (
         <>
-          {!reduced && <Coins path="#mf-box-owner" />}
+          {!reduced && <Coins path={`#${ref('box-owner')}`} />}
           <g transform="translate(110 72)">
             <rect x="-58" y="-12" width="116" height="24" rx="12" fill="var(--paper)" stroke="var(--line)" />
             <text textAnchor="middle" y="4" fontSize="10.5" fill="var(--ink-2)">
@@ -235,9 +243,9 @@ export function MoneyFlow({
 
 const CAPTIONS = [
   'The owner locks 5.00 USDC on the blockchain, for one seller only.',
-  'The agent signs slips with a growing total: 0.12, 0.25, 0.37. Nothing is sent to the blockchain.',
+  'With each request the agent hands over a signed slip: 0.12, 0.13, 0.12. Nothing is sent to the blockchain.',
   'Each slip goes straight to the seller, who checks and stamps it in milliseconds.',
-  'The seller sends the latest slip to the blockchain once and collects 0.37 in one transaction.',
+  'Whenever it likes, the seller collects everything it earned (0.37) in one transaction.',
   'After the end date, the 4.63 USDC nobody spent goes back to the owner.',
 ] as const
 

@@ -190,7 +190,8 @@ export function reduceStory(s: Story, e: DemoEvent): Story {
         stamp: s.stamp + 1,
         caption: {
           title: `Call ${calls}: paid ${money(BigInt(e.price))} for ${PATHS[e.path] ?? e.path}`,
-          detail: `One signed slip saying “total so far ${money(BigInt(e.accepted))}”. The seller checked it on its own machine in milliseconds. No blockchain transaction, no gas, no waiting.`,
+          detail:
+            'One signed slip, checked by the seller in milliseconds. No blockchain transaction, no gas, no waiting.',
           tone: s.network === 'down' ? 'amber' : 'ink',
         },
       }
