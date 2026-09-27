@@ -140,6 +140,28 @@ describe('counter (shop till) §6.8', () => {
     expect(await t.unverified()).toHaveLength(1)
   })
 
+  it('A3 (§22.2): concurrent offline purchases never exceed the float, even across different certificates', async () => {
+    chain.down = true
+    const t = till(5n * USDC, 5n * USDC)
+    const orders = await Promise.all(
+      [0, 1, 2, 3].map(async (i) => {
+        const fake = `0x${(i + 100).toString(16).padStart(64, '0')}` as Hex
+        return { i, qr: await sealed(generatePrivateKey(), fake, 4n * USDC, `c${i}`) }
+      }),
+    )
+    const results = await Promise.all(orders.map(({ i, qr }) => t.accept(qr, 4n * USDC, `c${i}`)))
+    const accepted = results.filter((r) => r.status === 'UNVERIFIED')
+    expect(accepted).toHaveLength(1) // 4 ≤ 5; a second 4 would make 8
+    expect(results.filter((r) => r.status === 'REJECTED' && r.reason === 'over-offline-float')).toHaveLength(3)
+    // and after a restart of the till process (same storage), the float is still spent
+    const again = till(5n * USDC, 5n * USDC)
+    const late = await sealed(generatePrivateKey(), `0x${(999).toString(16).padStart(64, '0')}`, 2n * USDC, 'late')
+    expect(await again.accept(late, 2n * USDC, 'late')).toMatchObject({
+      status: 'REJECTED',
+      reason: 'over-offline-float',
+    })
+  })
+
   it('F3 (D34): made-up certificates offline are capped till-wide by the offline float, not per certificate', async () => {
     chain.down = true
     const t = till(5n * USDC, 10n * USDC)

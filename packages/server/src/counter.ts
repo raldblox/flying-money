@@ -212,7 +212,17 @@ export function createCounter(cfg: CounterConfig) {
   const handOver = async () => ({ ok: true })
 
   /** Scan result for the current order (§6.8 step 3). Re-scanning the same QR returns the same outcome. */
-  async function accept(noteQr: string, price: bigint, orderId: string): Promise<CounterResult> {
+  // §22.2 A3: this till is authoritative (§6.8), and its checks read exposure, then store it. Every accept and
+  // reconcile runs one at a time, so concurrent purchases can't all pass the same float or per-certificate check.
+  let queue: Promise<unknown> = Promise.resolve()
+  const serial = <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = queue.then(fn, fn)
+    queue = run.catch(() => {})
+    return run
+  }
+  const accept = (noteQr: string, price: bigint, orderId: string) => serial(() => acceptOne(noteQr, price, orderId))
+
+  async function acceptOne(noteQr: string, price: bigint, orderId: string): Promise<CounterResult> {
     let note: SignedNote
     try {
       note = decodeNote(noteQr.trim())
@@ -269,7 +279,8 @@ export function createCounter(cfg: CounterConfig) {
   }
 
   /** On reconnect: run each UNVERIFIED note through §6.5; promote it to GUARANTEED or flag it. */
-  async function reconcile() {
+  const reconcile = () => serial(reconcileAll)
+  async function reconcileAll() {
     let promoted = 0
     let flagged = 0
     let waiting = 0
