@@ -2,7 +2,7 @@
 
 **Sealed certificates for AI agents. Money that flies, since 804 CE.**
 
-*Version 1.5 (build target), 24 September 2026. **v1.5 adds §21** (founder directives: no GitHub Actions, no event names on the site, the taxonomy/UX, spending requests, Upstash on Vercel, and the hosted seller). §21 overrides earlier sections where they conflict. The protocol, the contract and the invariants are unchanged. History:*
+*Version 1.6 (build target), 27 September 2026. **v1.6 adds §22** (product direction, one vocabulary, correctness fixes A1–A5 and the first release slice; §22 overrides §21 and everything earlier where they conflict). v1.5, 24 September 2026, added §21 (founder directives: no GitHub Actions, no event names on the site, the taxonomy/UX, spending requests, Upstash on Vercel, and the hosted seller). §21 overrides earlier sections where they conflict. The protocol, the contract and the invariants are unchanged. History:*
 - *v1.1 added multi-chain EVM and the four-submission plan (§5.4, §16, §17).*
 - *v1.2 made the product holder-agnostic, with two front doors (§3.7), Shop mode (§12.5, §13.5) and the agent docs kit (§8.4, §10.7).*
 - *v1.3 added Contacts and control (§3.8), keys, privacy and what's on-chain (§3.9), no-wallet recipients (§3.10), and the Contacts UI (§12.6).*
@@ -2151,6 +2151,7 @@ Encoding on the wire and in links: `fm1.` + base64url(JSON), as in §6.4. Parser
 | `{p}s:{payee}:{chainId}:{certId}:state` | hash | `accepted, consumed, reserved, status` | none |
 | `{p}s:{payee}:{chainId}:{certId}:notes` | zset (score = cumulative) | SignedNote JSON | prune ≤ redeemed |
 | `{p}s:{payee}:{chainId}:{certId}:out:{requestId}` | hash | Outcome (§6.5) | 30 d after final |
+| `{p}s:{payee}:{chainId}:{certId}:seen` | hash | Replay tombstones: requestId → requestHash + final status (§22.2 A1) | none; prune only after the certificate's last-read `expiresAt` + 7 d |
 | `{p}s:{payee}:{chainId}:sub` | hash | In-flight redeem submission | until cleared |
 | `{p}req:{requestId}` | hash | SpendRequest + status | 7 d |
 | `{p}inbox:{owner}` | zset (score = createdAt) | requestIds | 7 d |
@@ -2196,6 +2197,129 @@ Encoding on the wire and in links: `fm1.` + base64url(JSON), as in §6.4. Parser
 - [ ] Spending requests: link channel + relay + grants + decision verification + two MCP tools. R1–R5 tests pass.
 - [ ] Upstash via the Vercel Marketplace (`KV_REST_API_*`), two databases, the key schema, and refusal to start without a durable store.
 - [ ] Hosted Oracle on Vercel with the redeemer strategy for the plan in use, and `safetyBeforeExpiry` set accordingly.
+
+
+## 22. v1.6: product direction, correctness fixes and the first release slice (27 Sep 2026): NORMATIVE, FINAL
+
+> **For the implementing agent:** §22 settles the product review of 27 Sep 2026: [PRODUCT_PROPOSAL_2026-09-27.md](PRODUCT_PROPOSAL_2026-09-27.md), [UI_UX_2026-09-27.md](UI_UX_2026-09-27.md) with its notes in [research/ui-ux-2026-09-27/](research/ui-ux-2026-09-27/), and the internal competitive review. Where §22 conflicts with §21 or anything earlier, **§22 wins**. The marketing memo ([MARKETING_2026-09-27.md](MARKETING_2026-09-27.md)) is research, not approved copy: only what §22 adopts from it applies.
+>
+> **Unchanged:** the contract (§7; no redeployment), the protocol and its wire formats (§6), and invariants I1–I7, C1, S1–S4 and R1–R5. **One spec defect is corrected:** §21.5's 30-day outcome TTL allowed a replay after day 30 to be served again, against S1 (§22.2 A1). All SDK changes in §22 are additive.
+
+### 22.1 Product decisions (the review's D-P01–D-P16, decided)
+
+| # | Decision | Outcome | Rule |
+|---|---|---|---|
+| P01 | Scope | **Approved** | Improve the existing funded-budget product. No savings, yield or retirement product, timed vault, transferable-certificate market, shared pool, or World simulation (§4.2 stays in force). |
+| P02 | Core promise | **Approved** | "Seller-specific funded budgets for people and assistants." Public copy states the useful outcome (a purpose, a recipient, a visible limit); it never claims to have invented payment channels, seller binding, delegated keys, "offline money" or the first agent budget. |
+| P03 | One vocabulary | **Approved; amends §21.3 and D31** | One glossary for every audience (§22.3). The per-door taxonomy of §21.3 (Giver/Holder/Place vs Owner/Agent/Service) is retired from the UI. The two doors stay only as examples on the landing page. |
+| P04 | Navigation | **Revised** | Keep the current account navigation (Home · Budgets · Requests · Collect · People & agents · Sellers) for this release. A merged four-tab layout (Home · Budgets · Activity · Contacts) is tested with a tree test before any change. Requests and Collect are never hidden to reach a tab count. |
+| P05 | Safety first | **Approved: release blockers** | A1–A5 (§22.2) were confirmed in source at `26455d9` by the implementing agent. Each is fixed with a regression test **written first**, before any other §22.5 work ships. |
+| P06 | Daily-use scope | **Approved as the §22.5 slice** | Complete and clarify existing journeys; don't add surfaces. |
+| P07 | Money plans | **Deferred** | Not in this release. If ever built: non-locking, labelled "doesn't lock money or earn interest", and never the acquisition promise. |
+| P08 | Assistant adoption | **Approved** | A guided "give your assistant a budget" path (§22.5 i). Copy never implies it pays a model subscription or bill. |
+| P09 | x402 / MPP compatibility | **Research only** | A written comparison (§22.7). No implementation, no "compatible" badge, no relabelling of a Flying Money note as another scheme's voucher. Any change to economic rights returns here as a spec decision. |
+| P10 | Converter / cash-out seller | **Rejected for v1.6** | Needs licensing, custody and partner review (e.g. BSP VASP rules). Revisit only after an audit and a human-approved mainnet. |
+| P11 | Copy | **Approved with corrections** | §22.4. Every claim is checkable against the contract. In particular, leftovers do **not** return automatically: the funder takes them back with a transaction after the end date. |
+| P12 | Real money | **Unchanged** | No mainnet transaction or real-money deployment without fresh verification and explicit human approval (§0.1). |
+| P13 | First release slice | **Approved** | §22.5 is the whole of the next release. The 56-item backlog of the proposal and the UI/UX backlog are a backlog, not scope. |
+| P14 | First acquisition example | **Approved** | An assistant paying a genuinely useful repeat service, with human use of the same budget in the same app. The second track is one known shop with one till. A pilot with a real (non-demo) seller needs the founder to name the seller. |
+| P15 | No early cancel | **Approved as a disclosed trade-off** | Shown before every funding signature and in every budget summary. Never presented as a superiority claim or a moat. A "stop" control never implies clawback. |
+| P16 | Marketing memo | **Research only** | Adopt its honesty rules (§22.4 banned words, the risk strip, "software, not a service" self-description). Its statistics, market claims and consumer phase are not approved copy. |
+
+### 22.2 Correctness fixes (release blockers; tests first)
+
+| # | Defect (confirmed) | Required behaviour | Test that closes it |
+|---|---|---|---|
+| **A1** | §21.5 evicts `out:{requestId}` 30 days after final. A certificate can live 365 days and be extended, so a replay after day 30 is admitted as new and served again from the buyer's credit (S1). | Split the record. The **response body** may still be evicted after 30 days. A **replay tombstone** (requestId, requestHash, final status) is kept in `{p}s:{payee}:{chainId}:{certId}:seen` (hash, no TTL) until the certificate can no longer be used: at least the last-read `expiresAt` (including extensions) plus 7 days. A replay whose body was evicted answers **410** `Flying-Money-Reason: outcome-expired` and never runs the handler or charges. The memory store follows the same rule. | Replay after body eviction, after restart, after `extend`, and after collection: consumption never increases and the handler never runs again (memory, Redis mock and Upstash). |
+| **A2** | `fm_paid_fetch` checks `max_price` against one quote, then `fm.fetch` obtains its own. | The client's `fetch(input, init?, opts?)` gains `opts.maxPrice` (additive, §8). It is enforced against the offer that is actually signed, before signing. The MCP tool passes `max_price` through; the separate probe is removed. | A seller that re-quotes higher between probe and payment, redirects, retries or runs concurrent calls: nothing is signed above the call's ceiling. |
+| **A3** | The till reads open UNVERIFIED exposure, awaits, then stores. Concurrent `accept` calls can exceed the offline float. | Admission is serialised per till: `createCounter` runs every `accept` (check plus reservation plus store) through one queue. One till is authoritative (§6.8). | Concurrent purchases across different certificates never exceed the float or a per-certificate limit, including across a restart. |
+| **A4** | A top-up request can read as approved from the unchanged, possibly foreign-funded certificate. | At request time the client records the certificate's face value as a baseline. It is approved only if funder = owner, spender = this key, payee = requested, not closed, still usable, **and face value > baseline**. The reported approved amount is the actual increase. It fails closed otherwise, and the relay path follows the same rule. | Unchanged funding, unrelated funding, wrong funder, closed, expired, relay outage and restart: none approves. |
+| **A5** | After issuance, a key generated in the browser lives only in component state until hand-over, so a refresh loses it. The named-holder path skips the "key saved" check. | The generated key and the result screen persist in this tab's session storage until the funder confirms "I've handed it over" (or has downloaded the agent file). Reloading restores the result screen. The key never goes into a URL, logs, analytics or a server. | Refresh or close and return at every point from approve to issue to confirmation to hand-over: the key and result are recoverable until acknowledged. |
+
+Also required with A1–A5: the whole `pnpm verify --e2e` gate passes, and STATUS stops listing the V4 items that are now done.
+
+### 22.3 One vocabulary (amends §21.3 and D31)
+
+A single glossary module in `apps/web` is the only source of these words. It is published at `/docs/glossary` with three columns: code, agent surface, people surface.
+
+| People and agents see | Code and docs keep | Notes |
+|---|---|---|
+| **Budget** | certificate | "Certificate" never appears on people screens, and is never paired with gift, deposit, interest or term. |
+| **Funded by** / **Can use** / **Pays** | funder / spender / payee | The same three labels in the wizard, the request review, rows, the budget page and the wallet card. |
+| **Seller** | payee | The saved-contacts tab "Places" becomes **Sellers**. "Place" survives only in shop-till copy. |
+| **Payment slip** | note | One name. "Payment code" is allowed only for the QR on the holder's phone. |
+| **Collect** | redeem | "Redeem" never appears in UI. |
+| **Take back what's left** | reclaim | Always "after [date], one network transaction". Never "comes back automatically". |
+| **Network fee** | gas | "Gas" never appears on people screens. |
+| **Open app** (header) | `/app` | Replaces "Account". "Counting House" and "Dashboard" are retired everywhere, including MCP text. |
+| Status: **Active · Ending soon · Ended · Closed** | — | One status map everywhere. "Ending soon" means 3 days or less. |
+| Till: **Accepted: covered by a checked budget** / **Accepted at your own risk: not checked yet** | GUARANTEED / UNVERIFIED | The protocol state names in §6.8 are unchanged. Only the UI words change. |
+
+The public-surface check in `pnpm verify` gains a **people-surface denylist** over the built people-facing routes (`/app`, `/wallet`, `/shop`, the landing page): *certificate, redeem, gas, holder, giver, sealed, Counting House, Dashboard, guaranteed, safe, secure, risk-free, insured, interest, yield, earn, audited*. Docs, the protocol pages and code are exempt. `/guarantees` keeps its URL, but its title becomes **Promises and limits**, written as promise, how it is enforced, the test that proves it, and what it doesn't cover (Aave-style).
+
+### 22.4 Positioning and copy
+
+- **Headline:** "Give a budget. Not your wallet." **Subheadline:** "Fund a budget for a seller you choose. Use it yourself, or let a person or an AI assistant use it. See what was spent and what's left."
+- **Next to every funding signature:** "This budget pays only [seller]. You can't cancel it early or change who can use it. After [date] you can take back what's left with one network transaction." It is also part of the shared **GrantSummary** sentence: *"Up to 20.00 USDC · at [seller] · used by [name] · until Fri 24 Oct · can't be cancelled early · after that, take back what's left."*
+- **Risk strip, at every width and on every surface including the holder wallet:** "Test network: practice money with no value. Not audited." Test amounts read "test USDC".
+- **Self-description:** open-source software and a public contract you use from your own wallet. Never "we process payments", "your balance with us" or "we'll refund you".
+- **Banned in public copy** (see §22.3): the words listed there, plus "spend anywhere", "instant cash-out", "cancel whenever", "automatic refund", "no fees", "first", "only", "unlimited".
+- **Proof over claims:** one reproducible purchase with its receipt, the seller's collection and the funder's take-back. The public metric, when there is one, is **paid collections by buyers unrelated to the seller**. The demo seller is labelled a demo everywhere.
+
+### 22.5 Release slice R1 (the whole next release)
+
+a. **A1–A5** (§22.2).
+b. **GrantSummary** (§22.4), one component used by the fund review, the request review, the budget row, the budget page and the wallet card, and mirrored in MCP text.
+c. **Funding.** Label the two transactions "Step 1 of 2: let the contract move exactly X USDC. Nothing is sent yet." and "Step 2 of 2: lock X for [seller] until [date]." At zero balance, show test USDC and test ETH faucet links read from `@flying-money/chains`. Top-up, extend, take back and collect end on a persistent success line.
+d. **Giving to a person.** Its own short flow: who and where, then how much and until when, then one review. The success screen *is* the hand-over. It never shows the agent `.env` gate or config snippet. Renew names the person, not the seller.
+e. **Holder wallet.** Show the risk strip. Set and confirm the PIN once (never a third entry). Cards show the seller's name, not "0x…". The backup is named "a file locked with your passphrase; nobody can reset it" and test-decrypted once. Restore is offered before PIN setup on an empty wallet.
+f. **Till.** A full-screen result with the amount in the largest type, a chime (with an optional spoken amount), a distinct failure colour and sound, and an ARIA live announcement. "Not accepted: [reason]. [Next step]." Collect shows why it is disabled and one fix. After collecting: "Collected. [n] payments in one transfer."
+g. **Requests.** A named action "Approve a smaller budget". Decline gets equal weight. Top-up requests can be approved (with A4). Show "asked [n] times today" and collapse duplicates. `fm_request_status` distinguishes declined from not yet answered, and MCP copy never says "Counting House".
+h. **Accessibility (WCAG 2.2 AA).** Text tokens reach contrast of at least 4.5:1 (celadon is fills only). The step explorer doesn't auto-advance under reduced motion and has a pause control. Tabs follow the tab pattern. The pay overlay is a dialog with focus trap and Escape. Disabled links become disabled buttons with a visible reason. Route-level `error.tsx` and `loading.tsx` exist. Amounts use locale separators from `bigint`, dates use month names, and "3,50" parses.
+i. **Assistant setup.** From an agent's page: name it and paste its key address, fund a chosen service, allow requests (the grant), and see a first paid call with its receipt. Copy: "It pays supported services. It doesn't pay your assistant subscription."
+j. **Mobile owners.** The Give action and the risk strip are visible below `lg`. WalletConnect (Reown) is added as a second connector **once the founder provides a project id (human input)**. Embedded or passkey wallets stay deferred.
+k. **Vocabulary and copy.** §22.3 and §22.4 are applied, with the denylist in `pnpm verify`.
+
+**Not in R1:** a unified activity feed and receipts export (next release), money plans, folders and tags, notifications and push, reports and CSV, templates, the team workflow, the converter, compatibility implementation, the four-tab navigation, locale translations, and the till-to-phone receipt channel (D20 stands).
+
+### 22.6 Flagged ideas: decided
+
+| Idea | Decision | Reason |
+|---|---|---|
+| ERC-2612 permit entry point (one-signature funding) | **Rejected** | Contract change to a sealed contract with I1–I7; permit signatures are a phishing vector. |
+| EIP-7702 batching and gas sponsorship | **Deferred** | Needs wallet support, and a paymaster makes the project operate a service. Revisit after mainnet. |
+| WalletConnect (Reown) connector | **Approved** (R1 j) | D18 already allowed it with a project id. It unblocks phones without key custody. |
+| Embedded or passkey wallet | **Deferred** | Needs its own key-custody threat model. |
+| Short or rotating payment codes | **Rejected** | Changes the §6 slip format; the on-chain spend-once rule is the replay guard. The "copy code" path remains the non-QR alternative. |
+| Early "stop this spender" or kill switch | **Rejected** | No admin by design. The limit is explained before signing; small amounts, short dates and Renew are the answer. |
+| Stable SDK error codes with doc links | **Approved (additive)** | Add optional `code` and `docUrl` to SDK errors. Existing fields and behaviour are unchanged. |
+| MCP URL-mode elicitation for approvals | **Approved (additive)** | Emit the approval link (or inbox pointer) as URL-mode elicitation where the client supports it, with plain text otherwise. Approval stays in the web app (R3). |
+| Till-to-phone receipt channel | **Rejected** | D20 stands. |
+| Local-currency equivalents ("≈ ₱1,120") | **Deferred** | A rate source creates an implied promise. Review before mainnet. |
+| Notifications and push | **Deferred** | After R1. Opt-in only when built. |
+| "Guaranteed" wording at the till and the `/guarantees` title | **Changed** | §22.3. The §6.8 protocol state names are unchanged. |
+
+### 22.7 Research tracks (documents, not code)
+
+1. **Compatibility matrix:** `docs/research/compatibility-x402-mpp.md` covers identity, economics, lifetime and early close, transport, recovery, settlement and distribution for x402 batch settlement, MPP sessions and a Flying Money note. It ends with a go/no-go on "native scheme" versus "gateway seller". Nothing is built from it without a new §22 decision.
+2. **Pilot plan:** one useful assistant-paid service and one known shop. Each pilot names its participants, baseline and success threshold before it starts. Testnet only unless §0.1 approval is given.
+
+### 22.8 Measures
+
+The working north star is **repeat users completing useful purchases that are delivered and collected**, reported by component (accepted, delivered, collected, taken back), so that no failure hides inside one number. The public metric is paid collections by buyers unrelated to the seller. Stars, sign-ups, requests created and animation speed are not evidence.
+
+### 22.9 Order and acceptance
+
+1. **Now:** A1–A5 with tests first → R1 b, c, d, e, f, g, h, k → R1 i and j → the §22.7 documents in parallel.
+2. **R1 is done when** every item passes. Specifically:
+   - a new user can say who can spend, where, how much, until when, and that it can't be cancelled early, before funding;
+   - no balance is double-counted and no amount reads as real money on testnet;
+   - refresh and wallet-return are safe from approve through hand-over;
+   - lost responses never charge twice;
+   - the price ceiling and the offline float hold under concurrency;
+   - no request reads as funded without evidence;
+   - the full `pnpm verify --e2e` gate and a 375 px and axe pass succeed.
+3. Decisions for §22 are logged as D42 onward in `docs/DECISIONS.md`.
 
 
 ---

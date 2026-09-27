@@ -2,6 +2,12 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Spec v1.6 adopted (27 Sep): §22 decided; next is release slice R1
+
+- The product review is decided in BUILD_SPEC §22 (D42). Five engineering findings (A1–A5) are confirmed in source and are now release blockers, fixed tests-first.
+- **Next:** A1–A5, then R1 (GrantSummary, funding steps, the person gift flow, holder wallet, the till moment, request refinements, WCAG 2.2 AA, assistant setup, mobile, and vocabulary with the denylist).
+- **Needs the founder:** a WalletConnect project id (R1 j) and the real pilot seller (P14).
+
 ## Request inbox (27 Sep): ✅ `pnpm verify --e2e` green (D41)
 
 - Agents with the owner's grant post budget requests to the site's inbox (`/api/requests`, Upstash). The owner signs in with a wallet signature, sees them under Requests (with a nav badge), and funds or declines them. The inbox marks a request approved only after checking the funding transaction on-chain.

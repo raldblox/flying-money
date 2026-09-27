@@ -1,3 +1,22 @@
+# Spec change notice: v1.5 → v1.6 (27 Sep 2026)
+
+**For the implementing agent.** `docs/BUILD_SPEC.md` is now **v1.6**. Everything new is in **§22** (normative, final), and §22 wins where it conflicts with §21 or earlier sections.
+
+**Unchanged:** the contract (§7), the protocol and wire formats (§6), invariants I1–I7, C1, S1–S4 and R1–R5, and decisions D1–D41.
+
+| # | Change | Section |
+|---|---|---|
+| W1 | The product review is decided (P01–P16): improve the funded-budget product. No savings, converter or compatibility implementation now. | §22.1 |
+| W2 | Release blockers A1–A5, tests first. **A1 corrects a spec defect:** §21.5's 30-day outcome TTL; replay tombstones now live with the certificate (S1). | §22.2, §21.5 |
+| W3 | One vocabulary for all audiences. The per-door taxonomy of §21.3 is retired from the UI; "Places" becomes "Sellers"; a people-surface denylist joins `pnpm verify`. | §22.3 |
+| W4 | Positioning and copy: "Give a budget. Not your wallet."; the GrantSummary sentence; leftovers are *taken back*, never "returned automatically"; a risk strip everywhere. | §22.4 |
+| W5 | Release slice R1 is the whole next release; everything else is backlog. | §22.5 |
+| W6 | Flagged ideas decided: permit, rotating codes and kill switch rejected; 7702, embedded wallets and notifications deferred; WalletConnect, SDK error codes and MCP URL elicitation approved (additive). | §22.6 |
+
+**What to do now:** fix A1–A5 with regression tests first, then R1 in the §22.9 order. Log decisions as D42 onward.
+
+---
+
 # Spec change notice: v1.4.1 → v1.5 (24 Sep 2026)
 
 **For the implementing agent.** `docs/BUILD_SPEC.md` has been updated to **v1.5**. Everything new is in **§21** (normative), and §21 wins where it conflicts with earlier sections.
