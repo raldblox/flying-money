@@ -64,6 +64,8 @@ interface PendingIssue {
   face: string
   durationIdx: number
   generated?: { key: Hex; address: Hex }
+  /** set once issued: the key stays here until the funder confirms the hand-over (§22.2 A5) */
+  issuedId?: Hex
 }
 const PENDING_KEY = 'fm-pending-issue'
 const loadPending = (): PendingIssue | null => {
@@ -154,7 +156,17 @@ export function IssueWizard({
       durationIdx: p.durationIdx,
       hash: receipt.transactionHash,
     })
+    // a key generated here isn't safe until it has been handed over: keep it (this tab only) until the funder says so
+    if (p.generated) savePending({ ...p, issuedId: log.args.id })
+    else savePending(null)
+  }
+  function handedOver() {
     savePending(null)
+    setIssued(null)
+    setGenerated(null)
+    setKeySaved(false)
+    approveTx.reset()
+    issueTx.reset()
   }
   // a budget sent before a reload (or a lost receipt): pick it up and finish it
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the chain's client is ready
@@ -166,6 +178,8 @@ export function IssueWizard({
       setSpenderMode('generate')
       setKeySaved(true)
     }
+    // already issued, hand-over not yet confirmed: straight back to the result screen
+    if (p.issuedId) return setIssued({ id: p.issuedId, hash: p.hash })
     void issueTx.watch(p.hash).then((r) => r && finishIssue(r, p))
   }, [publicClient, chain.key])
   // a reverted issue locked nothing: forget it
@@ -401,6 +415,17 @@ export function IssueWizard({
             name={preset?.holderName ?? place?.name}
           />
         )}
+        {generated && (
+          <div className="mx-auto mt-5 max-w-md rounded-md border border-line p-4 text-sm">
+            <p className="text-ink-2">
+              This page keeps the key until you’ve handed it over, even if you reload. Once the link (or the agent file)
+              is safely with its user, confirm here.
+            </p>
+            <button type="button" className={`${buttonClass('primary')} mt-3`} onClick={handedOver}>
+              I’ve handed it over
+            </button>
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
           <a className="text-indigo underline" href={`/c/${chain.key}/${issued.id}`}>
             Open the budget page
@@ -413,17 +438,7 @@ export function IssueWizard({
           >
             Issue transaction ↗
           </a>
-          <button
-            type="button"
-            className="text-indigo underline"
-            onClick={() => {
-              setIssued(null)
-              setGenerated(null)
-              setKeySaved(false)
-              approveTx.reset()
-              issueTx.reset()
-            }}
-          >
+          <button type="button" className="text-indigo underline" onClick={handedOver}>
             Create another
           </button>
         </div>
@@ -625,8 +640,8 @@ export function IssueWizard({
                 </p>
                 {preset?.holderName ? (
                   <p className="text-sm text-ink-2">
-                    After issuing you get a hand-over link for {preset.holderName}. The key travels only in that link;
-                    it is never stored here. If it gets lost, you reclaim the money after the end date.
+                    After creating the budget you get a hand-over link for {preset.holderName}. The key travels only in
+                    that link. This tab keeps it until you confirm you’ve handed it over, then forgets it.
                   </p>
                 ) : (
                   <div className="flex flex-wrap items-center gap-3">
