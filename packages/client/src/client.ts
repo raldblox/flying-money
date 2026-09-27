@@ -55,7 +55,7 @@ export class PriceTooHighError extends Error {
     public offer: Offer,
     public max: bigint,
   ) {
-    super(`PriceTooHighError: price ${offer.price} exceeds maxPricePerRequest ${max}`)
+    super(`PriceTooHighError: price ${offer.price} exceeds the ceiling ${max}`)
     this.name = 'PriceTooHighError'
   }
 }
@@ -189,7 +189,11 @@ export interface CertificateStatus {
 }
 
 export interface FlyingMoneyClient {
-  fetch(input: string | URL, init?: RequestInit): Promise<Response>
+  /**
+   * Pays with a note if the server answers 402. `opts.maxPrice` is this call's own ceiling (base units), enforced on the
+   * offer that is actually signed, on top of maxPricePerRequest (§22.2 A2).
+   */
+  fetch(input: string | URL, init?: RequestInit, opts?: { maxPrice?: bigint }): Promise<Response>
   status(): CertificateStatus[]
   resolvePending(): Promise<void>
   refresh(): Promise<void>
@@ -477,7 +481,11 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     return sendPending(h, pending)
   }
 
-  async function fetchPaid(input: string | URL, init: RequestInit = {}): Promise<Response> {
+  async function fetchPaid(
+    input: string | URL,
+    init: RequestInit = {},
+    opts: { maxPrice?: bigint } = {},
+  ): Promise<Response> {
     await ready
     const url = String(input)
     if (init.body !== undefined && init.body !== null && typeof init.body !== 'string')
@@ -505,7 +513,12 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     }
     await first.body?.cancel().catch(() => {})
     emit({ type: 'offer', url, offer })
-    if (offer.price > config.maxPricePerRequest) throw new PriceTooHighError(offer, config.maxPricePerRequest)
+    // the ceiling applies to this offer, the one that is signed below: a re-quote can't slip past it (§22.2 A2)
+    const ceiling =
+      opts.maxPrice !== undefined && opts.maxPrice < config.maxPricePerRequest
+        ? opts.maxPrice
+        : config.maxPricePerRequest
+    if (offer.price > ceiling) throw new PriceTooHighError(offer, ceiling)
     const h = pick(offer)
     if (!h) throw new NoCertificateError(offer)
     return withLock(h.key, () => pay(h, offer.price, req))

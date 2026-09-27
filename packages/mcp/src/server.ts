@@ -168,19 +168,11 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           redirect: 'manual',
           ...(body ? { body, headers: { 'content-type': 'application/json' } } : {}),
         }
-        if (max_price !== undefined) {
-          const limit = parseUnits(max_price, 6)
-          const probe = await doFetch(target, init)
-          const h = probe.status === 402 ? probe.headers.get(OFFER_HEADER) : null
-          if (h) {
-            const price = decodeOffer(h).price
-            if (price > limit)
-              return text(`Not paid: the price is ${usdc(price)} USDC, above your max_price of ${usdc(limit)}.`, true)
-          }
-        }
+        // max_price is enforced by the client on the offer it signs, not on a separate quote (§22.2 A2)
+        const maxPrice = max_price !== undefined ? parseUnits(max_price, 6) : undefined
         let payment: { price: bigint; cumulative: bigint } | undefined
         const before = new Map(fm.status().map((c) => [c.id, c.spentLocal]))
-        const res = await fm.fetch(target, init)
+        const res = await fm.fetch(target, init, maxPrice !== undefined ? { maxPrice } : {})
         for (const c of fm.status()) {
           const prev = before.get(c.id) ?? 0n
           if (c.spentLocal > prev) payment = { price: c.spentLocal - prev, cumulative: c.spentLocal }
@@ -200,7 +192,9 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           e instanceof InsufficientBudgetError
             ? 'Not paid: this would go past the certificate’s face value. Your budget is used up; ask the funder to top it up.'
             : e instanceof PriceTooHighError
-              ? `Not paid: the price is above your per-request cap of ${usdc(cfg.maxPricePerRequest)} USDC.`
+              ? `Not paid: the price (${usdc(e.offer.price)} USDC) is above ${
+                  max_price !== undefined && e.max < cfg.maxPricePerRequest ? 'your max_price' : 'your per-request cap'
+                } of ${usdc(e.max)} USDC. Nothing was signed.`
               : e instanceof NoCertificateError
                 ? 'Not paid: none of your certificates can pay this seller (wrong payee or chain, or not enough time or budget left).'
                 : e instanceof PaymentRejectedError

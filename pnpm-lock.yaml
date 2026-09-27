@@ -241,6 +241,9 @@ importers:
       '@flying-money/server':
         specifier: workspace:*
         version: link:../server
+      hono:
+        specifier: ^4.13.8
+        version: 4.13.8
 
   packages/server:
     dependencies:

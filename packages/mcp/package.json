@@ -29,7 +29,8 @@
   },
   "devDependencies": {
     "@flying-money/oracle": "workspace:*",
-    "@flying-money/server": "workspace:*"
+    "@flying-money/server": "workspace:*",
+    "hono": "^4.13.8"
   },
   "bin": {
     "flying-money-mcp": "./dist/bin.js"
