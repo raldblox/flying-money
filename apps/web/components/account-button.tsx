@@ -27,9 +27,9 @@ export function AccountButton({ compact = false }: { compact?: boolean }) {
           <span className="sr-only">(your account)</span>
         </>
       ) : (
-        !compact && <span>Account</span>
+        !compact && <span>Open app</span>
       )}
-      {compact && !connected && <span className="sr-only">Account</span>}
+      {compact && !connected && <span className="sr-only">Open app</span>}
     </Link>
   )
 }

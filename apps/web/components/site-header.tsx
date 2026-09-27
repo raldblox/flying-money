@@ -10,7 +10,7 @@ const nav = [
   { href: '/docs/agents', label: 'Agents' },
   { href: '/shops', label: 'Shops' },
   { href: '/docs', label: 'Docs' },
-  { href: '/guarantees', label: 'Guarantees' },
+  { href: '/guarantees', label: 'Promises' },
 ]
 
 const link =
@@ -76,7 +76,7 @@ export function SiteHeader() {
             items={[
               { href: '/demo', label: 'Demo' },
               ...nav,
-              { href: '/app', label: 'Account' },
+              { href: '/app', label: 'Open app' },
               { href: '/wallet', label: 'Wallet' },
             ]}
           />

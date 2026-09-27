@@ -122,7 +122,7 @@ function Result({ story, action }: { story: Story; action?: ReactNode }) {
     { big: String(d.served), small: 'paid API calls' },
     { big: String(d.redemptions), small: `blockchain transaction${d.redemptions === 1 ? '' : 's'}` },
     { big: money(BigInt(d.redeemed)), small: 'USDC to the seller, exactly what it served' },
-    { big: money(BigInt(d.remaining)), small: 'USDC goes back to the owner' },
+    { big: money(BigInt(d.remaining)), small: 'USDC the owner can take back' },
   ]
   return (
     <div className="caption-in border-t border-line px-5 py-6 sm:px-7">

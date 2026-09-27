@@ -15,7 +15,7 @@ const USES = [
   { Icon: IconBowl, t: 'School lunch', d: 'Lunch money that only works at the canteen.' },
   { Icon: IconTea, t: 'A café tab', d: '20 USDC at your regular’s favourite café.' },
   { Icon: IconWorker, t: 'Field staff', d: 'Fuel money for one station, with no company card to lose.' },
-  { Icon: IconGift, t: 'A gift for one shop', d: 'Sent as a link. Leftovers come back to you.' },
+  { Icon: IconGift, t: 'A gift for one shop', d: 'Sent as a link. After the end date, you take back what’s left.' },
 ]
 
 const SECTIONS = [

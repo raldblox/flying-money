@@ -48,8 +48,8 @@ export default async function ShopPublicPage({
           />
         </div>
         <p className="mt-2 text-sm text-ink-2">
-          The shop’s code. Customers open it to reach their wallet; givers scan it in their account to add this shop as
-          a verified place.
+          The shop’s code. Customers open it to reach their wallet; people who give budgets scan it in their account to
+          add this shop as a verified place.
         </p>
         <p className="mt-6 text-xs text-ink-2">
           Payments go only to <span className="font-mono">{short(payee)}</span>. Only budgets made for this shop work

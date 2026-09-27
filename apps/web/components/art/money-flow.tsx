@@ -237,7 +237,7 @@ const CAPTIONS = [
   'With each request the agent hands over a signed slip: 0.12, 0.13, 0.12. Nothing is sent to the blockchain.',
   'Each slip goes straight to the seller, who checks and stamps it in milliseconds.',
   'Whenever it likes, the seller collects everything it earned (0.37) in one transaction.',
-  'After the end date, the 4.63 USDC nobody spent goes back to the owner.',
+  'After the end date, the owner takes back the 4.63 USDC nobody spent.',
 ] as const
 
 function Coins({ path }: { path: string }) {

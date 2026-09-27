@@ -93,7 +93,7 @@ test('an agent asks through the inbox; the owner sees it, funds it, and the inbo
     .getByRole('link', { name: /Requests/ })
     .click()
   await expect(page.getByRole('heading', { name: 'Answered' })).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Funded')).toBeVisible()
+  await expect(page.getByText('Funded').first()).toBeVisible()
 
   // §22.5 g: a top-up request for that budget, approved from the inbox, recorded only after the on-chain top-up (A4)
   const certificateId = (await (await request.get(`/api/requests/${signed.request.requestId}`)).json()).certificateId

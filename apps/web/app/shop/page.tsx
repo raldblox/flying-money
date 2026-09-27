@@ -22,8 +22,8 @@ export default function ShopPage() {
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-2">
         Customers pay from a budget made for your shop: money someone set aside that only you can collect. Your till
-        shows a price code, scans the customer’s code, and tells you at once whether the payment is guaranteed. It keeps
-        working when the Wi‑Fi drops, and you collect everything later in one transaction.
+        shows a price code, scans the customer’s code, and tells you at once whether the payment is covered by a checked
+        budget. It keeps working when the Wi‑Fi drops, and you collect everything later in one transaction.
       </p>
       <OpenShop />
     </div>

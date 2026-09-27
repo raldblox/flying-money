@@ -102,7 +102,9 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           'You pay APIs with Flying Money budgets. Rules:',
           ...(lines.length
             ? lines
-            : ['- You have no usable budget. Ask your owner for one with fm_request_budget (or on the Flying Money site).']),
+            : [
+                '- You have no usable budget. Ask your owner for one with fm_request_budget (or on the Flying Money site).',
+              ]),
           `- A single request may cost at most ${usdc(cfg.maxPricePerRequest)} USDC.`,
           '- You can only pay the seller named on a budget, never anyone else, and never more than its amount.',
           '- Use fm_quote to see a price before paying, and fm_paid_fetch to pay. Failed requests are not charged.',

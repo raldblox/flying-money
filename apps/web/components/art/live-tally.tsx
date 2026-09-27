@@ -15,7 +15,7 @@ export interface LiveTallyProps {
   expires: string
   /** what gets bought, and its price in cents */
   items: ReadonlyArray<readonly [string, number]>
-  /** the loop ends (leftovers come back) once less than this is left, in cents */
+  /** the loop ends (the funder takes back the rest) once less than this is left, in cents */
   floor: number
 }
 
@@ -146,7 +146,7 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
     phase === 'refused'
       ? `Refused: more than the ${fmt(left)} left. Nothing was paid.`
       : phase === 'ending'
-        ? `Ended. ${fmt(left)} USDC goes back to the giver.`
+        ? `Ended. Whoever funded it can take back ${fmt(left)} USDC.`
         : `Pays only ${payee}. ${fmt(left)} of ${fmt(face)} left.`
 
   return (
@@ -192,7 +192,7 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
         {phase === 'ending' && (
           <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center">
             <span className="rise rounded-full border border-celadon bg-paper px-4 py-2 text-sm font-semibold text-ink shadow-sm">
-              ↩ {fmt(left)} back to the giver
+              ↩ {fmt(left)} USDC to take back
             </span>
           </div>
         )}

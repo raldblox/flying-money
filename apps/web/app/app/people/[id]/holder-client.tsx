@@ -190,7 +190,7 @@ export function HolderControl({ id }: { id: string }) {
         {rows === null ? (
           <p className="mt-3 text-ink-2">Reading the blockchain…</p>
         ) : rows.length === 0 ? (
-          <p className="mt-3 text-ink-2">None yet. Use “Give a certificate”.</p>
+          <p className="mt-3 text-ink-2">None yet. Use “Give a budget”.</p>
         ) : (
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {rows.map((r, k) => {

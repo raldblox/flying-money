@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Flying Money',
     short_name: 'Flying Money',
-    description: 'Hand over a budget, not your wallet. Prepaid, capped spending for AI agents and people.',
+    description: 'Give a budget. Not your wallet. Funded budgets for people and AI assistants.',
     start_url: '/',
     display: 'standalone',
     background_color: '#f4ede0',

@@ -17,7 +17,7 @@ export default function HowItWorksPage() {
       </h1>
       <p className="mt-4 max-w-2xl text-lg text-ink-2">
         You set money aside once. Your agent pays for each request with a signed slip: instant, and free. The service
-        collects later, and anything left comes back to you. Scroll to watch the money move.
+        collects later, and you take back anything left. Scroll to watch the money move.
       </p>
       <div className="mt-10">
         <Lifecycle />

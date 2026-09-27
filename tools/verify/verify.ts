@@ -4,6 +4,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { checkPeopleSurface } from '../people-surface/check.js'
 import { checkPublicSurface } from '../public-surface/check.js'
 import { scanSecrets } from './secrets.js'
 
@@ -40,6 +41,7 @@ const steps: Array<[string, () => boolean]> = [
   ['tests (C1, S1–S4, forge unit + invariants, agent e2e on anvil)', () => run('pnpm', ['test'])],
   ['secret scan', () => report(scanSecrets())],
   ['public-surface check', () => report(checkPublicSurface())],
+  ['people-surface vocabulary (§22.3)', () => report(checkPeopleSurface())],
   ...(e2e ? ([['Playwright e2e (anvil)', () => run('pnpm', ['--filter', '@flying-money/web', 'e2e'])]] as const) : []),
 ]
 

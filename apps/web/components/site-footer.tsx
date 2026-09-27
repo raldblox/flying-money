@@ -11,8 +11,9 @@ export function SiteFooter() {
         <div className="max-w-md text-sm leading-relaxed text-ink-2">
           <p className="font-display text-xl italic text-ink">Colophon</p>
           <p className="mt-2">
-            <strong className="text-ink">Hand over a budget, not your wallet.</strong> Prepaid, capped spending for AI
-            agents and people, settled in USDC. No token, no fee. Test network · open source (MIT) · not yet audited.
+            <strong className="text-ink">Give a budget. Not your wallet.</strong> Funded budgets for people and AI
+            assistants, settled in USDC. No token and no platform fee; network fees apply. Test network · open source
+            (MIT) · not yet audited.
           </p>
         </div>
         <nav aria-label="Footer">
@@ -29,7 +30,7 @@ export function SiteFooter() {
             </li>
             <li>
               <Link className="hover:text-seal" href="/guarantees">
-                Guarantees
+                Promises and limits
               </Link>
             </li>
             {(

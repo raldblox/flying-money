@@ -15,21 +15,14 @@ export function Hero() {
           <p className="smallcaps text-sm text-seal">
             <span lang="zh-Hant">飛錢</span> Flying Money · open source · test network
           </p>
-          <h1 id="hero-title" className="sr-only">
-            Hand over a budget, not your wallet.
+          {/* the promise, visible (§22.4); the two doors below only swap the example */}
+          <h1 id="hero-title" className={H1}>
+            Give a budget. <em className="text-seal">Not your wallet.</em>
           </h1>
-          <DoorStack
-            agents={
-              <p className={H1}>
-                Let your AI agent pay for what it uses. <em className="text-seal">Never more than you allow.</em>
-              </p>
-            }
-            people={
-              <p className={H1}>
-                Lunch money that <em className="text-seal">only works at the canteen.</em>
-              </p>
-            }
-          />
+          <p className="mt-5 max-w-xl text-xl leading-relaxed text-ink">
+            Fund a budget for a seller you choose. Use it yourself, or let a person or an AI assistant use it. See what
+            was spent and what’s left.
+          </p>
           <DoorToggle className="mt-6" />
           <DoorStack
             className="mt-5"
@@ -38,7 +31,8 @@ export function Hero() {
                 <p className="max-w-xl text-lg leading-relaxed text-ink-2">
                   Set a budget in digital dollars (USDC) for one API or service. Your agent pays per request, the
                   service checks each payment on the spot, and collects the total later in one transaction. The agent
-                  can’t raise its budget or spend past it, even if its key is stolen. Whatever’s left comes back to you.
+                  can’t raise its budget or spend past it, even if its key is stolen. After the end date, you can take
+                  back what’s left.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>
@@ -53,7 +47,7 @@ export function Hero() {
                 <p className="max-w-xl text-lg leading-relaxed text-ink-2">
                   Load a budget for one place (a canteen, a café, a supplier) with a limit and an end date. Your kid,
                   employee or friend pays by showing a QR code on their phone. They don’t need a crypto wallet and never
-                  pay a fee. Whatever they don’t spend comes back to you.
+                  pay a network fee. After the end date, you can take back what they didn’t spend.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <ButtonLink href="/shops">See how a café uses it →</ButtonLink>

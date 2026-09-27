@@ -165,7 +165,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   ) : placeUnknown || placeUnverified ? (
     <RiskBanner title={placeUnknown ? 'This service isn’t one of your saved places' : `${placeName} isn’t verified`}>
       Money in this budget can only go to <span className="font-mono">{short(req.payee)}</span>. Check that address with
-      the service itself; if it’s wrong, the money waits until the end date before it comes back.
+      the service itself; if it’s wrong, the money can only be taken back after the end date.
     </RiskBanner>
   ) : null
 
@@ -314,8 +314,8 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
               can’t go past it, even if its key is stolen.
             </li>
             <li>
-              <strong className="text-ink">Leftovers come back</strong> to you after the end date. There’s no early
-              cancel: that’s what lets the service trust it.
+              <strong className="text-ink">You take back what’s left</strong> after the end date, with one transaction.
+              There’s no early cancel: that’s what lets the service trust it.
             </li>
           </ul>
         </div>
@@ -336,8 +336,8 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
                 onChange={(e) => setVouched(e.target.checked)}
               />
               <span>
-                I asked my agent for this, and I’ve checked both addresses. I understand money for a wrong address only
-                comes back after the end date.
+                I asked my agent for this, and I’ve checked both addresses. I understand money for a wrong address can
+                only be taken back after the end date.
               </span>
             </label>
           )}

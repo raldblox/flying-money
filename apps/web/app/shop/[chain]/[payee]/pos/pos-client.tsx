@@ -552,7 +552,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
           Budgets at this till
         </h2>
         {rows.length === 0 ? (
-          <p className="mt-2 text-ink-2">No guaranteed payments yet.</p>
+          <p className="mt-2 text-ink-2">No accepted payments yet.</p>
         ) : (
           <table className="ledger-table mt-4 w-full text-left text-sm">
             <thead>
@@ -612,7 +612,7 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
                   className={`smallcaps text-sm font-semibold ${u.state === 'PROMOTED' ? 'text-ink' : u.state === 'FLAGGED' ? 'text-seal' : 'text-amber'}`}
                 >
                   {u.state === 'PROMOTED'
-                    ? 'Checked · now guaranteed'
+                    ? 'Checked · now covered'
                     : u.state === 'FLAGGED'
                       ? `Flagged: ${REASON[u.reason ?? 'malformed']}`
                       : 'Waiting for a connection'}

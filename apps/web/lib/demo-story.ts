@@ -276,7 +276,7 @@ export function reduceStory(s: Story, e: DemoEvent): Story {
         certificateUrl: e.certificateUrl,
         caption: {
           title: `${e.served} paid calls, ${e.redemptions} blockchain transaction${e.redemptions === 1 ? '' : 's'}`,
-          detail: `The seller received exactly ${money(BigInt(e.redeemed))} USDC for what it served. ${money(BigInt(e.remaining))} USDC stays locked and goes back to the owner when the budget ends.`,
+          detail: `The seller received exactly ${money(BigInt(e.redeemed))} USDC for what it served. ${money(BigInt(e.remaining))} USDC stays locked until the end date; then the owner can take it back.`,
           tone: 'celadon',
         },
       }

@@ -96,7 +96,7 @@ const STEPS: Record<Door, Array<Omit<ExplorerStep, 'icon'> & { Icon: typeof Icon
       flow: 3,
       Icon: IconRedeem,
       t: 'Collect',
-      d: 'The service collects what it earned in one go. Whatever’s left comes back to you.',
+      d: 'The service collects what it earned in one go. After the end date, you take back what’s left.',
     },
   ],
   people: [
@@ -165,7 +165,7 @@ function Problem({ door }: { door: Door }) {
             </>
           ) : (
             <>
-              Money for <em className="text-seal">one place</em>, with a limit that holds and leftovers that come back.
+              Money for <em className="text-seal">one place</em>, with a limit that holds and leftovers you take back.
             </>
           )}
         </p>
@@ -233,7 +233,7 @@ export default function Home() {
                 </li>
                 <li>Every valid payment slip is backed by money set aside for that seller until the end date.</li>
                 <li>Anyone can submit a slip for collection, but the money only ever goes to the named seller.</li>
-                <li>After the end date, whatever wasn’t spent goes back to whoever put it in.</li>
+                <li>After the end date, whoever put the money in can take back what wasn’t spent.</li>
               </ul>
             </div>
             <div className="border-t border-dashed border-seal/40 p-6 sm:p-10 md:border-l md:border-t-0">

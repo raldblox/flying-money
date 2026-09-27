@@ -886,12 +886,12 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
           <li>Make a spending key on this phone.</li>
           <li>
             In the{' '}
-            <a className="text-indigo underline" href="/app">
-              Counting House
+            <a className="text-indigo underline" href="/app/give">
+              Flying Money app
             </a>
-            , issue a budget for the shop and paste this key’s address as “who can spend”.
+            , create a budget for the shop and paste this key’s address as “who can spend”.
           </li>
-          <li>Paste the new certificate’s id here.</li>
+          <li>Paste the new budget’s id here.</li>
         </ol>
         <button
           type="button"
@@ -908,7 +908,7 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
         </button>
         {drafts.length > 0 && (
           <div className="grid gap-3 rounded border border-line p-4">
-            <p className="text-sm font-medium">Spending key address (paste it in the Counting House):</p>
+            <p className="text-sm font-medium">Spending key address (paste it when you create the budget):</p>
             <p className="break-all font-mono text-sm">{drafts[0]}</p>
             <div className="grid gap-1">
               <label htmlFor={`${ids}-c`} className="text-sm font-medium">

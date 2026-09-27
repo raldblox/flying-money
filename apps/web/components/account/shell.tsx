@@ -16,7 +16,7 @@ const NAV = [
   { href: '/app/requests', label: 'Requests', icon: 'inbox' },
   { href: '/app/collect', label: 'Collect', icon: 'collect' },
   { href: '/app/people', label: 'People & agents', icon: 'people' },
-  { href: '/app/places', label: 'Places', icon: 'place' },
+  { href: '/app/places', label: 'Sellers', icon: 'place' },
 ] as const
 
 /**

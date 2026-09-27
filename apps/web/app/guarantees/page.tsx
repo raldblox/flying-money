@@ -3,7 +3,7 @@ import { Claims } from '@/components/guarantees/claims'
 import { WhatIf } from '@/components/guarantees/what-if'
 
 export const metadata: Metadata = {
-  title: 'Guarantees',
+  title: 'Promises and limits',
   description:
     'What Flying Money guarantees, what it does not, the risks it is built against, and what it leaves out on purpose.',
 }
@@ -132,7 +132,7 @@ export default function GuaranteesPage() {
   return (
     <article className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
       <p className="smallcaps text-sm text-seal">Guarantees</p>
-      <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">What’s guaranteed, and what isn’t.</h1>
+      <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight">Promises and limits.</h1>
 
       <p className="mt-6 sheet p-5 text-ink-2">
         <strong className="text-ink">Audit status: not audited.</strong> Its safety rules are checked by automated tests

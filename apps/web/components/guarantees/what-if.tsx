@@ -51,7 +51,7 @@ const CASES: Array<{ q: string; verdict: Verdict; a: string; worst: string; Icon
   {
     q: 'I want my money back before the end date',
     verdict: 'by-design',
-    a: 'Not possible, on purpose. The seller accepts payments instantly, even offline, precisely because the money can’t be pulled back. Whatever isn’t spent returns to you after the end date.',
+    a: 'Not possible, on purpose. The seller accepts payments instantly, even offline, precisely because the money can’t be pulled back. After the end date you take back whatever isn’t spent.',
     worst: 'You wait until the end date for the leftovers.',
     Icon: IconGift,
   },

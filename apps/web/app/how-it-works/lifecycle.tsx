@@ -61,7 +61,7 @@ The redeemer only redeems served value, before expiresAt − 30 min.`,
     fn: 'reclaim',
     where: 'on the blockchain · after the end date',
     plain:
-      'After the end date, whatever wasn’t spent comes back to you. Until then it stays reserved, which is why the service can trust it.',
+      'After the end date, you take back whatever wasn’t spent, with one transaction. Until then it stays reserved, which is why the service can trust it.',
     technical: `reclaim(id) — funder only, after expiresAt
 refunds faceValue − redeemed; closes the certificate
 event CertificateReclaimed(id, refunded); no transfers after close (I6)`,

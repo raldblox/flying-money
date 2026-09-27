@@ -95,11 +95,11 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await expect(card).toBeVisible({ timeout: 90_000 })
   const note = sign(id, 2_500_000n)
   await card.getByRole('textbox').fill(note)
-  await card.getByRole('button', { name: /Redeem/ }).click()
+  await card.getByRole('button', { name: /^Collect/ }).click()
   await expect(card.getByText('Confirmed')).toBeVisible({ timeout: 60_000 })
   await expect(card).toContainText('2.50')
 
   // The same note again adds nothing: refused before any transaction
   await card.getByRole('textbox').fill(note)
-  await expect(card.getByText(/Already redeemed/)).toBeVisible()
+  await expect(card.getByText(/Already collected/)).toBeVisible()
 })

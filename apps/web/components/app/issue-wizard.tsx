@@ -388,8 +388,8 @@ export function IssueWizard({
         <h3 className="mt-5 font-display text-3xl font-semibold">Approved. The budget is locked.</h3>
         <p className="mx-auto mt-3 max-w-xl text-ink-2">
           {preset.request.agent} can now pay {preset.request.placeName}, up to {face ? usdc(face) : ''} USDC. It finds
-          the budget on the blockchain by itself: there is nothing to send back. Whatever it doesn’t spend comes back to
-          you after the end date.
+          the budget on the blockchain by itself: there is nothing to send back. After the end date, you can take back
+          what it didn’t spend.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <a className={buttonClass('primary')} href={`/c/${chain.key}/${issued.id}`}>
@@ -412,7 +412,7 @@ export function IssueWizard({
     return (
       <div className="sheet p-8 text-center">
         <div className="mx-auto w-fit">
-          <Seal size={72} animate label="Budget issued and sealed on-chain" />
+          <Seal size={72} animate label="Budget created on-chain" />
         </div>
         <h3 className="mt-5 font-display text-3xl font-semibold">Budget created.</h3>
         <p className="mt-2 font-mono text-sm break-all">{issued.id}</p>
@@ -629,7 +629,8 @@ export function IssueWizard({
         <p className="smallcaps text-sm text-seal">Step 2</p>
         <h3 className="font-display text-2xl font-semibold">Who can spend?</h3>
         <p className="mt-1 text-sm text-ink-2">
-          A separate spending key: it holds no money, pays no gas, and only signs notes. It can’t be your wallet.
+          A separate spending key: it holds no money, pays no network fees, and only signs payment slips. It can’t be
+          your wallet.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {(

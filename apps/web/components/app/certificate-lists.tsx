@@ -61,7 +61,7 @@ function Skeleton() {
     <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
       {[0, 1].map((k) => (
         <div key={k} className="sheet h-40 animate-pulse p-6 motion-reduce:animate-none">
-          <span className="sr-only">Loading certificates…</span>
+          <span className="sr-only">Loading budgets…</span>
         </div>
       ))}
     </div>
@@ -107,7 +107,7 @@ export function IssuedList({ chain, refreshKey }: { chain: ChainConfig; refreshK
                 <>
                   {usdc(c.redeemed)}{' '}
                   <span className="text-base font-normal text-ink-2">
-                    of {usdc(c.faceValue)} USDC spent · {usdc(c.faceValue - c.redeemed)} returned to you
+                    of {usdc(c.faceValue)} USDC spent · {usdc(c.faceValue - c.redeemed)} taken back by you
                   </span>
                 </>
               ) : (
@@ -178,9 +178,9 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       else if (note.certificateId.toLowerCase() !== cert.id.toLowerCase())
         problem = 'This note is for a different budget.'
       else if (!verifyNoteSignature(note, cert.spender))
-        problem = 'The signature isn’t from this certificate’s spender.'
+        problem = 'This slip isn’t signed by the budget’s spending key.'
       else if (note.cumulative > cert.faceValue) problem = 'The note is above the face value.'
-      else if (note.cumulative <= cert.redeemed) problem = 'Already redeemed: this note adds nothing.'
+      else if (note.cumulative <= cert.redeemed) problem = 'Already collected: this slip adds nothing.'
       else if (st !== 'open') problem = `The budget is ${st}.`
     } catch (e) {
       problem = `Not a valid payment slip: ${(e as Error).message}`
@@ -222,8 +222,8 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       </div>
       {paid !== null && (
         <p className="mt-3 flex items-center gap-3">
-          <Seal size={32} animate label="Redeemed on-chain" />
-          <StatusChip kind="redeemed">Redeemed {usdc(paid)} USDC</StatusChip>
+          <Seal size={32} animate label="Collected on-chain" />
+          <StatusChip kind="redeemed">Collected {usdc(paid)} USDC</StatusChip>
         </p>
       )}
       <label htmlFor={`${ids}-note`} className="mt-5 block text-sm font-medium">
@@ -244,8 +244,8 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
       <p id={`${ids}-note-hint`} className={`mt-1 text-sm ${problem ? 'text-seal' : 'text-ink-2'}`}>
         {problem ??
           (note
-            ? `Valid note: redeeming pays ${usdc(note.cumulative - cert.redeemed)} USDC to ${short(cert.payee)}.`
-            : 'Checked in your browser: signature, amount and expiry. Anyone may press redeem; the money only ever goes to the payee.')}
+            ? `Valid payment slip: collecting pays ${usdc(note.cumulative - cert.redeemed)} USDC to ${short(cert.payee)}.`
+            : 'Checked in your browser: signature, amount and end date. Anyone may press Collect; the money only ever goes to the seller.')}
       </p>
       <button
         type="button"
@@ -253,7 +253,7 @@ function RedeemCard({ chain, cert, onRedeemed }: { chain: ChainConfig; cert: Cer
         disabled={!note || Boolean(problem) || !wallet}
         onClick={redeem}
       >
-        Redeem
+        Collect
       </button>
       <TxStatus state={tx.state} explorer={chain.explorer} onCheck={(h) => tx.watch(h)} />
     </article>
