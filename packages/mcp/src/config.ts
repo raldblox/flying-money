@@ -1,10 +1,11 @@
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { type ChainKey, isChainKey } from '@flying-money/chains'
 import { createFlyingMoneyClient, type FlyingMoneyClient, fileRequestStore, fileStore } from '@flying-money/client'
 import type { Hex } from '@flying-money/core'
 import { parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { loadOrCreateAgentKey } from './agent-key.js'
 import { allowHostsFromEnv, guardedFetch } from './net-guard.js'
 
 export interface McpEnvConfig {
@@ -16,6 +17,10 @@ export interface McpEnvConfig {
   fetch: typeof fetch
   /** Where the owner reviews requests (for URL-mode elicitation). */
   approvalBase: string
+  /** The address budgets are issued to (public; the key itself is never exposed). */
+  spendingAddress: Hex
+  /** The key was made on this start (§22.10 b): the agent should tell its owner the address. */
+  keyCreated: boolean
 }
 
 /** Where approval links open by default (§21.4.2 link channel). */
@@ -23,7 +28,9 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
 
 /**
  * Configuration from the environment (§8.4). The key is read once into the client and never exposed.
- *   AGENT_KEY            spending key (0x…, 32 bytes). Make it with `npx @flying-money/client keygen`.
+ *   AGENT_KEY            spending key (0x…, 32 bytes); optional. Without it the server makes one on first run and
+ *                        keeps it in FM_KEY_FILE (default: agent-key next to FM_STORE, mode 0600) (§22.10 b)
+ *   FM_KEY_FILE          where the made key is kept
  *   AGENT_CERTIFICATES   comma-separated certificate ids issued to that key
  *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN or arbitrum-sepolia)
  *   FM_MAX_PRICE         per-request cap in USDC (default 0.05)
@@ -36,11 +43,8 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  */
 export function configFromEnv(env: Record<string, string | undefined> = process.env): McpEnvConfig {
-  const key = env.AGENT_KEY?.trim()
-  if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key))
-    throw new Error(
-      'AGENT_KEY is missing or malformed (expected 0x + 64 hex). Make one with: npx @flying-money/client keygen',
-    )
+  const given = env.AGENT_KEY?.trim()
+  if (given && !/^0x[0-9a-fA-F]{64}$/.test(given)) throw new Error('AGENT_KEY is malformed (expected 0x + 64 hex)')
   const certificates = (env.AGENT_CERTIFICATES ?? '')
     .split(',')
     .map((s) => s.trim())
@@ -55,11 +59,15 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
   for (const c of chains) if (!isChainKey(c)) throw new Error(`unknown chain in AGENT_CHAINS: ${c}`)
   const maxPricePerRequest = parseUnits(env.FM_MAX_PRICE ?? '0.05', 6)
   const storePath = env.FM_STORE ?? join(homedir(), '.flying-money', 'outbox.json')
+  const made = given
+    ? undefined
+    : loadOrCreateAgentKey(env.FM_KEY_FILE?.trim() || join(dirname(storePath), 'agent-key'))
+  const spender = privateKeyToAccount((given ?? made?.key) as Hex)
   const fetch = guardedFetch({ allowHosts: allowHostsFromEnv(env.FM_ALLOW_HOSTS) })
   const client = createFlyingMoneyClient({
     fetch,
     chains: chains as ChainKey[],
-    spender: privateKeyToAccount(key as Hex),
+    spender,
     store: fileStore(storePath),
     certificates: certificates as Hex[],
     maxPricePerRequest,
@@ -86,5 +94,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     canRequest: Boolean(owner),
     fetch,
     approvalBase: env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE,
+    spendingAddress: spender.address,
+    keyCreated: made?.created ?? false,
   }
 }

@@ -24,6 +24,8 @@ export interface FlyingMoneyMcpConfig {
   canRequest?: boolean
   /** The site where the owner reviews requests (FM_REQUEST_LINK_BASE), for URL-mode elicitation of inbox requests */
   approvalBase?: string
+  /** The address budgets are issued to, shown so the agent can tell its owner (never the key). */
+  spendingAddress?: string
   fetch?: typeof fetch
 }
 
@@ -76,12 +78,24 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     {
       title: 'Flying Money: budget status',
       description:
-        'Your Flying Money budgets: chain, the one seller each can pay, amount, spent, remaining and end date (USDC). Read-only.',
+        'Your Flying Money budgets: chain, the one seller each can pay, amount, spent, remaining and end date (USDC), and your spending address (budgets are issued to it). Read-only.',
       inputSchema: {},
     },
     async () => {
       await fm.ready
-      return json({ certificates: certificates(), maxPricePerRequest: usdc(cfg.maxPricePerRequest) })
+      const list = certificates()
+      return json({
+        ...(cfg.spendingAddress ? { spendingAddress: cfg.spendingAddress } : {}),
+        certificates: list,
+        maxPricePerRequest: usdc(cfg.maxPricePerRequest),
+        ...(list.length === 0
+          ? {
+              next: cfg.canRequest
+                ? 'You have no budget yet. Tell your owner your spending address; when a paid service needs one, call fm_request_budget and give your owner the link it returns.'
+                : 'You have no budget and no owner is configured (FM_OWNER). Tell the user to set FM_OWNER to their wallet address.',
+            }
+          : {}),
+      })
     },
   )
 

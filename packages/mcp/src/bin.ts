@@ -9,6 +9,9 @@ import { createMcpHttpServer } from './http.js'
 import { createFlyingMoneyMcp } from './server.js'
 
 const cfg = configFromEnv()
+// §22.10 b: the address is public; say it on stderr so a human reading logs can see it (never the key)
+if (cfg.keyCreated)
+  console.error(`flying-money-mcp: made a new spending key; your spending address is ${cfg.spendingAddress}`)
 const httpAt = process.argv.indexOf('--http')
 
 if (httpAt === -1) {
