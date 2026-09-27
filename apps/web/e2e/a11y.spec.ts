@@ -21,7 +21,7 @@ for (const scheme of ['light', 'dark'] as const)
   test(`no serious accessibility violations (${scheme})`, async ({ page }) => {
     test.setTimeout(300_000)
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' })
-    for (const path of ['/', '/how-it-works', '/guarantees', '/docs/agents', '/shops', '/wallet']) {
+    for (const path of ['/', '/start', '/how-it-works', '/guarantees', '/docs/agents', '/shops', '/shop', '/wallet']) {
       await page.goto(path, { timeout: 120_000 })
       await page.waitForLoadState('networkidle')
       await scan(page, `${path} (${scheme})`)
