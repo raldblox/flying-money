@@ -2,9 +2,9 @@
 import { flyingMoneyAbi } from '@flying-money/abi'
 import { type ChainKey, getChain } from '@flying-money/chains'
 import type { CounterResult, PendingRedemption, RejectReason, UnverifiedRecord } from '@flying-money/server/browser'
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { type Hex, parseUnits } from 'viem'
-import { useAccount, useChainId, usePublicClient, useWalletClient } from 'wagmi'
+import { useAccount, useBalance, useChainId, usePublicClient, useWalletClient } from 'wagmi'
 import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
 import { useOnline } from '@/components/offline-ready'
@@ -12,23 +12,60 @@ import { QrCode } from '@/components/qr'
 import { QrScanner } from '@/components/qr-scanner'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
-import { short, usdc, utcDate } from '@/lib/fmt'
+import { parseAmount, short, usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, parsePriceList, type Till, TillBusyError, type TillSettings } from '@/lib/till'
 
+// "Not accepted: [reason]. [next step]": impact first, the next step, never blaming the customer (§22.5 f)
 const REASON: Record<RejectReason, string> = {
-  'wrong-payee': 'This budget is for a different shop.',
-  insufficient: 'Not enough left on this budget for this order.',
-  expiring: 'This budget has ended, or ends too soon to accept.',
-  closed: 'This budget has ended.',
-  'unknown-certificate': 'There is no such budget.',
-  'bad-signature': 'This code wasn’t signed by the certificate’s holder. Don’t hand over the goods.',
-  malformed: 'That isn’t a Flying Money payment code.',
-  'different-order': 'This code was made for a different order. Ask the customer to scan the current price.',
-  'over-first-visit-limit': 'You’re offline, and this new customer is over your first-visit limit.',
+  'wrong-payee': 'this budget is for a different shop. Ask for another way to pay.',
+  insufficient: 'there isn’t enough left on this budget for this order. Ask for another way to pay.',
+  expiring: 'this budget has ended, or ends too soon to accept. Ask for another way to pay.',
+  closed: 'this budget has ended. Ask for another way to pay.',
+  'unknown-certificate': 'this budget can’t be found. Ask for another way to pay.',
+  'bad-signature': 'this code isn’t valid for its budget. Don’t hand over the goods; ask for another way to pay.',
+  malformed: 'that isn’t a Flying Money payment code. Scan again.',
+  'different-order': 'this code was made for another order. Ask the customer to scan the current price.',
+  'over-first-visit-limit':
+    'you’re offline and this new customer is over your first-visit limit. Ask for another way to pay.',
   'over-offline-float':
-    'You’re offline, and new customers have used up your offline float. Ask for another way to pay.',
-  'wrong-chain': 'This code is for a different network.',
-  flagged: 'This payment failed its check once you were back online. Don’t accept it.',
+    'you’re offline and new customers have used up your offline allowance. Ask for another way to pay.',
+  'wrong-chain': 'this code is for a different network. Ask for another way to pay.',
+  flagged: 'this payment failed its check once you were back online. Don’t accept it.',
+}
+
+/** A short, distinct sound for each outcome (Web Audio; no files). */
+function chime(kind: 'ok' | 'risk' | 'no') {
+  try {
+    const Ctx =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const notes = kind === 'ok' ? [880, 1320] : kind === 'risk' ? [660, 660] : [220, 165]
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = kind === 'no' ? 'square' : 'sine'
+      o.frequency.value = f
+      const t = ctx.currentTime + i * 0.16
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime(0.18, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15)
+      o.connect(g).connect(ctx.destination)
+      o.start(t)
+      o.stop(t + 0.16)
+    })
+    setTimeout(() => void ctx.close(), 800)
+  } catch {}
+}
+
+/** Saying the amount aloud is a per-till choice, kept on this device. */
+export const SPEAK_KEY = 'fm-till-speak'
+const speakOn = () => {
+  try {
+    return localStorage.getItem(SPEAK_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 type Tab = 'sell' | 'ledger' | 'settings'
@@ -267,55 +304,101 @@ function Sell({ till }: { till: Till }) {
 }
 
 function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgain: () => void; onNext: () => void }) {
-  if (result.status === 'GUARANTEED')
-    return (
-      <div className="mt-3 text-center">
-        <div className="mx-auto w-fit">
-          <Seal size={96} animate label="Accepted: backed by money set aside for your shop" />
-        </div>
-        <p className="mt-4 font-display text-4xl font-semibold lining-nums">Accepted {usdc(result.price)}</p>
-        {result.remaining !== undefined && (
-          <p className="mt-1 text-lg text-ink-2 lining-nums">Customer has {usdc(result.remaining)} left</p>
-        )}
-        <p className="mt-3 text-sm text-ink-2">
-          Guaranteed: backed by money set aside for your shop.
-          {result.expiresAt !== undefined && <> Collect before {utcDate(result.expiresAt - 1800n)}.</>}
-          {result.replay && ' (This code was already accepted; nothing was charged twice.)'}
-        </p>
-        <button type="button" className={`${buttonClass('primary')} mt-6`} onClick={onNext}>
-          Next customer
-        </button>
-      </div>
-    )
-  if (result.status === 'UNVERIFIED')
-    return (
-      <div className="mt-3 rounded-md border-2 border-amber p-6 text-center">
-        <p className="smallcaps text-sm font-semibold text-amber">Unverified · merchant risk</p>
-        <p className="mt-2 font-display text-3xl font-semibold lining-nums">{usdc(result.price)} not guaranteed</p>
-        <p className="mt-2 text-ink-2">
-          New customer while you’re offline. If this payment is bad, you lose it ({usdc(result.price)} USDC). We’ll
-          check it when you’re back online.
-          {result.floatLeft !== undefined && <> Offline float left for new customers: {usdc(result.floatLeft)} USDC.</>}
-        </p>
-        <button type="button" className={`${buttonClass('primary')} mt-6`} onClick={onNext}>
-          Next customer
-        </button>
-      </div>
-    )
+  const kind = result.status === 'GUARANTEED' ? 'ok' : result.status === 'UNVERIFIED' ? 'risk' : 'no'
+  const headRef = useRef<HTMLHeadingElement>(null)
+  const said =
+    kind === 'ok'
+      ? `Accepted ${usdc(result.price)} USDC`
+      : kind === 'risk'
+        ? `Accepted at your own risk, ${usdc(result.price)} USDC, not checked yet`
+        : `Not accepted: ${REASON[result.reason ?? 'malformed']}`
+  // the moment: a sound, the amount spoken if the till wants it, focus on the result (§22.5 f)
+  useEffect(() => {
+    headRef.current?.focus()
+    chime(kind)
+    if (speakOn() && 'speechSynthesis' in window && kind !== 'no')
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(`${usdc(result.price)} U S D C`))
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onNext()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [kind, result.price, onNext])
+  // success tints celadon, own-risk amber, not-accepted dark ink: never the seal red (§22.5 f)
+  const tone = kind === 'ok' ? 'bg-celadon/30 text-ink' : kind === 'risk' ? 'bg-amber/25 text-ink' : 'bg-ink text-paper'
   return (
-    <div className="mt-3 rounded-md border border-line bg-paper-2 p-6 text-center">
-      <p className="smallcaps text-sm font-semibold text-ink-2">Rejected</p>
-      <p className="mt-2 text-lg">{REASON[result.reason ?? 'malformed']}</p>
-      {result.reason === 'over-offline-float' && result.floatLeft !== undefined && (
-        <p className="mt-1 text-sm text-ink-2">Float left: {usdc(result.floatLeft)} USDC.</p>
-      )}
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button type="button" className={buttonClass('primary')} onClick={onAgain}>
-          Scan again
-        </button>
-        <button type="button" className={buttonClass('secondary')} onClick={onNext}>
-          Cancel order
-        </button>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="result-t"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-paper p-6"
+    >
+      <div className={`absolute inset-0 ${tone}`} aria-hidden />
+      <p className="sr-only" role="status" aria-live="assertive">
+        {said}
+      </p>
+      <div className={`relative mx-auto w-full max-w-lg text-center ${kind === 'no' ? 'text-paper' : 'text-ink'}`}>
+        {kind === 'ok' && (
+          <div className="mx-auto w-fit">
+            <Seal size={96} animate label="Accepted: covered by a checked budget" />
+          </div>
+        )}
+        <p className="smallcaps mt-4 text-sm font-semibold">
+          {kind === 'ok'
+            ? 'Accepted: covered by a checked budget'
+            : kind === 'risk'
+              ? 'Accepted at your own risk: not checked yet'
+              : 'Not accepted'}
+        </p>
+        <h2
+          id="result-t"
+          ref={headRef}
+          tabIndex={-1}
+          className="mt-2 font-display text-7xl font-semibold leading-none lining-nums outline-none sm:text-8xl"
+        >
+          {kind === 'no' ? '✕' : usdc(result.price)}
+        </h2>
+        {kind !== 'no' && <p className="mt-1 text-lg">USDC</p>}
+        {kind === 'ok' && (
+          <p className="mt-4 text-lg">
+            {result.remaining !== undefined && <>Customer has {usdc(result.remaining)} left. </>}
+            {result.expiresAt !== undefined && <>Collect before {utcDate(result.expiresAt - 1800n)}.</>}
+            {result.replay && ' This code was already accepted; nothing was charged twice.'}
+          </p>
+        )}
+        {kind === 'risk' && (
+          <p className="mt-4 text-lg">
+            Checked on this device only. You could lose {usdc(result.price)} USDC if it’s bad; it is checked when you’re
+            back online.
+            {result.floatLeft !== undefined && <> Offline allowance left: {usdc(result.floatLeft)} USDC.</>}
+          </p>
+        )}
+        {kind === 'no' && (
+          <p className="mt-4 text-xl">
+            {REASON[result.reason ?? 'malformed'].replace(/^./, (c) => c.toUpperCase())}
+            {result.reason === 'over-offline-float' && result.floatLeft !== undefined && (
+              <> Left: {usdc(result.floatLeft)} USDC.</>
+            )}
+          </p>
+        )}
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {kind === 'no' && (
+            <button type="button" className={buttonClass('primary')} onClick={onAgain}>
+              Scan again
+            </button>
+          )}
+          <button
+            type="button"
+            className={
+              kind === 'no'
+                ? 'min-h-11 rounded-[3px] border border-paper/60 px-5 font-medium text-paper hover:bg-paper/10'
+                : buttonClass('primary')
+            }
+            onClick={onNext}
+          >
+            {kind === 'no' ? 'Cancel order' : 'Next customer'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -334,6 +417,8 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
   const { data: wallet } = useWalletClient({ chainId: chain.chain.id })
   const { address } = useAccount()
   const walletChain = useChainId()
+  const { data: gas } = useBalance({ address, chainId: chain.chain.id, query: { enabled: Boolean(address) } })
+  const [collected, setCollected] = useState<string | null>(null)
   const tx = useTx(publicClient)
 
   const load = useCallback(async () => {
@@ -382,9 +467,22 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
     })
     if (r) {
       for (const p of batch) await till.store.markRedeemed(p.key, p.note.cumulative, r.transactionHash)
+      setCollected(`Collected. ${batch.length} ${batch.length === 1 ? 'payment' : 'payments'} in one transfer.`)
       await load()
     }
   }
+  // why Collect can't run right now, with one fix each (§22.5 f)
+  const collectBlock = !online
+    ? 'Collecting needs a connection.'
+    : total === 0n
+      ? 'Nothing to collect yet.'
+      : !address
+        ? 'Connect a wallet to send the collection. The money still goes only to your shop’s address.'
+        : walletChain !== chain.chain.id
+          ? `Switch your wallet to ${chain.chain.name}.`
+          : gas !== undefined && gas.value === 0n
+            ? 'Your wallet needs a little ETH for the network fee.'
+            : null
 
   async function recheck() {
     setChecking(true)
@@ -414,14 +512,20 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
         <button
           type="button"
           className={`${buttonClass('primary')} mt-4`}
-          disabled={
-            !online || total === 0n || !wallet || walletChain !== chain.chain.id || tx.state.phase === 'confirming'
-          }
+          disabled={Boolean(collectBlock) || !wallet || tx.state.phase === 'confirming'}
+          aria-describedby="collect-why"
           onClick={() => void collect()}
         >
           Collect {usdc(total)} USDC
         </button>
-        {!online && <p className="mt-2 text-sm text-ink-2">Collecting needs a connection.</p>}
+        <p id="collect-why" className="mt-2 text-sm text-ink-2">
+          {collectBlock}
+        </p>
+        {collected && (
+          <p role="status" className="mt-2 font-medium text-ink">
+            ✓ {collected}
+          </p>
+        )}
         <TxStatus state={tx.state} explorer={chain.explorer} onCheck={(h) => void tx.watch(h)} />
       </section>
 
@@ -511,8 +615,16 @@ function Settings({ till }: { till: Till }) {
   const [float, setFloat] = useState(usdc(BigInt(till.settings.offlineFloat)))
   const [saved, setSaved] = useState(false)
   const ids = useId()
-  const amountOk = (v: string) => /^\d+(\.\d{1,6})?$/.test(v)
+  // a decimal comma works too (§22.5 h)
+  const amountOk = (v: string) => parseAmount(v) !== null
   const limitOk = amountOk(limit) && amountOk(float)
+  const [speak, setSpeak] = useState(() => {
+    try {
+      return localStorage.getItem(SPEAK_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
 
   return (
     <form
@@ -522,14 +634,31 @@ function Settings({ till }: { till: Till }) {
         if (!limitOk) return
         await till.saveSettings({
           ...s,
-          firstVisitLimit: parseUnits(limit, 6).toString(),
-          offlineFloat: parseUnits(float, 6).toString(),
+          firstVisitLimit: parseAmount(limit)!.toString(),
+          offlineFloat: parseAmount(float)!.toString(),
         })
         setSaved(true)
         // the limits are fixed when the till opens: reopen with the new settings
         setTimeout(() => window.location.reload(), 600)
       }}
     >
+      <label className="flex min-h-11 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          className="size-5 accent-[var(--seal)]"
+          checked={speak}
+          onChange={(e) => {
+            setSpeak(e.target.checked)
+            try {
+              localStorage.setItem(SPEAK_KEY, e.target.checked ? '1' : '0')
+            } catch {}
+          }}
+        />
+        <span>
+          <span className="block font-medium">Say amounts aloud</span>
+          <span className="text-sm text-ink-2">The till speaks each accepted amount, so staff don’t have to look.</span>
+        </span>
+      </label>
       <div className="grid gap-1">
         <label htmlFor={`${ids}-n`} className="text-sm font-medium">
           Shop name
