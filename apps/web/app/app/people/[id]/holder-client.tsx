@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { AllowRequests } from '@/components/account/allow-requests'
+import { AssistantSetup } from '@/components/account/assistant-setup'
 import { FunderActions } from '@/components/app/funder-actions'
 import { type IssuePreset, IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { WalletButton } from '@/components/app/wallet-button'
@@ -120,6 +121,14 @@ export function HolderControl({ id }: { id: string }) {
         </p>
       </div>
 
+      {holder.type === 'agent' && (
+        <AssistantSetup
+          holder={holder}
+          certs={(rows ?? []).filter((r) => r.chain === chainKey && r.cert).map((r) => r.cert!)}
+          chain={getChain(chainKey)}
+          onFund={() => setGive({ chain: chainKey, preset: { ...spenderPreset(), holderName: holder.name } })}
+        />
+      )}
       {holder.type === 'agent' && (
         <AllowRequests holder={holder} chain={getChain(chainKey)} onChanged={() => void load()} />
       )}
