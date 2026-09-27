@@ -76,6 +76,7 @@ test('an agent asks through the inbox; the owner sees it, funds it, and the inbo
   // the review card, from the inbox: unknown agent and service, so the double check applies
   await expect(page.getByText('Check before you pay')).toBeVisible({ timeout: 90_000 })
   await page.getByText('I asked my agent for this, and I’ve checked both addresses').click()
+  await expect(page.getByRole('button', { name: 'Approve a smaller budget' })).toBeVisible()
   await page.getByRole('button', { name: 'Approve and fund…' }).click()
   await page.getByRole('button', { name: /Approve 2.00 USDC/ }).click()
   await page.getByRole('button', { name: /Fund the budget/ }).click({ timeout: 60_000 })
@@ -93,4 +94,38 @@ test('an agent asks through the inbox; the owner sees it, funds it, and the inbo
     .click()
   await expect(page.getByRole('heading', { name: 'Answered' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Funded')).toBeVisible()
+
+  // §22.5 g: a top-up request for that budget, approved from the inbox, recorded only after the on-chain top-up (A4)
+  const certificateId = (await (await request.get(`/api/requests/${signed.request.requestId}`)).json()).certificateId
+  const topUp = await signSpendRequest(agent, chainId, {
+    owner: owner.address,
+    payee,
+    amount: 1_000_000n,
+    validFor: 86_400n,
+    certificateId,
+    requestId: newRequestId(),
+    createdAt: BigInt(Math.floor(Date.now() / 1000)),
+    reason: 'A few more lookups',
+    origin: 'https://weather.example',
+  })
+  const tp = spendRequestToParts(topUp)
+  expect((await request.post('/api/requests', { data: { ...body, request: tp.request, sig: tp.sig } })).status()).toBe(
+    201,
+  )
+  await page
+    .getByRole('navigation', { name: 'Account' })
+    .getByRole('link', { name: /Requests/ })
+    .click()
+  // already on this page: coming back to the window re-reads the inbox
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await page.getByRole('link', { name: /1\.00 USDC/ }).click({ timeout: 30_000 })
+  await expect(page.getByText(/asks you to add/)).toBeVisible({ timeout: 90_000 })
+  await page.getByRole('button', { name: /Approve 1\.00 USDC/ }).click()
+  await page.getByRole('button', { name: /Add 1\.00 USDC/ }).click({ timeout: 60_000 })
+  await expect(page.getByText(/Added\. Your agent finds/)).toBeVisible({ timeout: 60_000 })
+  await expect
+    .poll(async () => (await (await request.get(`/api/requests/${topUp.request.requestId}`)).json()).status, {
+      timeout: 30_000,
+    })
+    .toBe('approved')
 })

@@ -55,6 +55,14 @@ export function Requests() {
   }
 
   const waiting = inbox.items?.filter((i) => i.status === 'asked') ?? []
+  // how often each agent asked today, so a burst of requests is visible (§22.5 g)
+  const today = new Date().toDateString()
+  const askedToday = (requester: string) =>
+    (inbox.items ?? []).filter(
+      (i) =>
+        i.requester.toLowerCase() === requester.toLowerCase() &&
+        new Date(Number(i.request.createdAt) * 1000).toDateString() === today,
+    ).length
   const done = inbox.items?.filter((i) => i.status !== 'asked') ?? []
 
   return (
@@ -121,7 +129,13 @@ export function Requests() {
           ) : (
             <ul className="mt-4 grid gap-2">
               {waiting.map((r) => (
-                <InboxRow key={r.requestId} r={r} placeName={placeName} holderName={holderName} />
+                <InboxRow
+                  key={r.requestId}
+                  r={r}
+                  placeName={placeName}
+                  holderName={holderName}
+                  asked={askedToday(r.requester)}
+                />
               ))}
             </ul>
           )}
@@ -130,7 +144,13 @@ export function Requests() {
               <h3 className="mt-8 font-display text-xl font-semibold">Answered</h3>
               <ul className="mt-3 grid gap-2">
                 {done.map((r) => (
-                  <InboxRow key={r.requestId} r={r} placeName={placeName} holderName={holderName} />
+                  <InboxRow
+                    key={r.requestId}
+                    r={r}
+                    placeName={placeName}
+                    holderName={holderName}
+                    asked={askedToday(r.requester)}
+                  />
                 ))}
               </ul>
             </>
@@ -177,7 +197,9 @@ function InboxRow({
   r,
   placeName,
   holderName,
+  asked,
 }: {
+  asked: number
   r: InboxItem
   placeName: (p: `0x${string}`) => string
   holderName: (s: `0x${string}`) => string | null
@@ -200,6 +222,7 @@ function InboxRow({
             {!who && <span className="ml-1 text-amber">(not saved)</span>} ·{' '}
             {new Date(Number(r.request.createdAt) * 1000).toLocaleDateString()}
           </span>
+          {asked > 1 && <span className="mt-1 block text-xs text-amber">This agent asked {asked} times today.</span>}
           {r.request.reason && (
             <span className="mt-1 block truncate text-sm italic text-ink-2">“{r.request.reason}”</span>
           )}

@@ -1,15 +1,18 @@
 'use client'
+import type { ChainConfig } from '@flying-money/chains'
 import { getChainById } from '@flying-money/chains'
-import type { Hex } from '@flying-money/core'
+import type { Certificate, Hex, SpendRequest } from '@flying-money/core'
 import { useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
+import { FunderActions } from '@/components/app/funder-actions'
 import { IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { RiskBanner } from '@/components/app/risk-banner'
 import { WalletButton } from '@/components/app/wallet-button'
 import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
 import { GrantSummary } from '@/components/grant-summary'
 import { buttonClass } from '@/components/section'
+import { loadCertificate } from '@/lib/chain'
 import { badgeOf, listHolders, listPlaces } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
 import { decideInbox, getInboxItem, type InboxItem, InboxSignInNeeded, signedFromInbox } from '@/lib/inbox-client'
@@ -30,6 +33,7 @@ const same = (a?: string, b?: string) => Boolean(a && b && a.toLowerCase() === b
 export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   const [parsed, setParsed] = useState<ParsedRequest | null>(null)
   const [step, setStep] = useState<'review' | 'fund' | 'declined'>('review')
+  const [smaller, setSmaller] = useState(false)
   const [agentName, setAgentName] = useState<string | null>(null)
   const [place, setPlace] = useState<{ name: string; badge: string; verified: boolean } | null>(null)
   // contacts are read asynchronously: no warnings until we know
@@ -119,18 +123,23 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
 
   const { chain, expired } = parsed
   const req = r!
+  // a top-up of an existing budget (§22.5 g, with §22.2 A4): checked against that budget, then added to it
   if (!/^0x0{64}$/.test(req.certificateId))
     return (
-      <div role="alert" className="sheet border-l-4 border-amber p-8">
-        <p className="font-display text-3xl font-semibold">This is a request to top up an existing budget.</p>
-        <p className="mt-2 text-lg text-ink-2">
-          Top-up requests can’t be approved from this page yet. Open the budget from Budgets and use Top up there if you
-          agree.
-        </p>
-        <a className="mt-4 inline-block text-indigo underline" href={`/c/${chain.key}/${req.certificateId}`}>
-          Open that budget
-        </a>
-      </div>
+      <TopUpRequest
+        chain={chain}
+        req={req}
+        agentLabel={agentName ?? 'Your agent'}
+        inboxId={inboxId}
+        risk={
+          known && !agentName ? (
+            <RiskBanner title="You haven’t saved this agent’s key">
+              The request is signed by <span className="font-mono">{short(req.requester)}</span>. Make sure it’s your
+              agent’s address before adding money.
+            </RiskBanner>
+          ) : null
+        }
+      />
     )
   const days = Number(req.validFor / 86_400n)
   const agentLabel = agentName ?? 'Your agent'
@@ -192,6 +201,12 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
           ← Back to the request
         </button>
         {risk}
+        {smaller && (
+          <p className="sheet p-4 text-sm">
+            Enter the amount you want to fund, at most <strong>{usdc(req.amount)} USDC</strong>. Your agent is told the
+            actual amount.
+          </p>
+        )}
         {decisionErr && (
           <p role="alert" className="sheet border-l-4 border-amber p-4 text-sm">
             Your inbox couldn’t record this yet ({decisionErr}). If the budget was created, it still works: your agent
@@ -213,7 +228,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             placeAddress: req.payee,
             spender: req.requester,
             spenderMode: 'paste',
-            amount: formatUnits(req.amount, 6),
+            amount: smaller ? '' : formatUnits(req.amount, 6),
             durationSeconds: req.validFor,
             request: { agent: agentLabel, placeName },
           }}
@@ -346,9 +361,23 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             </button>
             <button
               type="button"
+              className={buttonClass('secondary')}
+              disabled={!isConnected || wrongWallet || (needsVouch && !vouched)}
+              onClick={() => {
+                setSmaller(true)
+                setStep('fund')
+              }}
+            >
+              Approve a smaller budget
+            </button>
+            <button
+              type="button"
               className={buttonClass('primary')}
               disabled={!isConnected || wrongWallet || (needsVouch && !vouched)}
-              onClick={() => setStep('fund')}
+              onClick={() => {
+                setSmaller(false)
+                setStep('fund')
+              }}
             >
               Approve and fund…
             </button>
@@ -384,6 +413,117 @@ function Fact({ icon, label, children }: { icon: React.ReactNode; label: string;
         <span className="smallcaps text-xs text-ink-2">{label}</span>
       </dt>
       <dd className="mt-2">{children}</dd>
+    </div>
+  )
+}
+
+/** A top-up request: the budget must be one you funded, spendable by this agent, paying the same seller (§22.2 A4). */
+function TopUpRequest({
+  chain,
+  req,
+  agentLabel,
+  inboxId,
+  risk,
+}: {
+  chain: ChainConfig
+  req: SpendRequest
+  agentLabel: string
+  inboxId: string | null
+  risk: React.ReactNode
+}) {
+  const { address, isConnected } = useAccount()
+  const [cert, setCert] = useState<Certificate | null | undefined>(undefined)
+  const [done, setDone] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    void loadCertificate(chain.key, req.certificateId)
+      .then(setCert)
+      .catch(() => setCert(null))
+  }, [chain.key, req.certificateId])
+  if (cert === undefined)
+    return <div className="sheet h-40 animate-pulse motion-reduce:animate-none" aria-busy="true" />
+  const problem = !cert
+    ? 'That budget can’t be found on this network.'
+    : !same(cert.spender, req.requester)
+      ? 'That budget can’t be spent by the agent asking. Don’t add money to it.'
+      : !same(cert.payee, req.payee)
+        ? 'That budget pays a different seller than the request says. Don’t add money to it.'
+        : !same(cert.funder, req.owner)
+          ? 'You didn’t fund that budget, so this request isn’t for you.'
+          : cert.closed || BigInt(Math.floor(Date.now() / 1000)) > cert.expiresAt
+            ? 'That budget has ended. Fund a new one instead.'
+            : null
+  return (
+    <div className="grid gap-6">
+      {risk}
+      <article className="sheet p-6 sm:p-8">
+        <p className="smallcaps text-sm text-seal">Top-up request · {chain.chain.name}</p>
+        <h2 className="mt-2 font-display text-4xl font-semibold leading-tight">
+          {agentLabel} asks you to add <span className="text-seal">{usdc(req.amount)} USDC</span>
+        </h2>
+        {cert && (
+          <GrantSummary
+            className="mt-3"
+            amount={cert.faceValue}
+            seller={short(cert.payee)}
+            user={agentLabel}
+            expiresAt={cert.expiresAt}
+            test={!chain.mainnet}
+          />
+        )}
+        {(req.reason || req.origin) && (
+          <figure className="mt-4 rounded-md border border-dashed border-amber/70 bg-paper-2/60 p-4">
+            <figcaption className="smallcaps text-xs text-amber">Written by the agent, not verified</figcaption>
+            {req.reason && <blockquote className="mt-2 whitespace-pre-wrap break-words">“{req.reason}”</blockquote>}
+          </figure>
+        )}
+        {problem ? (
+          <p role="alert" className="mt-4 rounded-md border-l-4 border-seal bg-seal/10 p-3">
+            {problem}
+          </p>
+        ) : done ? (
+          <p role="status" className="mt-4 font-medium">
+            ✓ {done}
+          </p>
+        ) : !isConnected || !same(address, req.owner) ? (
+          <p className="mt-4 text-ink-2">Connect the wallet the request is addressed to ({short(req.owner)}).</p>
+        ) : (
+          cert && (
+            <div className="mt-4">
+              <p className="text-sm text-ink-2">You can add less than asked. It still pays only the same seller.</p>
+              <FunderActions
+                chain={chain}
+                cert={cert}
+                initial={{ panel: 'topup', amount: formatUnits(req.amount, 6) }}
+                onDone={() => void loadCertificate(chain.key, req.certificateId).then(setCert)}
+                onConfirmed={(action, txHash) => {
+                  if (action !== 'topUp') return
+                  setDone('Added. Your agent finds the new amount on the blockchain by itself.')
+                  if (inboxId)
+                    void decideInbox(inboxId, { approved: { certificateId: req.certificateId, txHash } }).catch((e) =>
+                      setErr((e as Error).message),
+                    )
+                  else void markRequest(req.requestId, 'funded', req.certificateId)
+                }}
+              />
+            </div>
+          )
+        )}
+        {err && <p className="mt-2 text-sm text-amber">Your inbox couldn’t record this yet ({err}).</p>}
+        {inboxId && !problem && !done && (
+          <button
+            type="button"
+            className="mt-4 text-sm text-ink-2 underline"
+            onClick={() =>
+              void decideInbox(inboxId, { declined: {} })
+                .then(() => setDone('Declined. Nothing was sent.'))
+                .catch((e) => setErr((e as Error).message))
+            }
+          >
+            Decline
+          </button>
+        )}
+      </article>
     </div>
   )
 }

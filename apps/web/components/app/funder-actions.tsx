@@ -22,17 +22,31 @@ type Panel = null | 'topup' | 'extend'
  * §12.2 list actions for the funder: Top up, Extend (while open) and Take back leftovers (after expiry, `reclaim`). The UI mirrors the
  * contract's rules (caps, lifetime ≤ 365 days, funder only) so a doomed transaction is never offered.
  */
-export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cert: Certificate; onDone: () => void }) {
+export function FunderActions({
+  chain,
+  cert,
+  onDone,
+  initial,
+  onConfirmed,
+}: {
+  chain: ChainConfig
+  cert: Certificate
+  onDone: () => void
+  /** open a panel straight away, e.g. a top-up request's amount (§22.5 g) */
+  initial?: { panel: 'topup'; amount: string }
+  /** the confirmed transaction, e.g. to record an inbox decision */
+  onConfirmed?: (action: 'topUp' | 'extend' | 'reclaim', txHash: `0x${string}`) => void
+}) {
   const now = BigInt(Math.floor(Date.now() / 1000))
   const expired = now > cert.expiresAt
-  const [panel, setPanel] = useState<Panel>(null)
+  const [panel, setPanel] = useState<Panel>(initial?.panel ?? null)
   const publicClient = usePublicClient({ chainId: chain.chain.id })
   const { data: wallet } = useWalletClient({ chainId: chain.chain.id })
   const { address } = useAccount()
   const tx = useTx(publicClient)
   const approveTx = useTx(publicClient)
   const ids = useId()
-  const [amount, setAmount] = useState('1')
+  const [amount, setAmount] = useState(initial?.amount ?? '1')
 
   // right after an approve, trust the receipt's Approval event over a possibly lagging RPC read
   const [approvedNow, setApprovedNow] = useState<bigint | null>(null)
@@ -83,6 +97,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
       return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
+      onConfirmed?.(functionName, r.transactionHash)
       setApprovedNow(null)
       void refetchAllowance()
       setDone(

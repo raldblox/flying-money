@@ -1,11 +1,12 @@
 'use client'
 import type { Hex } from '@flying-money/core'
+import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { type InboxItem, InboxSignInNeeded, inboxOwner, listInbox } from './inbox-client'
 
 /**
  * The owner's request inbox on this browser: who is signed in, and the requests. Re-reads when the page regains focus,
- * every minute, and whenever this tab signs in or decides (the "fm-inbox" event).
+ * every 20 seconds, and whenever this tab signs in or decides (the "fm-inbox" event).
  */
 export function useInbox() {
   const [owner, setOwner] = useState<Hex | null | undefined>(undefined)
@@ -26,12 +27,18 @@ export function useInbox() {
       else setError((e as Error).message)
     }
   }, [])
+  // Next keeps visited pages alive: read again whenever the route changes, not only on mount
+  const path = usePathname()
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-read on every navigation
+  useEffect(() => {
+    void load()
+  }, [path, load])
   useEffect(() => {
     void load()
     const on = () => void load()
     window.addEventListener('fm-inbox', on)
     window.addEventListener('focus', on)
-    const t = setInterval(on, 60_000)
+    const t = setInterval(on, 20_000) // a request arriving while this page is open shows up within 20 s
     return () => {
       window.removeEventListener('fm-inbox', on)
       window.removeEventListener('focus', on)
