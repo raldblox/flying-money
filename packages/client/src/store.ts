@@ -144,8 +144,12 @@ export function fileStore(path: string): ClientStore {
 export interface BudgetRequestRecord {
   requestId: Hex
   chain: string
-  status: 'asked' | 'approved' | 'expired'
+  status: 'asked' | 'approved' | 'declined' | 'expired'
+  /** link channel: the approval link (it carries the signed request) */
   link: string
+  /** relay channel: the signed request (fm1), kept so the request survives a restart */
+  signed?: string
+  via?: 'relay' | 'link'
   fromBlock: string
   certificateId?: Hex
 }

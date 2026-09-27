@@ -2,6 +2,13 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Request inbox (27 Sep): ✅ `pnpm verify --e2e` green (D41)
+
+- Agents with the owner's grant post budget requests to the site's inbox (`/api/requests`, Upstash). The owner signs in with a wallet signature, sees them under Requests (with a nav badge), and funds or declines them. The inbox marks a request approved only after checking the funding transaction on-chain.
+- An agent's page has **Allow requests** (a signed grant, shown once as `FM_OWNER_GRANT`, revocable). The SDK and MCP use the inbox when a grant is set and fall back to a link otherwise.
+- Tests: core grant/session signatures and domain separation; every relay rejection and rate limit on memory, the Redis mock and Upstash; decision checks against real anvil events; the client relay flow; a browser e2e from post to approval.
+- The fund and top-up forms trust the approve receipt, so an approval that went through is never asked for again, and wallet errors show the wallet's real reason.
+
 ## Audit fixes (25 Sep): ✅ `pnpm verify --e2e` green (D40)
 
 - Audit findings F1–F13 are fixed, each with a test written first: F6 (SSRF) and F7 (DNS rebinding) in the MCP server, F4, F5, F10 and F11 in the site, F12 in the redeemer and F13 in the client.

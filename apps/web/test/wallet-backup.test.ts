@@ -5,7 +5,8 @@ import { openBackup, sealBackup, validBackupPassphrase } from '../lib/wallet-bac
 // passphrase. Older (v1, PIN-only) files can still be restored.
 const dump = { 'cert:1': '{"sealedKey":{"v":1,"salt":"s","iv":"i","ct":"c"}}', 'pin-check': '{"v":1}' }
 
-describe('F10: wallet backups need a strong passphrase', () => {
+// scrypt is deliberately slow; under a busy parallel test run it needs more than the default 5 s
+describe('F10: wallet backups need a strong passphrase', { timeout: 60_000 }, () => {
   it('rejects short passphrases', () => {
     expect(validBackupPassphrase('short')).toBe(false)
     expect(validBackupPassphrase('12345678901')).toBe(false)

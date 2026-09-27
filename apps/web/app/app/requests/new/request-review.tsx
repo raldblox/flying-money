@@ -1,4 +1,5 @@
 'use client'
+import { getChainById } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
 import { useEffect, useState } from 'react'
 import { formatUnits } from 'viem'
@@ -10,8 +11,9 @@ import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
 import { buttonClass } from '@/components/section'
 import { badgeOf, listHolders, listPlaces } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
+import { decideInbox, getInboxItem, type InboxItem, InboxSignInNeeded, signedFromInbox } from '@/lib/inbox-client'
 import { markRequest, rememberRequest } from '@/lib/seen-requests'
-import { type ParsedRequest, readRequestFromHash } from '@/lib/spend-request'
+import { type ParsedRequest, REQUEST_TTL_SECONDS, readRequestFromHash } from '@/lib/spend-request'
 
 const usdc = (v: bigint) => {
   const [i = '0', f = ''] = formatUnits(v, 6).split('.')
@@ -32,9 +34,34 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   // contacts are read asynchronously: no warnings until we know
   const [known, setKnown] = useState(false)
   const [vouched, setVouched] = useState(false)
+  // opened from the inbox (?inbox=<id>) rather than a link: decisions go back to the inbox
+  const [inboxId, setInboxId] = useState<string | null>(null)
+  const [inboxItem, setInboxItem] = useState<InboxItem | null>(null)
+  const [needsSignIn, setNeedsSignIn] = useState(false)
+  const [decisionErr, setDecisionErr] = useState<string | null>(null)
   const { address, isConnected } = useAccount()
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('inbox')
+    if (id) {
+      setInboxId(id)
+      getInboxItem(id)
+        .then((it) => {
+          setInboxItem(it)
+          const signed = signedFromInbox(it)
+          const chain = signed ? getChainById(signed.chainId) : undefined
+          if (!signed || !chain?.flyingMoney)
+            return setParsed({ ok: false, error: 'This request can’t be verified. Don’t fund it.' })
+          const expired =
+            it.status === 'expired' || Date.now() / 1000 > Number(signed.request.createdAt) + REQUEST_TTL_SECONDS
+          setParsed({ ok: true, signed, chain, expired })
+        })
+        .catch((e) => {
+          if (e instanceof InboxSignInNeeded) setNeedsSignIn(true)
+          else setParsed({ ok: false, error: (e as Error).message })
+        })
+      return
+    }
     const read = () => setParsed(readRequestFromHash(window.location.hash))
     read()
     window.addEventListener('hashchange', read)
@@ -42,9 +69,9 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   }, [])
 
   const r = parsed?.ok ? parsed.signed.request : null
-  // keep a local note of the request for the Requests tab (the link itself carries it)
+  // keep a local note of a request opened from a link, for the Requests tab (inbox requests live in the inbox)
   useEffect(() => {
-    if (!r || !parsed?.ok) return
+    if (!r || !parsed?.ok || inboxId) return
     void rememberRequest({
       requestId: r.requestId,
       link: window.location.href,
@@ -55,7 +82,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
       days: Number(r.validFor / 86_400n),
       reason: r.reason,
     })
-  }, [r, parsed])
+  }, [r, parsed, inboxId])
   useEffect(() => {
     if (!r || !parsed?.ok) return
     const holders = listHolders().then((hs) => setAgentName(hs.find((h) => same(h.address, r.requester))?.name ?? null))
@@ -70,6 +97,16 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
     void Promise.all([holders, places]).then(() => setKnown(true))
   }, [r, parsed, oraclePayee])
 
+  if (needsSignIn)
+    return (
+      <div className="sheet p-8">
+        <p className="font-display text-3xl font-semibold">Sign in to your inbox to see this request.</p>
+        <p className="mt-2 text-ink-2">It’s a signature, not a transaction.</p>
+        <a className={`${buttonClass('primary')} mt-4 inline-flex`} href="/app/requests">
+          Go to Requests
+        </a>
+      </div>
+    )
   if (!parsed) return null
   if (!parsed.ok)
     return (
@@ -122,6 +159,31 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
     </RiskBanner>
   ) : null
 
+  if (inboxItem?.status === 'approved' && step === 'review')
+    return (
+      <div className="sheet p-8 text-center">
+        <p className="font-display text-3xl font-semibold">You funded this request.</p>
+        <p className="mt-2 text-ink-2">
+          {agentLabel} can pay {placeName} from it. Checked on the blockchain by the inbox.
+        </p>
+        {inboxItem.certificateId && (
+          <a
+            className={`${buttonClass('primary')} mt-4 inline-flex`}
+            href={`/c/${chain.key}/${inboxItem.certificateId}`}
+          >
+            Watch the budget
+          </a>
+        )}
+      </div>
+    )
+  if (inboxItem?.status === 'declined' && step === 'review')
+    return (
+      <div className="sheet p-8 text-center">
+        <p className="font-display text-3xl font-semibold">You declined this request.</p>
+        <p className="mt-2 text-ink-2">No money moved. Your agent has been told.</p>
+      </div>
+    )
+
   if (step === 'fund')
     return (
       <div className="grid gap-6">
@@ -129,10 +191,23 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
           ← Back to the request
         </button>
         {risk}
+        {decisionErr && (
+          <p role="alert" className="sheet border-l-4 border-amber p-4 text-sm">
+            Your inbox couldn’t record this yet ({decisionErr}). If the budget was created, it still works: your agent
+            finds it on the blockchain by itself.
+          </p>
+        )}
         <IssueWizard
           chain={chain}
           places={places}
-          onIssued={(info) => void markRequest(req.requestId, 'funded', info.id)}
+          onIssued={(info) => {
+            if (inboxId)
+              // the inbox checks this transaction on-chain before it marks the request approved (R2)
+              void decideInbox(inboxId, { approved: { certificateId: info.id, txHash: info.hash } }).catch((e) =>
+                setDecisionErr((e as Error).message),
+              )
+            else void markRequest(req.requestId, 'funded', info.id)
+          }}
           preset={{
             placeAddress: req.payee,
             spender: req.requester,
@@ -247,8 +322,14 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
               type="button"
               className={buttonClass('secondary')}
               onClick={() => {
-                void markRequest(req.requestId, 'declined')
-                setStep('declined')
+                if (inboxId)
+                  void decideInbox(inboxId, { declined: {} })
+                    .then(() => setStep('declined'))
+                    .catch((e) => setDecisionErr((e as Error).message))
+                else {
+                  void markRequest(req.requestId, 'declined')
+                  setStep('declined')
+                }
               }}
             >
               Decline
@@ -269,6 +350,11 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             </p>
           )}
           {!isConnected && <p className="w-full text-sm text-ink-2">Connect the wallet the request is addressed to.</p>}
+          {decisionErr && step === 'review' && (
+            <p role="alert" className="w-full text-sm text-seal">
+              {decisionErr}
+            </p>
+          )}
           {needsVouch && !vouched && (
             <p className="w-full text-sm text-ink-2">
               Tick the box above to approve a request from someone you haven’t saved.

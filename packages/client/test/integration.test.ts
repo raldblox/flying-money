@@ -17,9 +17,11 @@ import {
 import {
   createIdempotency,
   createRedeemer,
+  type InboxRecord,
   type Lock,
   memoryLock,
   type NoteStore,
+  onChainApproval,
   memoryStore as sellerStore,
 } from '@flying-money/server'
 import { flyingMoney } from '@flying-money/server/hono'
@@ -267,6 +269,42 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     }
   }, 60_000)
 
+  it('inbox R2: approval is verified against the real CertificateIssued event (wrong spender, payee or funder refused)', async () => {
+    const agentKey = privateKeyToAccount(generatePrivateKey())
+    const { timestamp } = await pub.getBlock()
+    const args = [payee.address, agentKey.address, 300_000n, timestamp + 7n * 86_400n] as const
+    const { result: id } = await pub.simulateContract({
+      account: funder,
+      address: fm,
+      abi: flyingMoneyAbi,
+      functionName: 'issue',
+      args,
+    })
+    const txHash = await funderWallet().writeContract({ address: fm, abi: flyingMoneyAbi, functionName: 'issue', args })
+    await wait(txHash)
+    const check = onChainApproval((c) => (c === anvilChain.id ? { pub, contract: fm } : undefined))
+    const rec = (o: Partial<InboxRecord> = {}): InboxRecord => ({
+      requestId: newRequestId(),
+      chainId: anvilChain.id,
+      request: { certificateId: `0x${'0'.repeat(64)}` },
+      sig: '0x',
+      grantId: newRequestId(),
+      owner: funder.address,
+      requester: agentKey.address,
+      payee: payee.address,
+      status: 'asked',
+      expiresAt: 0,
+      ...o,
+    })
+    const stranger = privateKeyToAccount(generatePrivateKey()).address
+    expect(await check(rec(), { certificateId: id, txHash })).toBeNull()
+    expect(await check(rec({ requester: stranger }), { certificateId: id, txHash })).toBe('wrong spender')
+    expect(await check(rec({ payee: stranger }), { certificateId: id, txHash })).toBe('wrong payee')
+    expect(await check(rec({ owner: stranger }), { certificateId: id, txHash })).toBe('wrong funder')
+    expect(await check(rec(), { certificateId: newRequestId(), txHash })).toMatch(/no budget/)
+    expect(await check(rec(), { certificateId: id, txHash: newRequestId() })).toMatch(/not found/)
+  }, 60_000)
+
   it('overspend is refused at the cap; a note above face value is rejected', async () => {
     const spenderKey = generatePrivateKey()
     const id = await issue(5n * PRICE, privateKeyToAccount(spenderKey).address)
@@ -440,7 +478,7 @@ describe.runIf(anvilAvailable)('anvil integration (§17 Phase 3 ✅)', () => {
     })
     expect(req.status).toBe('asked')
     expect(req.link).toMatch(/^https:\/\/site\.test\/app\/requests\/new#fm1\./)
-    expect(verifySpendRequest(decodeSpendRequest(req.link.split('#')[1]!))).toBe(true)
+    expect(verifySpendRequest(decodeSpendRequest(req.link!.split('#')[1]!))).toBe(true)
     expect((await client.requestStatus(req.requestId)).status).toBe('asked')
     // an agent restarted while waiting still knows its request
     const waiting = make()

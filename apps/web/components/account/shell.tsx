@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { buttonClass } from '@/components/section'
 import { short } from '@/lib/fmt'
+import { useInbox } from '@/lib/use-inbox'
 import { useAccountCtx } from './context'
 
 const NAV = [
@@ -24,6 +25,8 @@ const NAV = [
 export function AccountShell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? '/app'
   const active = (href: string) => (href === '/app' ? path === '/app' : path.startsWith(href))
+  // how many budget requests wait in the inbox (when this browser is signed in to it)
+  const inbox = useInbox()
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:py-10">
       <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
@@ -38,6 +41,17 @@ export function AccountShell({ children }: { children: ReactNode }) {
                 >
                   <NavIcon name={n.icon} />
                   {n.label}
+                  {n.href === '/app/requests' && inbox.waiting > 0 && (
+                    <>
+                      <span
+                        aria-hidden
+                        className="ml-auto grid min-w-5 place-items-center rounded-full bg-seal px-1.5 text-xs font-semibold text-on-seal"
+                      >
+                        {inbox.waiting}
+                      </span>
+                      <span className="sr-only">, {inbox.waiting} waiting</span>
+                    </>
+                  )}
                 </Link>
               </li>
             ))}

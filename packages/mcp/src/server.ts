@@ -249,11 +249,23 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     service: r.request.origin || r.request.payee,
     amount: usdc(r.request.amount),
     days: Number(r.request.validFor / 86_400n),
-    ...(r.status === 'asked'
+    via: r.via,
+    ...(r.status === 'asked' && r.via === 'relay'
+      ? {
+          next: 'Sent to your owner’s Flying Money inbox. Tell them a budget request is waiting (Account → Requests on the site); they review it and fund it with their own wallet. Then call fm_request_status. Do not ask again.',
+        }
+      : {}),
+    ...(r.status === 'asked' && r.via === 'link'
       ? {
           link: r.link,
           next: 'Give this link to your owner (the human). They review it and fund the budget with their own wallet. Then call fm_request_status. Do not ask again.',
         }
+      : {}),
+    ...(r.status === 'declined'
+      ? { next: 'Your owner declined this request. Don’t ask again for this service unless they tell you to.' }
+      : {}),
+    ...(r.status === 'expired'
+      ? { next: 'The request expired unanswered (7 days). Ask again only if still needed.' }
       : {}),
     ...(r.status === 'approved'
       ? {
@@ -270,7 +282,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     {
       title: 'Flying Money: ask your owner for a budget',
       description:
-        'Ask your owner (the human who funds you) for a budget for one paid service. Signs a request with your spending key and returns a link your owner opens to review and approve it. Moves no money: only the owner can fund it, from their own wallet. Call it once per service, only after fm_paid_fetch returned no_certificate with canRequest true, then wait. The reason you give is shown to the owner as unverified text.',
+        'Ask your owner (the human who funds you) for a budget for one paid service. Signs a request with your spending key and sends it to your owner’s inbox (or, without an inbox permission, returns a link for your owner). Moves no money: only the owner can fund it, from their own wallet. Call it once per service, only after fm_paid_fetch returned no_certificate with canRequest true, then wait. The reason you give is shown to the owner as unverified text.',
       inputSchema: {
         url: z.string().describe('A URL of the paid service (its 402 offer tells the seller and chain)'),
         amount: z.string().describe('USDC to ask for, e.g. "0.50"'),

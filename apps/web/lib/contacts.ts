@@ -21,7 +21,19 @@ export interface Holder {
   /** Agents (and one-key holders): the spending address, e.g. from `keygen`. */
   address?: Hex
   certificates: Array<{ chain: ChainKey; id: Hex; place: Hex; faceValue: string; durationIdx: number }>
+  /** Permissions this agent has to ask for budgets (§21.4.3); details only, the signed value lives with the agent */
+  grants?: HolderGrant[]
   createdAt: number
+}
+
+export interface HolderGrant {
+  grantId: Hex
+  chain: ChainKey
+  /** USDC, e.g. "1.00" */
+  maxPerRequest: string
+  /** unix seconds */
+  expiresAt: number
+  revoked?: boolean
 }
 
 export type Verification = 'scanned' | 'domain' | 'unverified'
@@ -67,6 +79,23 @@ export async function saveHolder(h: Omit<Holder, 'id' | 'createdAt' | 'certifica
   return full
 }
 export const deleteHolder = (id: string) => db().del(`holder:${id}`)
+
+export async function addGrantToHolder(holderId: string, g: HolderGrant) {
+  const h = await getHolder(holderId)
+  if (!h) return
+  await saveHolder({ ...h, grants: [g, ...(h.grants ?? [])] })
+}
+
+export async function markGrantRevoked(holderId: string, grantId: Hex) {
+  const h = await getHolder(holderId)
+  if (!h) return
+  await saveHolder({
+    ...h,
+    grants: (h.grants ?? []).map((g) =>
+      g.grantId.toLowerCase() === grantId.toLowerCase() ? { ...g, revoked: true } : g,
+    ),
+  })
+}
 
 export async function addCertificateToHolder(holderId: string, c: Holder['certificates'][number]) {
   const h = await getHolder(holderId)

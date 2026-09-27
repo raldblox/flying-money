@@ -41,6 +41,8 @@ export interface IssuedInfo {
   spender: Hex
   faceValue: bigint
   durationIdx: number
+  /** the issue transaction */
+  hash: Hex
 }
 
 const DURATIONS = [
@@ -150,6 +152,7 @@ export function IssueWizard({
       spender: p.spender,
       faceValue: BigInt(p.face),
       durationIdx: p.durationIdx,
+      hash: receipt.transactionHash,
     })
     savePending(null)
   }

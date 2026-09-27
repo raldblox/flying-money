@@ -23,6 +23,18 @@ export {
   sellerStoreFromEnv,
 } from './durable.js'
 export { createIdempotency } from './idempotency.js'
+export {
+  createInbox,
+  type Inbox,
+  InboxError,
+  type InboxLimits,
+  type InboxRecord,
+  type InboxStatus,
+  type InboxStore,
+  memoryInboxStore,
+  onChainApproval,
+  redisInboxStore,
+} from './inbox.js'
 export { type MemoryStoreOptions, memoryStore, type StoreSnapshot } from './memory-store.js'
 export {
   createRedeemer,

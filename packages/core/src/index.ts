@@ -585,3 +585,156 @@ export function decodeSpendRequest(value: string): SignedSpendRequest {
   checkRequest(request)
   return { request, chainId: chainIdOf(o.chainId), sig: hexN(o.sig, 65, 'sig') }
 }
+
+/** The relay's body parts (§21.4.2: `{ request, sig }` in wire form) → a strictly parsed signed request. */
+export function spendRequestFromParts(chainId: unknown, request: unknown, sig: unknown): SignedSpendRequest {
+  return decodeSpendRequest(wrap({ v: 1, type: 'SpendRequest', chainId, request, sig }))
+}
+
+/** A signed request in wire form (the relay's body and storage). */
+export function spendRequestToParts(s: SignedSpendRequest) {
+  const o = JSON.parse(fromB64url(encodeSpendRequest(s).slice(HEADER_PREFIX.length))) as {
+    chainId: string
+    request: Record<string, string>
+    sig: Hex
+  }
+  return { chainId: o.chainId, request: o.request, sig: o.sig }
+}
+
+// ───────── request grants (§21.4.1): the owner's "I accept budget requests from this key" ─────────
+
+export interface RequestGrant {
+  owner: Hex
+  /** the agent's spending key allowed to ask */
+  requester: Hex
+  /** USDC base units */
+  maxAmountPerRequest: bigint
+  /** unix seconds */
+  expiresAt: bigint
+  grantId: Hex
+}
+
+export interface SignedRequestGrant {
+  grant: RequestGrant
+  chainId: number
+  sig: Hex
+}
+
+export const grantTypes = {
+  RequestGrant: [
+    { name: 'owner', type: 'address' },
+    { name: 'requester', type: 'address' },
+    { name: 'maxAmountPerRequest', type: 'uint256' },
+    { name: 'expiresAt', type: 'uint64' },
+    { name: 'grantId', type: 'bytes32' },
+  ],
+} as const
+
+/** What the owner's wallet signs (eth_signTypedData_v4), in the request domain. */
+export function grantTypedData(chainId: number, g: RequestGrant) {
+  return {
+    domain: requestDomain(chainId),
+    types: grantTypes,
+    primaryType: 'RequestGrant' as const,
+    message: {
+      owner: g.owner,
+      requester: g.requester,
+      maxAmountPerRequest: g.maxAmountPerRequest,
+      expiresAt: g.expiresAt,
+      grantId: g.grantId,
+    },
+  }
+}
+
+function checkGrant(g: RequestGrant): void {
+  if (g.maxAmountPerRequest <= 0n) throw new Error('grant: maxAmountPerRequest must be positive')
+  if (g.expiresAt >= 2n ** 64n) throw new Error('grant: uint64 overflow')
+  if (g.owner.toLowerCase() === g.requester.toLowerCase()) throw new Error('grant: the owner cannot be the requester')
+}
+
+/** True only if the owner itself signed exactly this grant on this chain. */
+export function verifyRequestGrant(s: SignedRequestGrant): boolean {
+  try {
+    checkGrant(s.grant)
+  } catch {
+    return false
+  }
+  const who = recoverDigestSigner(hashTypedData(grantTypedData(s.chainId, s.grant)), s.sig)
+  return who !== null && who.toLowerCase() === s.grant.owner.toLowerCase()
+}
+
+export function encodeRequestGrant(s: SignedRequestGrant): string {
+  const g = s.grant
+  return wrap({
+    v: 1,
+    type: 'RequestGrant',
+    chainId: String(s.chainId),
+    grant: {
+      owner: g.owner,
+      requester: g.requester,
+      maxAmountPerRequest: g.maxAmountPerRequest.toString(),
+      expiresAt: g.expiresAt.toString(),
+      grantId: g.grantId,
+    },
+    sig: s.sig,
+  })
+}
+
+/** Strict parser. It does not check the signature: call verifyRequestGrant. */
+export function decodeRequestGrant(value: string): SignedRequestGrant {
+  const o = unwrap(value, MAX_REQUEST_BYTES)
+  exactKeys(o, ['v', 'type', 'chainId', 'grant', 'sig'])
+  if (o.v !== 1) throw new Error('fm1: v must be 1')
+  if (o.type !== 'RequestGrant') throw new Error('fm1: not a RequestGrant')
+  if (typeof o.grant !== 'object' || o.grant === null || Array.isArray(o.grant)) throw new Error('fm1: bad grant')
+  const q = o.grant as Record<string, unknown>
+  exactKeys(q, ['owner', 'requester', 'maxAmountPerRequest', 'expiresAt', 'grantId'])
+  const grant: RequestGrant = {
+    owner: hexN(q.owner, 20, 'owner'),
+    requester: hexN(q.requester, 20, 'requester'),
+    maxAmountPerRequest: uint(q.maxAmountPerRequest, 'maxAmountPerRequest'),
+    expiresAt: uint(q.expiresAt, 'expiresAt'),
+    grantId: hexN(q.grantId, 32, 'grantId'),
+  }
+  checkGrant(grant)
+  return { grant, chainId: chainIdOf(o.chainId), sig: hexN(o.sig, 65, 'sig') }
+}
+
+/** A signed grant in wire form (the relay's `{ grant, grantSig }`). */
+export function requestGrantToParts(s: SignedRequestGrant) {
+  const o = JSON.parse(fromB64url(encodeRequestGrant(s).slice(HEADER_PREFIX.length))) as {
+    chainId: string
+    grant: Record<string, string>
+    sig: Hex
+  }
+  return { chainId: o.chainId, grant: o.grant, sig: o.sig }
+}
+
+/** The relay's body parts (`{ grant, grantSig }`) → a strictly parsed signed grant. */
+export function requestGrantFromParts(chainId: unknown, grant: unknown, sig: unknown): SignedRequestGrant {
+  return decodeRequestGrant(wrap({ v: 1, type: 'RequestGrant', chainId, grant, sig }))
+}
+
+// ───────── inbox access (§21.4.2): the owner proves it is the owner to read its requests ─────────
+
+export const inboxAccessTypes = {
+  InboxAccess: [
+    { name: 'owner', type: 'address' },
+    { name: 'issuedAt', type: 'uint64' },
+  ],
+} as const
+
+export function inboxAccessTypedData(chainId: number, owner: Hex, issuedAt: bigint) {
+  return {
+    domain: requestDomain(chainId),
+    types: inboxAccessTypes,
+    primaryType: 'InboxAccess' as const,
+    message: { owner, issuedAt },
+  }
+}
+
+export function verifyInboxAccess(chainId: number, owner: Hex, issuedAt: bigint, sig: Hex): boolean {
+  if (issuedAt >= 2n ** 64n) return false
+  const who = recoverDigestSigner(hashTypedData(inboxAccessTypedData(chainId, owner, issuedAt)), sig)
+  return who !== null && who.toLowerCase() === owner.toLowerCase()
+}

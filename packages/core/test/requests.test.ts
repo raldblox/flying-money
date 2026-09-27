@@ -1,13 +1,20 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { describe, expect, it } from 'vitest'
 import {
+  decodeRequestGrant,
   decodeSpendRequest,
+  encodeRequestGrant,
   encodeSpendRequest,
+  grantTypedData,
   type Hex,
+  inboxAccessTypedData,
   newRequestId,
   recoverNoteSigner,
+  type SignedRequestGrant,
   type SignedSpendRequest,
   signSpendRequest,
+  verifyInboxAccess,
+  verifyRequestGrant,
   verifySpendRequest,
   ZERO_ID,
 } from '../src/index.js'
@@ -93,5 +100,58 @@ describe('spend requests (§21.4.1)', () => {
     const link = encodeSpendRequest(s)
     expect(link.length).toBeLessThanOrEqual(4096)
     expect(verifySpendRequest(decodeSpendRequest(link))).toBe(true)
+  })
+})
+
+// §21.4.1/§21.4.2: the owner's RequestGrant ("I accept budget requests from this key") and InboxAccess sign-in.
+describe('request grants and inbox access', () => {
+  const ownerAcct = privateKeyToAccount(generatePrivateKey())
+  const grant = () => ({
+    owner: ownerAcct.address,
+    requester: agent.address,
+    maxAmountPerRequest: 1_000_000n,
+    expiresAt: 1_792_000_000n,
+    grantId: newRequestId(),
+  })
+  const signGrant = async (g = grant(), by = ownerAcct) =>
+    ({ grant: g, chainId: CHAIN, sig: await by.signTypedData(grantTypedData(CHAIN, g)) }) as SignedRequestGrant
+
+  it('the owner signs a grant; encode → decode → verify', async () => {
+    const s = await signGrant()
+    const back = decodeRequestGrant(encodeRequestGrant(s))
+    expect(back).toEqual(s)
+    expect(verifyRequestGrant(back)).toBe(true)
+  })
+
+  it('a grant signed by anyone but its owner is invalid', async () => {
+    const s = await signGrant(grant(), privateKeyToAccount(generatePrivateKey()))
+    expect(verifyRequestGrant(s)).toBe(false)
+  })
+
+  it('domain separation: a grant signature is never a valid request, and a request signature never a grant', async () => {
+    const g = await signGrant()
+    const r = await signSpendRequest(agent, CHAIN, base())
+    expect(verifySpendRequest({ ...r, sig: g.sig })).toBe(false)
+    expect(verifyRequestGrant({ ...g, sig: r.sig })).toBe(false)
+  })
+
+  it('strict grant parsing', async () => {
+    const s = await signGrant()
+    const raw = JSON.parse(atob(encodeRequestGrant(s).slice(4).replace(/-/g, '+').replace(/_/g, '/')))
+    const enc = (o: unknown) =>
+      `fm1.${btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`
+    expect(() => decodeRequestGrant(enc({ ...raw, extra: 1 }))).toThrow(/unknown field/)
+    expect(() => decodeRequestGrant(enc({ ...raw, type: 'SpendRequest' }))).toThrow(/RequestGrant/)
+    expect(() => decodeRequestGrant(enc({ ...raw, grant: { ...raw.grant, maxAmountPerRequest: '0' } }))).toThrow(
+      /positive/,
+    )
+  })
+
+  it('inbox access: only the owner can sign in as the owner', async () => {
+    const t = 1_790_000_000n
+    const sig = await ownerAcct.signTypedData(inboxAccessTypedData(CHAIN, ownerAcct.address, t))
+    expect(verifyInboxAccess(CHAIN, ownerAcct.address, t, sig)).toBe(true)
+    expect(verifyInboxAccess(CHAIN, agent.address, t, sig)).toBe(false)
+    expect(verifyInboxAccess(CHAIN, ownerAcct.address, t + 1n, sig)).toBe(false)
   })
 })

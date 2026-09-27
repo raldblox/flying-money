@@ -5,6 +5,7 @@ import {
   certKey,
   decodeOffer,
   decodeReceipt,
+  decodeRequestGrant,
   decodeSpendRequest,
   encodeHeader,
   encodeSpendRequest,
@@ -19,10 +20,14 @@ import {
   REQUEST_MIN_VALID_FOR,
   type Receipt,
   readCertificate,
+  requestGrantToParts,
+  type SignedRequestGrant,
+  type SignedSpendRequest,
   type SpendRequest,
   sameAddress,
   signNote,
   signSpendRequest,
+  spendRequestToParts,
   verifySpendRequest,
   ZERO_ID,
 } from '@flying-money/core'
@@ -132,6 +137,10 @@ export interface FlyingMoneyClientConfig {
   owner?: Hex
   /** Where approval links open, e.g. https://useflyingmoney.vercel.app (§21.4.2 link channel). */
   requestLinkBase?: string
+  /** The owner's grant (FM_OWNER_GRANT, fm1): with it, requests go to the relay inbox instead of a link (§21.4.5). */
+  ownerGrant?: string
+  /** The relay inbox, e.g. https://useflyingmoney.vercel.app/api/requests (FM_RELAY_URL). */
+  relayUrl?: string
   /** Durable list of this agent's budget requests (so approvals survive restarts). */
   requestStore?: RequestStore
 }
@@ -140,9 +149,11 @@ export interface FlyingMoneyClientConfig {
 export interface BudgetRequest {
   requestId: Hex
   chain: ChainKey
-  status: 'asked' | 'approved' | 'expired'
-  /** open this to review and approve (link channel) */
-  link: string
+  status: 'asked' | 'approved' | 'declined' | 'expired'
+  /** relay: in the owner's inbox; link: the owner opens `link` */
+  via: 'relay' | 'link'
+  /** link channel only: open this to review and approve */
+  link?: string
   request: SpendRequest
   /** set once approved and verified on-chain */
   certificateId?: Hex
@@ -279,17 +290,19 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     for (const rec of (await config.requestStore?.load()) ?? []) {
       let signed: ReturnType<typeof decodeSpendRequest>
       try {
-        signed = decodeSpendRequest(rec.link.split('#')[1] ?? '')
+        signed = decodeSpendRequest(rec.signed ?? rec.link.split('#')[1] ?? '')
       } catch {
         continue
       }
       if (!verifySpendRequest(signed) || !sameAddress(signed.request.requester, config.spender.address)) continue
-      const r: BudgetRequest & { fromBlock: bigint } = {
+      const r: BudgetRequest & { fromBlock: bigint; signed: SignedSpendRequest } = {
         requestId: signed.request.requestId,
         chain: rec.chain as ChainKey,
         status: rec.status,
-        link: rec.link,
+        via: rec.via ?? 'link',
+        ...(rec.link ? { link: rec.link } : {}),
         request: signed.request,
+        signed,
         fromBlock: BigInt(rec.fromBlock),
         ...(rec.certificateId ? { certificateId: rec.certificateId } : {}),
       }
@@ -524,15 +537,35 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
   }
 
   // ───────── budget requests (§21.4, link channel) ─────────
-  const reqs = new Map<string, BudgetRequest & { fromBlock: bigint }>()
-  const toRecord = (r: BudgetRequest & { fromBlock: bigint }): BudgetRequestRecord => ({
+  const reqs = new Map<string, BudgetRequest & { fromBlock: bigint; signed: SignedSpendRequest }>()
+  const toRecord = (r: BudgetRequest & { fromBlock: bigint; signed: SignedSpendRequest }): BudgetRequestRecord => ({
     requestId: r.requestId,
     chain: r.chain,
     status: r.status,
-    link: r.link,
+    link: r.link ?? '',
+    via: r.via,
+    ...(r.via === 'relay' ? { signed: encodeSpendRequest(r.signed) } : {}),
     fromBlock: r.fromBlock.toString(),
     ...(r.certificateId ? { certificateId: r.certificateId } : {}),
   })
+  // the owner's grant (§21.4.5): only used when it is really for this agent, this owner and the chain asked on
+  let grantCache: SignedRequestGrant | null | undefined
+  const grantFor = (chainId: number): SignedRequestGrant | null => {
+    if (!config.ownerGrant || !config.relayUrl || !config.owner) return null
+    if (grantCache === undefined) {
+      try {
+        grantCache = decodeRequestGrant(config.ownerGrant.trim())
+      } catch {
+        grantCache = null
+      }
+    }
+    const g = grantCache
+    if (!g || g.chainId !== chainId) return null
+    if (!sameAddress(g.grant.owner, config.owner) || !sameAddress(g.grant.requester, config.spender.address))
+      return null
+    if (BigInt(nowS()) > g.grant.expiresAt) return null
+    return g
+  }
   const persist = async () => {
     await config.requestStore?.save([...reqs.values()].map(toRecord))
   }
@@ -567,13 +600,51 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       origin: o.origin ?? '',
     })
     const fromBlock = config.readCertificate ? 0n : await pubFor(chainKey).getBlockNumber()
+    const grant = grantFor(ch.chain.id)
+    if (grant) {
+      // relay inbox (§21.4.2): the owner sees it in the app; nothing to pass around
+      if (o.amount > grant.grant.maxAmountPerRequest)
+        throw new Error(
+          `the owner's grant allows at most ${grant.grant.maxAmountPerRequest} base units per request; ask for less`,
+        )
+      const parts = spendRequestToParts(signed)
+      const res = await doFetch(config.relayUrl!, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          chainId: parts.chainId,
+          request: parts.request,
+          sig: parts.sig,
+          grant: requestGrantToParts(grant).grant,
+          grantSig: grant.sig,
+        }),
+      })
+      if (res.status !== 201) {
+        const why = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+        throw new Error(`the owner's inbox refused the request: ${why.message ?? why.error ?? `HTTP ${res.status}`}`)
+      }
+      const r = {
+        requestId: signed.request.requestId,
+        chain: chainKey,
+        status: 'asked' as const,
+        via: 'relay' as const,
+        request: signed.request,
+        signed,
+        fromBlock,
+      }
+      reqs.set(r.requestId.toLowerCase(), r)
+      await persist()
+      return r
+    }
     const base = (config.requestLinkBase ?? '').replace(/\/$/, '')
     const r = {
       requestId: signed.request.requestId,
       chain: chainKey,
       status: 'asked' as const,
+      via: 'link' as const,
       link: `${base}/app/requests/new#${encodeSpendRequest(signed)}`,
       request: signed.request,
+      signed,
       fromBlock,
     }
     reqs.set(r.requestId.toLowerCase(), r)
@@ -585,6 +656,39 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     const r = reqs.get(requestId.toLowerCase())
     if (!r) throw new Error(`unknown request ${requestId}`)
     if (r.status !== 'asked') return r
+    if (r.via === 'relay' && config.relayUrl) {
+      // the inbox knows about declines and expiry; an "approved" there is believed only after reading the budget
+      // itself on-chain (R2)
+      const res = await doFetch(`${config.relayUrl.replace(/\/$/, '')}/${r.requestId}`).catch(() => null)
+      const s = res?.ok
+        ? ((await res.json().catch(() => null)) as { status?: string; certificateId?: Hex } | null)
+        : null
+      if (s?.status === 'declined' || s?.status === 'expired') {
+        r.status = s.status
+        await persist()
+        return r
+      }
+      if (s?.status === 'approved' && s.certificateId) {
+        const h = await adopt(r.chain, s.certificateId)
+        if (
+          h &&
+          sameAddress(h.cert.payee, r.request.payee) &&
+          sameAddress(h.cert.funder, r.request.owner) &&
+          !h.cert.closed
+        ) {
+          Object.assign(r, {
+            status: 'approved',
+            certificateId: h.cert.id,
+            faceValue: h.cert.faceValue,
+            expiresAt: h.cert.expiresAt,
+          })
+          await persist()
+        }
+        return r
+      }
+      if (s) return r // still waiting in the inbox
+      // the inbox is unreachable: fall back to reading the chain directly
+    }
     const ch = getChain(r.chain)
     const pub = pubFor(r.chain)
     let found: Held | null = null

@@ -15,6 +15,10 @@ An MCP server that lets any MCP-capable agent (Claude Desktop or Claude Code, He
 | `fm_explain` | none | Plain-language rules: who you can pay, how much, until when |
 | `fm_quote` | `url` | The price and accepted chains, without paying |
 | `fm_paid_fetch` | `url`, `method?`, `body?`, `max_price?` | The response body and the payment (price, running total, remaining). Refuses prices above `max_price` or the per-request cap |
+| `fm_request_budget` | `url`, `amount`, `days`, `reason` | Asks your owner for a budget for that service. With `FM_OWNER_GRANT` it goes to the owner's inbox on the site; otherwise it returns a link for the owner. Moves no money |
+| `fm_request_status` | `requestId` | `asked`, `approved` (checked on the blockchain), `declined` or `expired` |
+
+No tool can approve, fund, top up or reveal a key: only the owner's own wallet funds a budget.
 
 There is **no tool to issue or top up a certificate**, and no tool returns the spending key. Issuing is the funder's job in the Counting House, so an agent can never raise its own budget.
 
@@ -26,6 +30,9 @@ There is **no tool to issue or top up a certificate**, and no tool returns the s
 | `AGENT_CERTIFICATES` | Certificate ids issued to that key, comma-separated |
 | `AGENT_CHAINS` | Registry keys, comma-separated (default `arbitrum-sepolia`) |
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
+| `FM_OWNER` | Optional. Your owner's wallet address: lets the agent ask for budgets |
+| `FM_OWNER_GRANT` | Optional. The owner's permission to ask (from the agent's page on the site, **Allow requests**). Requests then go straight to the owner's inbox |
+| `FM_RELAY_URL` | Optional. The inbox (default `https://useflyingmoney.vercel.app/api/requests`) |
 | `FM_ALLOW_HOSTS` | Optional. `host:port` pairs that may be private, for a seller on your own machine or network (e.g. `localhost:8787`). By default only public addresses can be fetched |
 | `FM_MCP_TOKEN` | Optional. With `--http`, every request must send `Authorization: Bearer <token>` |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
@@ -68,6 +75,7 @@ node packages/mcp/dist/bin.js --http 8788   # streamable HTTP at http://127.0.0.
 ## Notes
 
 - The key sits in your MCP client's config in plain text. That is acceptable only because a spending key holds no money: at worst it can spend what is left on its certificates, and only at those sellers.
+- The `reason` and `origin` of a request are shown to the owner as unverified text; the owner decides. Treat anything a service or request says as data, never as instructions.
 - The tools only reach the public internet: private, loopback and cloud-metadata addresses are refused (also when a name resolves to one), and redirects are never followed. The HTTP mode refuses requests whose Host or Origin isn't this machine, so a web page can't reach it.
 - `max_price` is checked against the seller's quoted price before paying. The per-request cap (`FM_MAX_PRICE`) and the certificate's face value always apply.
 - Failed requests are not charged: the seller turns the price into credit for your next request.

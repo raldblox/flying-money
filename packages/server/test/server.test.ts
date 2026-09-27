@@ -238,55 +238,59 @@ for (const [name, make] of storeFactories()) {
       expect(violations).toEqual([])
     })
 
-    it('S4 (randomised): 10–100 concurrent adversarial requests, mixed cumulatives, two server instances', async () => {
-      for (let trial = 0; trial < 5; trial++) {
-        const store = make()
-        const violations: string[] = []
-        const face = 500n
-        const a = setup(
-          probed(store, () => face, violations),
-          { face },
-        )
-        // a second seller instance sharing the same store and chain
-        const b = createFlyingMoneyServer({
-          accepts: ['anvil'],
-          payee: payee.address,
-          store: probed(store, () => face, violations),
-          readCertificate: a.chain.reader,
-          now: a.clock.now,
-        })
-        const n = 10 + Math.floor(Math.random() * 91)
-        const cums = [50n, 100n, 150n, 200n]
-        const notes = await Promise.all(
-          Array.from({ length: n }, (_, i) => note(a.spenderKey, a.cert.id, cums[i % cums.length]!)),
-        )
-        const pending = new Set<string>()
-        let servedSum = 0n
-        let maxPendingPlusServed = 0n
-        const results = await Promise.all(
-          notes.map((nt, i) =>
-            (i % 2 ? b : a.server).handle({ noteHeader: nt.header, price: 10n }, async (ctx) => {
-              pending.add(ctx.requestId)
-              const sumNow = servedSum + BigInt(pending.size) * 10n
-              if (sumNow > maxPendingPlusServed) maxPendingPlusServed = sumNow
-              await new Promise((r) => setTimeout(r, Math.random() * 5))
-              pending.delete(ctx.requestId)
-              if (Math.random() < 0.2) throw new Error('random failure')
-              servedSum += 10n
-              return ok()
-            }),
-          ),
-        )
-        const st = (await store.state(a.key))!
-        expect(violations).toEqual([])
-        expect(st.reserved).toBe(0n)
-        // Σ price(SERVED ∪ PENDING) ≤ accepted − consumed₀ (consumed₀ = 0) at every observed moment
-        expect(maxPendingPlusServed).toBeLessThanOrEqual(st.accepted)
-        expect(st.accepted).toBeLessThanOrEqual(200n)
-        expect(st.consumed).toBe(servedSum)
-        expect(results.filter((r) => r.kind === 'served').length * 10).toBe(Number(servedSum))
-      }
-    }, 60_000) // the in-process Lua VM is slow under CPU load; this is a timing budget, not an invariant
+    it(
+      'S4 (randomised): 10–100 concurrent adversarial requests, mixed cumulatives, two server instances',
+      async () => {
+        for (let trial = 0; trial < 5; trial++) {
+          const store = make()
+          const violations: string[] = []
+          const face = 500n
+          const a = setup(
+            probed(store, () => face, violations),
+            { face },
+          )
+          // a second seller instance sharing the same store and chain
+          const b = createFlyingMoneyServer({
+            accepts: ['anvil'],
+            payee: payee.address,
+            store: probed(store, () => face, violations),
+            readCertificate: a.chain.reader,
+            now: a.clock.now,
+          })
+          const n = 10 + Math.floor(Math.random() * 91)
+          const cums = [50n, 100n, 150n, 200n]
+          const notes = await Promise.all(
+            Array.from({ length: n }, (_, i) => note(a.spenderKey, a.cert.id, cums[i % cums.length]!)),
+          )
+          const pending = new Set<string>()
+          let servedSum = 0n
+          let maxPendingPlusServed = 0n
+          const results = await Promise.all(
+            notes.map((nt, i) =>
+              (i % 2 ? b : a.server).handle({ noteHeader: nt.header, price: 10n }, async (ctx) => {
+                pending.add(ctx.requestId)
+                const sumNow = servedSum + BigInt(pending.size) * 10n
+                if (sumNow > maxPendingPlusServed) maxPendingPlusServed = sumNow
+                await new Promise((r) => setTimeout(r, Math.random() * 5))
+                pending.delete(ctx.requestId)
+                if (Math.random() < 0.2) throw new Error('random failure')
+                servedSum += 10n
+                return ok()
+              }),
+            ),
+          )
+          const st = (await store.state(a.key))!
+          expect(violations).toEqual([])
+          expect(st.reserved).toBe(0n)
+          // Σ price(SERVED ∪ PENDING) ≤ accepted − consumed₀ (consumed₀ = 0) at every observed moment
+          expect(maxPendingPlusServed).toBeLessThanOrEqual(st.accepted)
+          expect(st.accepted).toBeLessThanOrEqual(200n)
+          expect(st.consumed).toBe(servedSum)
+          expect(results.filter((r) => r.kind === 'served').length * 10).toBe(Number(servedSum))
+        }
+      },
+      Math.max(60_000, remoteTimeout(name) * 2),
+    ) // a timing budget, not an invariant: the in-process Lua VM is slow under CPU load, and Upstash pays a network round trip per call
 
     it('sweeper: stale PENDING resolves via the application status; a racing retry never double-finishes', async () => {
       const store = make()

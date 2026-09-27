@@ -3,6 +3,7 @@ import { type ChainKey, getChain } from '@flying-money/chains'
 import type { Certificate } from '@flying-money/core'
 import { useCallback, useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
+import { AllowRequests } from '@/components/account/allow-requests'
 import { FunderActions } from '@/components/app/funder-actions'
 import { type IssuePreset, IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { WalletButton } from '@/components/app/wallet-button'
@@ -116,6 +117,10 @@ export function HolderControl({ id }: { id: string }) {
           <span className="font-display text-3xl font-semibold lining-nums">{open.length}</span>
         </p>
       </div>
+
+      {holder.type === 'agent' && (
+        <AllowRequests holder={holder} chain={getChain(chainKey)} onChanged={() => void load()} />
+      )}
 
       {give && (
         <section className="grid gap-4" aria-labelledby="give-t">

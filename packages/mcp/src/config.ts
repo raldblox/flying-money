@@ -28,6 +28,8 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json); requests go next to it
  *   FM_OWNER             owner address to ask for budgets (§21.4); optional
  *   FM_REQUEST_LINK_BASE where approval links open (default https://useflyingmoney.vercel.app)
+ *   FM_OWNER_GRANT       the owner's permission to ask (fm1, from the site); requests then go to the owner's inbox
+ *   FM_RELAY_URL         the inbox (default <FM_REQUEST_LINK_BASE>/api/requests)
  *   RPC_<CHAIN>          optional RPC overrides
  *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  */
@@ -64,6 +66,14 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
       ? {
           owner: owner as Hex,
           requestLinkBase: env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE,
+          ...(env.FM_OWNER_GRANT?.trim()
+            ? {
+                ownerGrant: env.FM_OWNER_GRANT.trim(),
+                relayUrl:
+                  env.FM_RELAY_URL?.trim() ||
+                  `${(env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE).replace(/\/$/, '')}/api/requests`,
+              }
+            : {}),
           requestStore: fileRequestStore(storePath.replace(/\.json$/, '') + '.requests.json'),
         }
       : {}),
