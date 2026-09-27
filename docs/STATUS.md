@@ -2,6 +2,18 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Release slice R1 (28 Sep): ✅ `pnpm verify --e2e` green (§22.5)
+
+- **b** GrantSummary on every budget surface. **c** funding in two plain steps; results that stay visible.
+- **d** a three-screen flow for giving to a person. **e** holder wallet: PIN once, restore first, honest backup, test note everywhere.
+- **f** a full-screen till result with chimes, spoken amounts and Collect reasons. **g** "Approve a smaller budget", top-up approvals, "asked n times".
+- **h** WCAG 2.2 AA: axe clean in light and dark and at 375 px; tab pattern, dialogs, reduced motion, error and loading routes.
+- **i** assistant setup on agent pages. **k** one vocabulary enforced by a new `pnpm verify` step, and honest take-back copy.
+- **j** (mobile) is done except **WalletConnect, blocked on a project id** (human input).
+- §22.6 additive items are done: SDK error `code`/`docUrl`, and MCP URL-mode elicitation of the approval page.
+- §22.7 documents: [compatibility matrix](research/compatibility-x402-mpp.md) (recommendation: a native x402 scheme design note after R1; no gateway or contract change) and [pilot plan](research/pilot-plan.md).
+- **Needs the founder:** a WalletConnect project id, the pilot service, and the pilot shop.
+
 ## §22.2 release blockers A1–A5 (27 Sep): ✅ `pnpm verify --e2e` green
 
 - **A1** replay tombstones outlive the 30-day outcome cache (410 `outcome-expired`, no charge, no re-run).
