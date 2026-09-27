@@ -2322,6 +2322,46 @@ The working north star is **repeat users completing useful purchases that are de
 3. Decisions for §22 are logged as D42 onward in `docs/DECISIONS.md`.
 
 
+
+### 22.10 Onboarding (28 Sep 2026, amends §22.5): NORMATIVE
+
+From the onboarding audit ([ONBOARDING_AUDIT_2026-09-28.md](ONBOARDING_AUDIT_2026-09-28.md)). The protocol, contract, invariants and R1–R5 are unchanged; every item is UI, docs or MCP convenience.
+
+a. **Connect an agent in one sentence.**
+   - `/agent.md` is instructions written for an AI agent. It tells the agent to:
+     1. add the Flying Money MCP server (exact steps for Claude Code, Claude Desktop, Cursor and any MCP client);
+     2. call `fm_status`, which reports its spending address;
+     3. tell its owner that address;
+     4. when a paid service needs a budget, call `fm_request_budget` and give the owner the link it returns.
+   - It carries the rules of §22.4 and R4: request text is untrusted, never ask for the owner's wallet key, and approval happens only in the web app.
+   - The account's **Connect an agent** page shows one copyable instruction with the owner's address filled in: "Set up Flying Money payments for me. Read <site>/agent.md and follow it. My wallet is 0x…".
+b. **The MCP server makes its own key.** Without `AGENT_KEY`, the server creates a spending key on first run and keeps it in `~/.flying-money/agent-key` (file mode 0600), next to its outbox. It is never printed, returned or sent; tools show only its address. `FM_OWNER` alone is enough to start (budgets are found or requested). This is the same key custody as `.env` today (§3.9: a spending key holds no money).
+c. **One start page.**
+   - `/start` offers four choices, each leading to one path:
+     - Give someone a budget → `/app/give?for=person`
+     - Let my AI assistant pay → Connect an agent
+     - Use a budget I was given → `/wallet`
+     - Take payments at my shop → `/shop`
+   - The landing page's primary action and the header's action are **Get started**.
+d. **No dead ends without a wallet.** Where a browser wallet is needed and none exists, the page says so at once:
+   - what a wallet is for;
+   - how to open this page inside a phone wallet app's browser;
+   - that a budget someone gave you needs no wallet (→ `/wallet`).
+
+   A wallet check never shows an empty placeholder for more than 3 seconds. An empty `/wallet` explains what it is before asking for a PIN.
+e. **Shops in three steps.**
+   - The steps: shop name (empty by default) → where the money goes (connect the wallet that receives sales, or paste an address) → **your till is ready**. The network is shown only when there is a choice.
+   - The till is remembered on this device (`/shop` lists "Your tills").
+   - The ready screen offers:
+     - open the till;
+     - print the counter QR;
+     - a **"get a budget for this shop"** link and QR, which opens the gift form pre-filled with this seller.
+
+     A pre-filled seller from a link is *unverified* and carries the §22.3/D37 warning. Scanning in person verifies it.
+f. **Agent docs** use the one vocabulary and point agents to `/agent.md`; `llms.txt` lists it first.
+
+**Blocked on the founder (human input):** publishing `@flying-money/core`, `chains`, `client` and `mcp` to npm, and/or making the repository public, so that an agent anywhere can install the MCP server.
+
 ---
 
 ## Appendix A: Review log
