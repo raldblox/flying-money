@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { buttonClass } from '@/components/section'
+import { TestNote } from '@/components/test-note'
 import { short } from '@/lib/fmt'
 import { useInbox } from '@/lib/use-inbox'
 import { useAccountCtx } from './context'
@@ -57,12 +58,14 @@ export function AccountShell({ children }: { children: ReactNode }) {
             ))}
           </ul>
         </nav>
-        <Link href="/app/give" className={`${buttonClass('primary')} mt-4 hidden w-full lg:flex`}>
+        <Link href="/app/give" className={`${buttonClass('primary')} mt-4 w-full`}>
           + Give a budget
         </Link>
         <NetworkNote />
       </aside>
       <div className="min-w-0">
+        {/* at phone widths the sidebar's network note is off-screen: say it here (§22.4) */}
+        <TestNote className="mb-4 lg:hidden" />
         <WalletGate>{children}</WalletGate>
       </div>
     </div>

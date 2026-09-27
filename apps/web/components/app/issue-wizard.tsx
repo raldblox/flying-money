@@ -437,9 +437,7 @@ export function IssueWizard({
             Download the agent .env again (with the budget id)
           </button>
         )}
-        {generated && (
-          <HandOverLink chain={chain.key} id={issued.id} spenderKey={generated.key} name={place?.name ?? holderName} />
-        )}
+        {generated && <HandOverLink chain={chain.key} id={issued.id} spenderKey={generated.key} name={place?.name} />}
         {generated && (
           <div className="mx-auto mt-5 max-w-md rounded-md border border-line p-4 text-sm">
             <p className="text-ink-2">

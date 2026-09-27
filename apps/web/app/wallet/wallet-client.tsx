@@ -12,7 +12,7 @@ import {
   prepareCounterPayment,
 } from '@flying-money/client/counter'
 import { decodeOffer, type Hex, type Offer } from '@flying-money/core'
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { GrantSummary } from '@/components/grant-summary'
@@ -20,6 +20,7 @@ import { useOnline } from '@/components/offline-ready'
 import { QrCode } from '@/components/qr'
 import { QrScanner } from '@/components/qr-scanner'
 import { buttonClass } from '@/components/section'
+import { TestNote } from '@/components/test-note'
 import { loadCertificate } from '@/lib/chain'
 import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
 import { unsealKey, validPin } from '@/lib/pin-vault'
@@ -43,7 +44,7 @@ import {
   type WalletEntry,
   walletStore,
 } from '@/lib/wallet'
-import { backupNeedsPassphrase, validBackupPassphrase } from '@/lib/wallet-backup'
+import { backupNeedsPassphrase, openBackup, validBackupPassphrase } from '@/lib/wallet-backup'
 
 type Entry = WalletEntry & { state: CounterState | null }
 type View =
@@ -59,6 +60,8 @@ export function Wallet() {
   const [ready, setReady] = useState<'loading' | 'busy' | 'no-pin' | 'ok'>('loading')
   const [entries, setEntries] = useState<Entry[]>([])
   const [view, setView] = useState<View>({ k: 'home' })
+  // the PIN just set, kept in memory for this visit only, so a first budget isn't asked for it a third time (§22.5 e)
+  const [sessionPin, setSessionPin] = useState<string | null>(null)
   const [onChain, setOnChain] = useState<Record<string, bigint>>({})
   const online = useOnline()
 
@@ -104,7 +107,14 @@ export function Wallet() {
   if (ready === 'no-pin')
     return (
       <SetPin
-        onDone={() => setReady('ok')}
+        onDone={(pin) => {
+          if (pin) setSessionPin(pin)
+          setReady('ok')
+        }}
+        onRestored={async () => {
+          await refresh()
+          setReady('ok')
+        }}
         intro={view.k === 'handover' ? 'Someone gave you a budget. First, choose a PIN for this wallet.' : undefined}
       />
     )
@@ -180,6 +190,7 @@ export function Wallet() {
         <Panel title="A budget for you" onBack={() => setView({ k: 'home' })}>
           <AcceptHandOver
             h={view.h}
+            pin={sessionPin}
             onAdded={async () => {
               history.replaceState(null, '', window.location.pathname) // the key leaves the address bar
               await refresh()
@@ -209,7 +220,15 @@ function Panel({ title, onBack, children }: { title: string; onBack: () => void;
 }
 
 // ── PIN ──────────────────────────────────────────────────────────────────────
-function SetPin({ onDone, intro }: { onDone: () => void; intro?: string | undefined }) {
+function SetPin({
+  onDone,
+  onRestored,
+  intro,
+}: {
+  onDone: (pin?: string) => void
+  onRestored: () => Promise<void>
+  intro?: string | undefined
+}) {
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [busy, setBusy] = useState(false)
@@ -223,10 +242,11 @@ function SetPin({ onDone, intro }: { onDone: () => void; intro?: string | undefi
         if (!ok) return
         setBusy(true)
         await setPin(a)
-        onDone()
+        onDone(a)
       }}
     >
       <h1 className="font-display text-4xl font-semibold">Set up your wallet</h1>
+      <TestNote />
       <p className="text-ink-2">
         {intro ?? 'Your budgets live on this phone.'} Choose a PIN of 6 to 12 digits. It locks the keys that sign your
         payments. Nobody can reset it for you, so write it down somewhere safe.
@@ -237,6 +257,13 @@ function SetPin({ onDone, intro }: { onDone: () => void; intro?: string | undefi
       <button type="submit" disabled={!ok || busy} className={buttonClass('primary')}>
         {busy ? 'Saving…' : 'Create my wallet'}
       </button>
+      {/* a new phone restores first, keeping the backup's own PIN (§22.5 e) */}
+      <details className="border-t border-line pt-4">
+        <summary className="cursor-pointer font-medium">Moving from another phone? Restore a backup instead</summary>
+        <div className="mt-3">
+          <Backup onChanged={onRestored} empty restoreOnly />
+        </div>
+      </details>
     </form>
   )
 }
@@ -296,6 +323,7 @@ function Home({
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-5xl font-semibold tracking-tight">Your budgets</h1>
+        <TestNote className="w-full" />
         <div className="flex gap-3">
           <button type="button" className={buttonClass('primary')} onClick={onPay} disabled={entries.length === 0}>
             Pay
@@ -397,20 +425,32 @@ function InstallHint() {
   )
 }
 
-function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: boolean }) {
+function Backup({
+  onChanged,
+  empty,
+  restoreOnly = false,
+}: {
+  onChanged: () => Promise<void>
+  empty: boolean
+  /** on the set-up screen: only restoring makes sense */
+  restoreOnly?: boolean
+}) {
   const [msg, setMsg] = useState<string | null>(null)
   const [pass, setPass] = useState('')
   const id = useId()
   const ok = validBackupPassphrase(pass)
+  const Wrap = restoreOnly ? 'div' : 'details'
   return (
-    <details className="sheet p-5">
-      <summary className="cursor-pointer font-medium">Backup and restore</summary>
+    <Wrap className={restoreOnly ? '' : 'sheet p-5'}>
+      {!restoreOnly && <summary className="cursor-pointer font-medium">Backup and restore</summary>}
       <p className="mt-2 text-sm text-ink-2">
-        The backup file holds your budgets and their keys, locked with a backup passphrase you choose. Use a long one
-        you won’t forget: without it the file can’t be opened, by you or anyone else.
+        A backup is a file locked with a passphrase you choose.{' '}
+        <strong className="text-ink">Nobody can reset that passphrase</strong>: without it the file can’t be opened, by
+        you or anyone else. If you lose both this phone and the backup, whoever funded a budget can still take back what
+        wasn’t spent, after its end date.
       </p>
       <label htmlFor={`${id}-p`} className="mt-3 block text-sm font-medium">
-        Backup passphrase (12+ characters)
+        {restoreOnly ? 'The backup’s passphrase' : 'Backup passphrase (12+ characters)'}
       </label>
       <input
         id={`${id}-p`}
@@ -421,23 +461,33 @@ function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: b
         className="mt-1 min-h-11 w-full rounded border border-line bg-paper px-3"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={!ok}
-          className={buttonClass('secondary')}
-          onClick={async () => {
-            const url = URL.createObjectURL(new Blob([await exportBackup(pass)], { type: 'application/json' }))
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `flying-money-wallet-${new Date().toISOString().slice(0, 10)}.json`
-            a.click()
-            // let the download start before releasing the file
-            setTimeout(() => URL.revokeObjectURL(url), 10_000)
-            setMsg('Backup downloaded.')
-          }}
-        >
-          Export backup
-        </button>
+        {!restoreOnly && (
+          <button
+            type="button"
+            disabled={!ok}
+            className={buttonClass('secondary')}
+            onClick={async () => {
+              const file = await exportBackup(pass)
+              // prove the passphrase opens it before calling the backup done (§22.5 e)
+              try {
+                await openBackup(file, pass)
+              } catch {
+                setMsg('The backup could not be checked, so it was not saved. Try again.')
+                return
+              }
+              const url = URL.createObjectURL(new Blob([file], { type: 'application/json' }))
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `flying-money-wallet-${new Date().toISOString().slice(0, 10)}.json`
+              a.click()
+              // let the download start before releasing the file
+              setTimeout(() => URL.revokeObjectURL(url), 10_000)
+              setMsg('Backup downloaded and checked: it opens with your passphrase. Keep both somewhere safe.')
+            }}
+          >
+            Export backup
+          </button>
+        )}
         {empty && (
           <>
             <label htmlFor={id} className={`${buttonClass('secondary')} cursor-pointer`}>
@@ -470,7 +520,7 @@ function Backup({ onChanged, empty }: { onChanged: () => Promise<void>; empty: b
           {msg}
         </p>
       )}
-    </details>
+    </Wrap>
   )
 }
 
@@ -615,16 +665,34 @@ function ShowNote({
   const c = toCounterCert(entry)
   const [confirmNo, setConfirmNo] = useState(false)
   // Fixed light colours on purpose (both themes): the brightest screen gives cashiers' scanners the best read.
+  // a real modal: focus moves to it, Escape closes it (the payment stays open and can be shown again) (§22.5 h)
+  const headRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    headRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') void onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
   return (
     <section
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
       aria-labelledby="note-t"
     >
       <div className="mx-auto max-w-md">
         <p className="smallcaps mt-2 text-sm text-[#8a2a24]">Show this to the cashier</p>
-        <h1 id="note-t" className="font-display text-3xl font-semibold lining-nums">
+        <h1
+          id="note-t"
+          ref={headRef}
+          tabIndex={-1}
+          className="font-display text-3xl font-semibold lining-nums outline-none"
+        >
           {usdc(price)} USDC · {entry.label}
         </h1>
+        <TestNote className="mt-2 text-left" />
         <div className="mx-auto mt-4 max-w-[min(90vw,26rem)]">
           <QrCode value={noteQr} label={`Your payment slip for ${usdc(price)} USDC`} />
         </div>
@@ -682,8 +750,17 @@ function ShowNote({
 }
 
 // ── Add ──────────────────────────────────────────────────────────────────────
-function AcceptHandOver({ h, onAdded }: { h: HandOver; onAdded: () => Promise<void> }) {
-  const [pin, setPinValue] = useState('')
+function AcceptHandOver({
+  h,
+  pin: known,
+  onAdded,
+}: {
+  h: HandOver
+  /** the PIN set a moment ago in this visit: not asked for again */
+  pin?: string | null
+  onAdded: () => Promise<void>
+}) {
+  const [pin, setPinValue] = useState(known ?? '')
   const [label, setLabel] = useState(h.name ?? '')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -707,8 +784,8 @@ function AcceptHandOver({ h, onAdded }: { h: HandOver; onAdded: () => Promise<vo
       }}
     >
       <p className="text-ink-2">
-        This link holds a certificate’s spending key. Once it is added, it lives only on this device, locked by your
-        PIN. Anyone else with the same link could spend it too, so don’t share it further.
+        This link holds a budget’s spending key. Once it is added, it lives only on this phone, locked by your PIN.
+        Anyone else with the same link could spend it too, so don’t share it further.
       </p>
       <div className="grid gap-1">
         <label htmlFor={`${ids}-l`} className="text-sm font-medium">
@@ -722,7 +799,7 @@ function AcceptHandOver({ h, onAdded }: { h: HandOver; onAdded: () => Promise<vo
           className="min-h-11 rounded border border-line bg-paper px-3"
         />
       </div>
-      <PinInput id={`${ids}-p`} label="Your PIN" value={pin} onChange={setPinValue} />
+      {!known && <PinInput id={`${ids}-p`} label="Your PIN" value={pin} onChange={setPinValue} />}
       {err && (
         <p role="alert" className="text-sm text-seal">
           {err}
