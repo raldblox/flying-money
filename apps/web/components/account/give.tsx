@@ -24,13 +24,13 @@ export function Give() {
   return (
     <div>
       <Link href="/app" className="text-sm text-indigo hover:underline">
-        ← Account
+        ← Home
       </Link>
       <h1 className="mt-2 font-display text-4xl font-semibold">{forAgent ? 'Fund an agent' : 'Give a budget'}</h1>
       <p className="mt-2 max-w-2xl text-ink-2">
         {forAgent
           ? 'Set aside USDC for one service your agent uses. The agent pays from it per request and can never go past it.'
-          : 'Set aside USDC for one place. The person you give it to pays with their phone; whatever isn’t spent comes back to you after the end date.'}
+          : 'Set aside USDC for one place. The person pays with their phone, no crypto wallet needed. After the end date you can take back what they didn’t spend.'}
       </p>
       <div className="mt-6">
         <IssueWizard
@@ -38,7 +38,7 @@ export function Give() {
           chain={chain}
           places={places}
           onIssued={refresh}
-          preset={{ spenderMode: forAgent ? 'paste' : 'generate' }}
+          preset={forAgent ? { spenderMode: 'paste' } : { spenderMode: 'generate', forPerson: true }}
         />
       </div>
     </div>

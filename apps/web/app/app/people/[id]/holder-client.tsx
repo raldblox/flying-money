@@ -2,6 +2,7 @@
 import { type ChainKey, getChain } from '@flying-money/chains'
 import type { Certificate } from '@flying-money/core'
 import { useCallback, useEffect, useState } from 'react'
+import { formatUnits } from 'viem'
 import { useAccount } from 'wagmi'
 import { AllowRequests } from '@/components/account/allow-requests'
 import { FunderActions } from '@/components/app/funder-actions'
@@ -70,7 +71,8 @@ export function HolderControl({ id }: { id: string }) {
   const spenderPreset = (): IssuePreset =>
     holder.keyPolicy === 'one-key' && holder.address
       ? { spender: holder.address, spenderMode: 'paste' }
-      : { spenderMode: 'generate' }
+      : // people get the three-screen gift flow; agents keep the full form (§22.5 d)
+        { spenderMode: 'generate', ...(holder.type !== 'agent' ? { forPerson: true } : {}) }
 
   const wizardPlaces = (k: ChainKey): Place[] =>
     places
@@ -235,9 +237,11 @@ export function HolderControl({ id }: { id: string }) {
                         preset: {
                           ...spenderPreset(),
                           placeAddress: c.payee,
-                          amount: usdc(c.faceValue),
+                          // a plain number the amount field accepts (no thousands separators)
+                          amount: formatUnits(c.faceValue, 6),
                           durationIdx: r.durationIdx,
-                          holderName: placeName(c.payee),
+                          // renewing gives it to the same person, not to the seller (§22.5 d)
+                          holderName: holder.name,
                         },
                       })
                     }

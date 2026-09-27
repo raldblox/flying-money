@@ -33,6 +33,8 @@ export interface IssuePreset {
   durationSeconds?: bigint
   /** funding an agent's budget request (§21.4.3): payee and spender are fixed by the request */
   request?: { agent: string; placeName: string }
+  /** giving to a person (§22.5 d): three short screens, a key made here, and the hand-over as the result */
+  forPerson?: boolean
 }
 
 export interface IssuedInfo {
@@ -120,6 +122,11 @@ export function IssueWizard({
   const [pastedSpender, setPastedSpender] = useState<string>(preset?.spender ?? '')
   const [generated, setGenerated] = useState<{ key: Hex; address: Hex } | null>(null)
   const [keySaved, setKeySaved] = useState(false)
+  // giving to a person: who it's for, and which of the three screens is showing
+  const forPerson = Boolean(preset?.forPerson)
+  const [personName, setPersonName] = useState(preset?.holderName ?? '')
+  const [screen, setScreen] = useState<1 | 2 | 3>(1)
+  const holderName = preset?.holderName ?? (forPerson && personName.trim() ? personName.trim() : undefined)
   // Step 3: budget and time (a request's exact lifetime is offered first)
   const asked = preset?.durationSeconds
   // in request mode, never shorter than asked: the service may refuse a budget that ends too soon
@@ -183,6 +190,14 @@ export function IssueWizard({
     if (p.issuedId) return setIssued({ id: p.issuedId, hash: p.hash })
     void issueTx.watch(p.hash).then((r) => r && finishIssue(r, p))
   }, [publicClient, chain.key])
+  // giving to a person: the key is made here, with no download step (A5 keeps it until the hand-over)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, unless a sent budget is being restored
+  useEffect(() => {
+    if (!forPerson || generated || loadPending()) return
+    const key = generatePrivateKey()
+    setGenerated({ key, address: privateKeyToAccount(key).address })
+    setSpenderMode('generate')
+  }, [forPerson])
   // a reverted issue locked nothing: forget it
   useEffect(() => {
     if (issueTx.state.phase === 'failed' && issueTx.state.receipt) savePending(null)
@@ -231,7 +246,7 @@ export function IssueWizard({
   if (spender && address && sameAddress(spender, address))
     problems.push('The spender key can’t be your own wallet: use a separate key that holds no money.')
   if (spender && payee && sameAddress(spender, payee)) problems.push('The spender key can’t be the payee.')
-  if (spenderMode === 'generate' && generated && !keySaved && !preset?.holderName)
+  if (spenderMode === 'generate' && generated && !keySaved && !holderName && !forPerson)
     problems.push('Save the generated key first.')
   if (face === null || face === 0n) problems.push('Enter an amount above 0 (up to 6 decimals).')
   if (face && chain.maxFaceValue > 0n && face > chain.maxFaceValue)
@@ -255,7 +270,7 @@ export function IssueWizard({
   const sellerName = place?.name ?? (payee ? short(payee) : '…')
   const userName =
     preset?.request?.agent ??
-    preset?.holderName ??
+    holderName ??
     (spenderMode === 'generate' ? 'the key made here' : spender ? short(spender) : '…')
   const endsAt = BigInt(Math.floor(Date.now() / 1000)) + durations[durationIdx]!.seconds
   const busy = [approveTx.state, issueTx.state].some((s) =>
@@ -401,9 +416,9 @@ export function IssueWizard({
         </div>
         <h3 className="mt-5 font-display text-3xl font-semibold">Budget created.</h3>
         <p className="mt-2 font-mono text-sm break-all">{issued.id}</p>
-        {preset?.holderName && generated ? (
+        {(holderName || forPerson) && generated ? (
           <p className="mt-4 text-ink-2">
-            Now give it to {preset.holderName}: send the hand-over link below privately.
+            Now give it to {holderName ?? 'them'}: send the hand-over link below privately.
           </p>
         ) : (
           <>
@@ -413,7 +428,7 @@ export function IssueWizard({
             </pre>
           </>
         )}
-        {generated && !preset?.holderName && (
+        {generated && !holderName && !forPerson && (
           <button
             type="button"
             className={`${buttonClass('secondary')} mt-4`}
@@ -423,12 +438,7 @@ export function IssueWizard({
           </button>
         )}
         {generated && (
-          <HandOverLink
-            chain={chain.key}
-            id={issued.id}
-            spenderKey={generated.key}
-            name={preset?.holderName ?? place?.name}
-          />
+          <HandOverLink chain={chain.key} id={issued.id} spenderKey={generated.key} name={place?.name ?? holderName} />
         )}
         {generated && (
           <div className="mx-auto mt-5 max-w-md rounded-md border border-line p-4 text-sm">
@@ -486,10 +496,43 @@ export function IssueWizard({
           </p>
         </div>
       )}
-      <fieldset className={`sheet p-6 ${locked ? 'hidden' : ''}`}>
+      {forPerson && (
+        <ol className="flex gap-2 text-sm" aria-label="Progress">
+          {(['Who and where', 'How much and until when', 'Review'] as const).map((t, i) => (
+            <li
+              key={t}
+              aria-current={screen === i + 1 ? 'step' : undefined}
+              className={`flex-1 rounded-md border px-3 py-2 ${screen === i + 1 ? 'border-ink bg-ink text-paper' : screen > i + 1 ? 'border-ink/40 text-ink' : 'border-line text-ink-2'}`}
+            >
+              <span className="smallcaps block text-[0.65rem]">Step {i + 1} of 3</span>
+              {t}
+            </li>
+          ))}
+        </ol>
+      )}
+      <fieldset className={`sheet p-6 ${locked || (forPerson && screen !== 1) ? 'hidden' : ''}`}>
         <legend className="sr-only">Step 1: who can be paid?</legend>
-        <p className="smallcaps text-sm text-seal">Step 1</p>
-        <h3 className="font-display text-2xl font-semibold">Who can be paid?</h3>
+        {forPerson && (
+          <div className="mb-6">
+            <label htmlFor={`${ids}-person`} className="font-display text-2xl font-semibold">
+              Who is it for?
+            </label>
+            <input
+              id={`${ids}-person`}
+              className={field}
+              value={personName}
+              maxLength={40}
+              autoComplete="off"
+              onChange={(e) => setPersonName(e.target.value)}
+              placeholder="Mia"
+            />
+            <p className="mt-1 text-xs text-ink-2">Only you see this name. They get a link, no crypto wallet needed.</p>
+          </div>
+        )}
+        <p className={`smallcaps text-sm text-seal ${forPerson ? 'hidden' : ''}`}>Step 1</p>
+        <h3 className="font-display text-2xl font-semibold">
+          {forPerson ? 'Where can they spend it?' : 'Who can be paid?'}
+        </h3>
         <p className="mt-1 text-sm text-ink-2">
           A budget pays exactly one place. Nobody else can ever receive its money.
         </p>
@@ -583,7 +626,7 @@ export function IssueWizard({
         )}
       </fieldset>
 
-      <fieldset className={`sheet p-6 ${locked ? 'hidden' : ''}`}>
+      <fieldset className={`sheet p-6 ${locked || forPerson ? 'hidden' : ''}`}>
         <legend className="sr-only">Step 2: who can spend?</legend>
         <p className="smallcaps text-sm text-seal">Step 2</p>
         <h3 className="font-display text-2xl font-semibold">Who can spend?</h3>
@@ -653,10 +696,10 @@ export function IssueWizard({
                 <p className="text-sm">
                   Address: <span className="font-mono">{generated.address}</span>
                 </p>
-                {preset?.holderName ? (
+                {holderName || forPerson ? (
                   <p className="text-sm text-ink-2">
-                    After creating the budget you get a hand-over link for {preset.holderName}. The key travels only in
-                    that link. This tab keeps it until you confirm you’ve handed it over, then forgets it.
+                    After creating the budget you get a hand-over link for {holderName ?? 'them'}. The key travels only
+                    in that link. This tab keeps it until you confirm you’ve handed it over, then forgets it.
                   </p>
                 ) : (
                   <div className="flex flex-wrap items-center gap-3">
@@ -687,7 +730,7 @@ export function IssueWizard({
         )}
       </fieldset>
 
-      <fieldset className="sheet p-6">
+      <fieldset className={`sheet p-6 ${forPerson && screen !== 2 ? 'hidden' : ''}`}>
         <legend className="sr-only">Step 3: budget and time</legend>
         <p className="smallcaps text-sm text-seal">{locked ? 'Your decision' : 'Step 3'}</p>
         <h3 className="font-display text-2xl font-semibold">
@@ -730,13 +773,51 @@ export function IssueWizard({
               ))}
             </div>
             <p className="mt-1 text-xs text-ink-2">
-              The unspent remainder returns to you after expiry. No early cancel.
+              After the end date you can take back what’s left. It can’t be cancelled early.
             </p>
           </fieldset>
         </div>
       </fieldset>
 
-      <section aria-labelledby={`${ids}-review`} className="sheet border-t-4 border-seal p-6">
+      {forPerson && screen < 3 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {screen > 1 ? (
+            <button type="button" className="text-indigo underline" onClick={() => setScreen((screen - 1) as 1 | 2)}>
+              ← Back
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="text-right">
+            <button
+              type="button"
+              className={buttonClass('primary')}
+              disabled={screen === 1 ? !payeeOk || !personName.trim() : !face}
+              onClick={() => setScreen((screen + 1) as 2 | 3)}
+            >
+              Next
+            </button>
+            <p className="mt-1 text-xs text-ink-2">
+              {screen === 1 && !personName.trim()
+                ? 'Add a name first.'
+                : screen === 1 && !payeeOk
+                  ? 'Choose where they can spend it.'
+                  : screen === 2 && !face
+                    ? 'Enter an amount.'
+                    : ''}
+            </p>
+          </div>
+        </div>
+      )}
+      <section
+        aria-labelledby={`${ids}-review`}
+        className={`sheet border-t-4 border-seal p-6 ${forPerson && screen !== 3 ? 'hidden' : ''}`}
+      >
+        {forPerson && (
+          <button type="button" className="mb-3 text-sm text-indigo underline" onClick={() => setScreen(2)}>
+            ← Back
+          </button>
+        )}
         <h3 id={`${ids}-review`} className="font-display text-2xl font-semibold">
           Review
         </h3>
