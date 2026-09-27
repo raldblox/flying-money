@@ -25,8 +25,9 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await expect(page.getByText('Available in your wallet')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Disconnect' })).toBeVisible()
 
-  // Home → Fund an agent (the step-by-step form is its own page)
-  await page.getByRole('link', { name: /Fund an agent/ }).click()
+  // Home → Connect an assistant → Fund it directly (the step-by-step form is its own page)
+  await page.getByRole('link', { name: /Connect an assistant/ }).click()
+  await page.getByRole('link', { name: 'Fund it directly' }).click({ timeout: 90_000 })
   // first visit to a page compiles it in dev: allow for that
   await expect(page.getByRole('heading', { name: 'Fund an agent' })).toBeVisible({ timeout: 90_000 })
   await shot(page, '2-fund-an-agent')
@@ -79,7 +80,8 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
     await expect(page.getByText('Your budgets')).toBeVisible({ timeout: 90_000 })
     await expect(page.getByText('5.00 / 5.00').first()).toBeVisible({ timeout: 30_000 })
     await fits('m-home')
-    await page.getByRole('link', { name: /Fund an agent/ }).click()
+    await page.getByRole('link', { name: /Connect an assistant/ }).click()
+    await page.getByRole('link', { name: 'Fund it directly' }).click({ timeout: 90_000 })
     await expect(page.getByRole('heading', { name: 'Fund an agent' })).toBeVisible({ timeout: 90_000 })
     await page.getByText('Paste a payee address').click()
     await page.getByRole('textbox', { name: 'Payee address' }).fill(funder)

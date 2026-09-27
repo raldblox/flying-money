@@ -2,6 +2,16 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## Onboarding (28 Sep): §22.10 built
+
+- **a** `/agent.md` for agents, and **Connect an assistant** (`/app/connect`): one message with the owner's wallet. `llms.txt` points agents to it first.
+- **b** the MCP server makes and keeps its own spending key; `FM_OWNER` alone starts it; `fm_status` shows the spending address.
+- **c** `/start` with four choices; **Get started** on the landing page and in the header.
+- **d** no dead ends without a wallet: phone wallet links, a pointer to the wallet for people given a budget, and never a placeholder longer than 3 s. An empty wallet explains itself.
+- **e** shops in three steps, **Your tills** on the device, and a **get a budget for this shop** link and QR (unverified, with a warning).
+- **f** agent, MCP and shop docs in the one vocabulary. Onboarding e2e added; `/start` and `/shop` in the accessibility sweep.
+- **Blocked on the founder (B1):** publish `@flying-money/core`, `chains`, `client` and `mcp` to npm, and/or make the repo public. Until then an agent elsewhere can't install the MCP server (`/agent.md` tells it to say so).
+
 ## Release slice R1 (28 Sep): ✅ `pnpm verify --e2e` green (§22.5)
 
 - **b** GrantSummary on every budget surface. **c** funding in two plain steps; results that stay visible.

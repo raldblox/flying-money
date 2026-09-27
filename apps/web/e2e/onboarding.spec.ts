@@ -12,7 +12,7 @@ test('start page offers four paths', async ({ page }) => {
     ['Let my AI assistant pay', '/app/connect'],
     ['Use a budget I was given', '/wallet'],
     ['Take payments at my shop', '/shop'],
-  ])
+  ] as const)
     await expect(page.getByRole('link', { name: new RegExp(name) })).toHaveAttribute('href', href)
   await page.goto('/')
   await expect(page.getByRole('link', { name: /Get started/ }).first()).toHaveAttribute('href', '/start')
