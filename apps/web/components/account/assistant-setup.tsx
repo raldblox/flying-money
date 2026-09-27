@@ -58,7 +58,6 @@ export function AssistantSetup({
           command: 'npx',
           args: ['-y', '@flying-money/mcp'],
           env: {
-            AGENT_KEY: '<the agent’s own spending key, kept with the agent>',
             AGENT_CHAINS: chain.key,
             ...(open.length ? { AGENT_CERTIFICATES: open.map((c) => c.id).join(',') } : {}),
             ...(address ? { FM_OWNER: address } : {}),
@@ -117,8 +116,12 @@ export function AssistantSetup({
           Connect it (MCP config for Claude and other assistants)
         </summary>
         <p className="mt-2 text-sm text-ink-2">
-          Paste this into the assistant’s MCP settings on the machine where it runs. Put its own spending key in
-          AGENT_KEY there; the key never comes to this site.
+          Easiest: send your assistant the one message on{' '}
+          <a href="/app/connect" className="text-indigo underline">
+            Connect an assistant
+          </a>
+          . Or paste this into its MCP settings yourself. It uses the key the assistant already made; no key comes to
+          this site.
         </p>
         <pre className="mt-2 overflow-x-auto rounded bg-paper-2 p-3 font-mono text-xs">
           <code>{config}</code>

@@ -15,16 +15,19 @@ export function GET() {
 
 Deployed now: ${chains || 'none yet'}. Unaudited. ${deployedChains().some((c) => c.mainnet) ? 'Mainnet deployments run under immutable caps.' : 'No mainnet deployment yet; mainnets will launch under immutable caps.'}
 
+**AI agent asked to set up payments? Read [${base}/agent.md](${base}/agent.md) and follow it.**
+
 Key rules for agents:
 - You can only pay the payee named on your certificate, never more than its face value.
 - On HTTP 402 with a \`Flying-Money-Offer\` header, sign a Note with cumulative = max(accepted, consumed + price) and memo = a fresh requestId, save it, and retry with \`Flying-Money-Note\`. On a timeout, resend the SAME note. Never sign a higher one because of a network failure.
 - Never sign a cumulative above face value. Never ask the user for their main wallet key.
 
 ## Docs
-- [Quickstart for agents](${base}/docs/agents.md): pay a Flying Money API in a few lines
+- [Setup for AI agents](${base}/agent.md): add the MCP server, tell your owner your address, ask for budgets
+- [Quickstart for developers](${base}/docs/agents.md): pay a Flying Money API in a few lines
 - [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
 - [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
-- [MCP server](${base}/docs/mcp.md): tools fm_status, fm_quote, fm_paid_fetch, fm_explain
+- [MCP server](${base}/docs/mcp.md): tools fm_status, fm_explain, fm_quote, fm_paid_fetch, fm_request_budget, fm_request_status
 - [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox
 - [Sellers](${base}/docs/server.md): accept notes with middleware; the redeemer
 - [People & shops](${base}/docs/shops.md): the QR counter flow

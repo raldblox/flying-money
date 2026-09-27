@@ -110,8 +110,8 @@ function WalletGate({ children }: { children: ReactNode }) {
   const { connect, connectors, isPending, error } = useConnect()
   const { switchChain, isPending: switching } = useSwitchChain()
   const path = usePathname() ?? ''
-  // contacts are local to this device: they work without a wallet
-  const needsWallet = !path.startsWith('/app/people') && !path.startsWith('/app/places')
+  // contacts are local to this device, and connecting an assistant only needs an address: they work without a wallet
+  const needsWallet = !['/app/people', '/app/places', '/app/connect'].some((p) => path.startsWith(p))
 
   if (!mounted || isReconnecting || isConnecting)
     return <div className="sheet h-64 animate-pulse motion-reduce:animate-none" aria-busy="true" />

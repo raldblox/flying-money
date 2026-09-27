@@ -18,9 +18,9 @@ const ACTIONS = [
     icon: 'M12 5v14M5 12h14',
   },
   {
-    href: '/app/give?for=agent',
-    title: 'Fund an agent',
-    sub: 'A spending limit for an AI agent',
+    href: '/app/connect',
+    title: 'Connect an assistant',
+    sub: 'Your AI assistant asks before it spends',
     icon: 'M5 7h14v10H5zM9 11l2 2-2 2M13 15h3',
   },
   {
