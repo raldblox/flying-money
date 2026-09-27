@@ -150,6 +150,8 @@ export interface BudgetRequestRecord {
   /** relay channel: the signed request (fm1), kept so the request survives a restart */
   signed?: string
   via?: 'relay' | 'link'
+  /** top-up requests: the budget's face value when asked (§22.2 A4) */
+  baseline?: string
   fromBlock: string
   certificateId?: Hex
 }

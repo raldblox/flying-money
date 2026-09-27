@@ -264,7 +264,8 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     ...(r.status === 'approved'
       ? {
           certificateId: r.certificateId,
-          granted: r.faceValue !== undefined ? usdc(r.faceValue) : undefined,
+          // a top-up reports what was actually added, never the amount asked for (§22.2 A4)
+          granted: r.added !== undefined ? usdc(r.added) : r.faceValue !== undefined ? usdc(r.faceValue) : undefined,
           expiresAt: r.expiresAt !== undefined ? new Date(Number(r.expiresAt) * 1000).toISOString() : undefined,
           next: 'Verified on the blockchain. You can pay this service now with fm_paid_fetch.',
         }

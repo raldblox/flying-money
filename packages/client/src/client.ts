@@ -155,6 +155,10 @@ export interface BudgetRequest {
   /** link channel only: open this to review and approve */
   link?: string
   request: SpendRequest
+  /** top-up requests: the budget's face value when asked; approval needs more than this (§22.2 A4) */
+  baselineFaceValue?: bigint
+  /** top-up requests, once approved: the amount actually added */
+  added?: bigint
   /** set once approved and verified on-chain */
   certificateId?: Hex
   faceValue?: bigint
@@ -307,6 +311,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
         ...(rec.link ? { link: rec.link } : {}),
         request: signed.request,
         signed,
+        ...(rec.baseline !== undefined ? { baselineFaceValue: BigInt(rec.baseline) } : {}),
         fromBlock: BigInt(rec.fromBlock),
         ...(rec.certificateId ? { certificateId: rec.certificateId } : {}),
       }
@@ -558,6 +563,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     link: r.link ?? '',
     via: r.via,
     ...(r.via === 'relay' ? { signed: encodeSpendRequest(r.signed) } : {}),
+    ...(r.baselineFaceValue !== undefined ? { baseline: r.baselineFaceValue.toString() } : {}),
     fromBlock: r.fromBlock.toString(),
     ...(r.certificateId ? { certificateId: r.certificateId } : {}),
   })
@@ -601,6 +607,13 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     const validFor = BigInt(Math.round(o.days * 86_400))
     if (validFor < REQUEST_MIN_VALID_FOR) throw new Error('a budget request must be for at least one day')
     const ch = getChain(chainKey)
+    // a top-up: remember the budget's face value now, so approval can require an actual increase (§22.2 A4)
+    let baselineFaceValue: bigint | undefined
+    if (o.certificateId && o.certificateId !== ZERO_ID) {
+      const cur = ch.flyingMoney ? await read(chainKey, ch.flyingMoney, o.certificateId).catch(() => null) : null
+      if (!cur) throw new Error('requestBudget: the budget to top up was not found on this chain')
+      baselineFaceValue = cur.faceValue
+    }
     const signed = await signSpendRequest(config.spender, ch.chain.id, {
       owner: config.owner,
       payee,
@@ -643,6 +656,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
         via: 'relay' as const,
         request: signed.request,
         signed,
+        ...(baselineFaceValue !== undefined ? { baselineFaceValue } : {}),
         fromBlock,
       }
       reqs.set(r.requestId.toLowerCase(), r)
@@ -658,11 +672,36 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       link: `${base}/app/requests/new#${encodeSpendRequest(signed)}`,
       request: signed.request,
       signed,
+      ...(baselineFaceValue !== undefined ? { baselineFaceValue } : {}),
       fromBlock,
     }
     reqs.set(r.requestId.toLowerCase(), r)
     await persist()
     return r
+  }
+
+  /**
+   * R2 and §22.2 A4: this budget answers this request only if the owner funded it, it pays the requested payee, is
+   * still usable, and (for a top-up) is the requested budget with more funding than when we asked.
+   */
+  function fundsRequest(r: BudgetRequest, h: Held): boolean {
+    const c = h.cert
+    if (!sameAddress(c.funder, r.request.owner) || !sameAddress(c.payee, r.request.payee)) return false
+    if (c.closed || c.expiresAt <= nowS()) return false
+    if (r.request.certificateId === ZERO_ID) return true
+    if (!sameAddress(c.id, r.request.certificateId)) return false
+    // no recorded baseline (a request made before this rule): fail closed
+    return r.baselineFaceValue !== undefined && c.faceValue > r.baselineFaceValue
+  }
+  async function markApproved(r: BudgetRequest, h: Held) {
+    Object.assign(r, {
+      status: 'approved',
+      certificateId: h.cert.id,
+      faceValue: h.cert.faceValue,
+      expiresAt: h.cert.expiresAt,
+      ...(r.baselineFaceValue !== undefined ? { added: h.cert.faceValue - r.baselineFaceValue } : {}),
+    })
+    await persist()
   }
 
   async function requestStatus(requestId: Hex): Promise<BudgetRequest> {
@@ -683,20 +722,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       }
       if (s?.status === 'approved' && s.certificateId) {
         const h = await adopt(r.chain, s.certificateId)
-        if (
-          h &&
-          sameAddress(h.cert.payee, r.request.payee) &&
-          sameAddress(h.cert.funder, r.request.owner) &&
-          !h.cert.closed
-        ) {
-          Object.assign(r, {
-            status: 'approved',
-            certificateId: h.cert.id,
-            faceValue: h.cert.faceValue,
-            expiresAt: h.cert.expiresAt,
-          })
-          await persist()
-        }
+        if (h && fundsRequest(r, h)) await markApproved(r, h)
         return r
       }
       if (s) return r // still waiting in the inbox
@@ -706,9 +732,9 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     const pub = pubFor(r.chain)
     let found: Held | null = null
     if (r.request.certificateId !== ZERO_ID) {
-      // a top-up request: approved once the certificate is funded above what it was when we asked
+      // a top-up request: approved only once the owner funded it above what it was when we asked (§22.2 A4)
       found = await adopt(r.chain, r.request.certificateId)
-      if (found && !sameAddress(found.cert.payee, r.request.payee)) found = null
+      if (found && !fundsRequest(r, found)) found = null
     } else {
       const logs = await pub.getLogs({
         address: ch.flyingMoney,
@@ -744,13 +770,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       }
     }
     if (found) {
-      Object.assign(r, {
-        status: 'approved',
-        certificateId: found.cert.id,
-        faceValue: found.cert.faceValue,
-        expiresAt: found.cert.expiresAt,
-      })
-      await persist()
+      await markApproved(r, found)
     } else if (nowS() > r.request.createdAt + REQUEST_TTL_SECONDS) {
       r.status = 'expired'
       await persist()

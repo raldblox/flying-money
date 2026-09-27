@@ -161,4 +161,89 @@ describe('budget requests through the relay inbox (§21.4.5)', () => {
     expect(ok).toMatchObject({ status: 'approved', certificateId: id })
     expect(c.status().some((s) => s.id.toLowerCase() === id.toLowerCase())).toBe(true)
   })
+
+  describe('A4 (§22.2): a top-up is approved only on evidence of new funding by the owner', () => {
+    const make = (w: ReturnType<typeof world>, o: Partial<Certificate> = {}) => {
+      const id = certificateId(CHAIN_ID, CONTRACT, w.owner.address, BigInt(Math.floor(Math.random() * 1e9)))
+      const cert: Certificate = {
+        id,
+        funder: w.owner.address,
+        payee: w.payee,
+        spender: w.agent.address,
+        faceValue: 100_000n,
+        redeemed: 0n,
+        expiresAt: BigInt(Math.floor(Date.now() / 1000) + 7 * 86_400),
+        closed: false,
+        ...o,
+      }
+      w.certs.set(id.toLowerCase(), cert)
+      return cert
+    }
+    const ask = async (w: ReturnType<typeof world>, id: Hex, grant?: string) => {
+      const c = w.client(grant)
+      await c.ready
+      return {
+        c,
+        r: await c.requestBudget({
+          payee: w.payee,
+          chain: 'anvil',
+          amount: 200_000n,
+          days: 7,
+          reason: 'more',
+          certificateId: id,
+        }),
+      }
+    }
+
+    it('unchanged funding stays asked (link channel, direct chain check)', async () => {
+      const w = world()
+      const cert = make(w)
+      const { c, r } = await ask(w, cert.id)
+      expect((await c.requestStatus(r.requestId)).status).toBe('asked')
+    })
+
+    it('an increase by the owner approves it, reporting the amount actually added', async () => {
+      const w = world()
+      const cert = make(w)
+      const { c, r } = await ask(w, cert.id)
+      w.certs.set(cert.id.toLowerCase(), { ...cert, faceValue: 150_000n })
+      const s = await c.requestStatus(r.requestId)
+      expect(s).toMatchObject({ status: 'approved', certificateId: cert.id, added: 50_000n })
+    })
+
+    it('a certificate funded by someone else, closed, or expired never approves', async () => {
+      for (const o of [
+        { funder: privateKeyToAccount(generatePrivateKey()).address },
+        { closed: true },
+        { expiresAt: BigInt(Math.floor(Date.now() / 1000) - 10) },
+      ] as Partial<Certificate>[]) {
+        const w = world()
+        const cert = make(w, o)
+        const { c, r } = await ask(w, cert.id)
+        w.certs.set(cert.id.toLowerCase(), { ...w.certs.get(cert.id.toLowerCase())!, faceValue: 400_000n })
+        expect((await c.requestStatus(r.requestId)).status).toBe('asked')
+      }
+    })
+
+    it('the baseline survives a restart', async () => {
+      const w = world()
+      const cert = make(w)
+      const { r } = await ask(w, cert.id)
+      const restarted = w.client()
+      await restarted.ready
+      expect((await restarted.requestStatus(r.requestId)).status).toBe('asked')
+      w.certs.set(cert.id.toLowerCase(), { ...cert, faceValue: 120_000n })
+      expect(await restarted.requestStatus(r.requestId)).toMatchObject({ status: 'approved', added: 20_000n })
+    })
+
+    it('through the relay: "approved" for an unchanged top-up is not believed', async () => {
+      const w = world()
+      const cert = make(w)
+      const { c, r } = await ask(w, cert.id, await w.grant())
+      await w.inbox.decide(w.owner.address, r.requestId, {
+        approved: { certificateId: cert.id, txHash: newRequestId() },
+      })
+      expect((await c.requestStatus(r.requestId)).status).toBe('asked')
+    })
+  })
 })
