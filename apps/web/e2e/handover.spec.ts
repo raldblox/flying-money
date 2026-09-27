@@ -10,8 +10,8 @@ test('a generated key and its hand-over survive a reload until the funder confir
   await page.getByText('I checked this address twice').click()
   await page.getByRole('button', { name: 'Generate a spending key' }).click()
   await page.getByText('I saved the key').click()
-  await page.getByRole('button', { name: /Approve 5 USDC/ }).click()
-  await page.getByRole('button', { name: 'Create the budget' }).click({ timeout: 60_000 })
+  await page.getByRole('button', { name: /Approve 5.00 USDC/ }).click()
+  await page.getByRole('button', { name: /Create the budget/ }).click({ timeout: 60_000 })
   await expect(page.getByText('Budget created.')).toBeVisible({ timeout: 60_000 })
   const id = (await page.locator('p.font-mono.break-all').first().textContent())!.trim()
 

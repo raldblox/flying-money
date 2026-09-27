@@ -5,9 +5,10 @@ import { useEffect, useId, useState } from 'react'
 import { erc20Abi, formatUnits, type Hex, isAddress, parseEventLogs, parseUnits, type TransactionReceipt } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { useAccount, useChainId, usePublicClient, useReadContract, useSwitchChain, useWalletClient } from 'wagmi'
+import { GrantSummary } from '@/components/grant-summary'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
-import { short, usdc } from '@/lib/fmt'
+import { dayLabel, parseAmount, short, usdc } from '@/lib/fmt'
 import { HandOverLink } from './hand-over'
 import { RiskBanner } from './risk-banner'
 import { TxStatus, useTx } from './tx'
@@ -197,7 +198,8 @@ export function IssueWizard({
 
   let face: bigint | null = null
   try {
-    face = /^\d+(\.\d{1,6})?$/.test(amount.trim()) ? parseUnits(amount.trim(), 6) : null
+    // a decimal comma works too ("3,50"); never a float (§22.5 h)
+    face = parseAmount(amount)
   } catch {
     face = null
   }
@@ -235,7 +237,13 @@ export function IssueWizard({
   if (face && chain.maxFaceValue > 0n && face > chain.maxFaceValue)
     problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
   if (face && balance !== undefined && face > balance)
-    problems.push(`Your wallet holds ${usdc(balance)} USDC on ${chain.chain.name}.`)
+    problems.push(
+      `Your wallet holds ${usdc(balance)} USDC on ${chain.chain.name}.${
+        !chain.mainnet && chain.faucets[0]
+          ? ` Get test USDC at ${chain.faucets[0]} (and a little test ETH for network fees).`
+          : ''
+      }`,
+    )
 
   // The receipt's Approval event is the truth right after an approve: a load-balanced RPC can still serve the old
   // allowance for a moment, which used to leave the form asking to approve again
@@ -243,6 +251,13 @@ export function IssueWizard({
   const effectiveAllowance =
     allowance === undefined ? undefined : approvedNow !== null && approvedNow > allowance ? approvedNow : allowance
   const needsApproval = face !== null && effectiveAllowance !== undefined && effectiveAllowance < face
+  // the words of the summary sentence
+  const sellerName = place?.name ?? (payee ? short(payee) : '…')
+  const userName =
+    preset?.request?.agent ??
+    preset?.holderName ??
+    (spenderMode === 'generate' ? 'the key made here' : spender ? short(spender) : '…')
+  const endsAt = BigInt(Math.floor(Date.now() / 1000)) + durations[durationIdx]!.seconds
   const busy = [approveTx.state, issueTx.state].some((s) =>
     ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(s.phase),
   )
@@ -725,18 +740,32 @@ export function IssueWizard({
         <h3 id={`${ids}-review`} className="font-display text-2xl font-semibold">
           Review
         </h3>
-        <p className="mt-2 text-lg">
-          Give <strong>{spender ? short(spender) : '…'}</strong>{' '}
-          <strong>{face ? formatUnits(face, 6) : '…'} USDC</strong> at{' '}
-          <strong>{place?.name ?? (payee ? short(payee) : '…')}</strong> for{' '}
-          <strong>{durations[durationIdx]!.label}</strong>.
-        </p>
+        {face && payee ? (
+          <>
+            <GrantSummary
+              className="mt-2 text-lg"
+              amount={face}
+              seller={sellerName}
+              user={userName}
+              expiresAt={endsAt}
+              test={!chain.mainnet}
+            />
+            {/* the commitment, beside the signature (§22.4) */}
+            <p className="mt-3 rounded-md border-l-4 border-ink/60 bg-paper-2/60 p-3 text-sm">
+              This budget pays only <strong>{sellerName}</strong>. You can’t cancel it early or change who can use it.
+              After <strong suppressHydrationWarning>{dayLabel(endsAt)}</strong> you can take back what’s left with one
+              network transaction.
+            </p>
+          </>
+        ) : (
+          <p className="mt-2 text-lg text-ink-2">Choose who can be paid, who can spend, and how much.</p>
+        )}
         {payee && !locked && !place?.verified && (
           <div className="mt-4">
             <RiskBanner title="New payee: you haven’t verified this address">
               Only <span className="font-mono">{short(payee)}</span> can ever be paid from this budget. Scammers swap
               addresses in messages and web pages, so check it with the payee over a channel you trust. Money for a
-              wrong address comes back only after the end date.
+              wrong address can only be taken back after the end date.
             </RiskBanner>
           </div>
         )}
@@ -757,7 +786,20 @@ export function IssueWizard({
             ))}
           </ul>
         )}
-        <div className="mt-5 flex flex-wrap gap-3">
+        {/* two wallet transactions, each said in plain words (§22.5 c) */}
+        {face && (
+          <ol className="mt-4 grid gap-1 text-sm">
+            <li className={needsApproval ? 'font-medium text-ink' : 'text-ink-2 line-through decoration-ink/30'}>
+              Step 1 of 2: let the Flying Money contract move exactly {usdc(face)} USDC from your wallet. Nothing is
+              sent yet.
+            </li>
+            <li className={needsApproval ? 'text-ink-2' : 'font-medium text-ink'}>
+              Step 2 of 2: lock {usdc(face)} USDC for {sellerName} until{' '}
+              <span suppressHydrationWarning>{dayLabel(endsAt)}</span>.
+            </li>
+          </ol>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3">
           {needsApproval ? (
             <button
               type="button"
@@ -765,7 +807,7 @@ export function IssueWizard({
               disabled={problems.length > 0 || busy || !wallet}
               onClick={approve}
             >
-              1 · Approve {face ? formatUnits(face, 6) : ''} USDC
+              Step 1 of 2: Approve {face ? usdc(face) : ''} USDC
             </button>
           ) : (
             <button
@@ -774,7 +816,7 @@ export function IssueWizard({
               disabled={problems.length > 0 || busy || !wallet || issueSent}
               onClick={issue}
             >
-              {locked ? 'Fund the budget' : 'Create the budget'}
+              Step 2 of 2: {locked ? 'Fund the budget' : 'Create the budget'}
             </button>
           )}
         </div>

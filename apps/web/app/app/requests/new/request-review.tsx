@@ -8,6 +8,7 @@ import { IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { RiskBanner } from '@/components/app/risk-banner'
 import { WalletButton } from '@/components/app/wallet-button'
 import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
+import { GrantSummary } from '@/components/grant-summary'
 import { buttonClass } from '@/components/section'
 import { badgeOf, listHolders, listPlaces } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
@@ -242,6 +243,15 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
           <p className="mt-2 text-lg text-ink-2">
             to pay <strong className="text-ink">{placeName}</strong>, for {days} day{days === 1 ? '' : 's'}.
           </p>
+          <p className="mt-3 text-sm text-ink-2">If you fund it as asked:</p>
+          <GrantSummary
+            className="mt-1"
+            amount={req.amount}
+            seller={placeName}
+            user={agentLabel}
+            expiresAt={BigInt(Math.floor(Date.now() / 1000)) + req.validFor}
+            test={!chain.mainnet}
+          />
         </div>
 
         <dl className="grid gap-px bg-line sm:grid-cols-3">

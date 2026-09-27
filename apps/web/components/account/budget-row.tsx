@@ -3,24 +3,21 @@ import type { Certificate } from '@flying-money/core'
 import Link from 'next/link'
 import { useState } from 'react'
 import { FunderActions } from '@/components/app/funder-actions'
+import { GrantSummary } from '@/components/grant-summary'
 import { savePlace } from '@/lib/contacts'
 import { relTime, short, usdc } from '@/lib/fmt'
+import { type BudgetState, budgetState, STATUS_LABEL } from '@/lib/glossary'
 import { useAccountCtx } from './context'
 
-export type BudgetState = 'active' | 'ending' | 'ended' | 'closed'
+// one status map and threshold everywhere (§22.3)
+export { type BudgetState, budgetState } from '@/lib/glossary'
 
-export function budgetState(c: Certificate, now = BigInt(Math.floor(Date.now() / 1000))): BudgetState {
-  if (c.closed) return 'closed'
-  if (now > c.expiresAt) return 'ended'
-  if (c.expiresAt - now < 2n * 86_400n) return 'ending'
-  return 'active'
-}
-
+// text colours meet 4.5:1 (celadon is for fills only, §22.5 h)
 const BADGE: Record<BudgetState, { label: string; className: string }> = {
-  active: { label: 'Active', className: 'border-celadon/60 text-celadon' },
-  ending: { label: 'Ending soon', className: 'border-amber/60 text-amber' },
-  ended: { label: 'Ended · take back', className: 'border-seal/60 text-seal' },
-  closed: { label: 'Closed', className: 'border-line text-ink-2' },
+  active: { label: STATUS_LABEL.active, className: 'border-celadon bg-celadon/15 text-ink' },
+  ending: { label: STATUS_LABEL.ending, className: 'border-amber/60 text-amber' },
+  ended: { label: `${STATUS_LABEL.ended} · take back`, className: 'border-seal/60 text-seal' },
+  closed: { label: STATUS_LABEL.closed, className: 'border-line text-ink-2' },
 }
 
 /** One budget as a row: where, for whom, how much is left, and when it ends. Actions open in place. */
@@ -146,14 +143,16 @@ export function BudgetRow({ cert, onChanged }: { cert: Certificate; onChanged: (
           </button>
           {open && (
             <div className="pb-2">
-              <FunderActions
-                chain={chain}
-                cert={cert}
-                onDone={() => {
-                  setOpen(false)
-                  onChanged()
-                }}
+              <GrantSummary
+                className="mb-2 text-sm"
+                amount={cert.faceValue}
+                seller={place}
+                user={who ?? short(cert.spender)}
+                expiresAt={cert.expiresAt}
+                test={!chain.mainnet}
               />
+              {/* stays open so the confirmed result stays visible (§22.5 c) */}
+              <FunderActions chain={chain} cert={cert} onDone={onChanged} />
             </div>
           )}
         </div>

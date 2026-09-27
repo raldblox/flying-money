@@ -2,10 +2,10 @@
 import type { ChainConfig } from '@flying-money/chains'
 import { type Certificate, flyingMoneyAbi } from '@flying-money/core'
 import { useId, useState } from 'react'
-import { erc20Abi, parseEventLogs, parseUnits } from 'viem'
+import { erc20Abi, parseEventLogs } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { buttonClass } from '@/components/section'
-import { usdc, utcDate } from '@/lib/fmt'
+import { dayTimeLabel, parseAmount, usdc } from '@/lib/fmt'
 import { TxStatus, useTx } from './tx'
 
 const DAY = 86_400n
@@ -36,6 +36,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
 
   // right after an approve, trust the receipt's Approval event over a possibly lagging RPC read
   const [approvedNow, setApprovedNow] = useState<bigint | null>(null)
+  const [done, setDone] = useState<string | null>(null)
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: chain.usdc,
     abi: erc20Abi,
@@ -53,7 +54,17 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
     query: { enabled: Boolean(address) && panel === 'topup' },
   })
 
-  if (cert.closed) return <p className="mt-4 text-sm text-ink-2">Closed: the remainder was returned to you.</p>
+  // a confirmed action says so and stays said, even after the list refreshes (§22.5 c)
+  const doneLine = done && (
+    <p role="status" className="mt-4 flex items-center gap-2 text-sm font-medium text-ink">
+      <span aria-hidden className="grid size-5 place-items-center rounded-full bg-seal text-xs text-on-seal">
+        ✓
+      </span>
+      {done}
+    </p>
+  )
+  if (cert.closed)
+    return doneLine || <p className="mt-4 text-sm text-ink-2">Closed: what was left has been taken back.</p>
 
   const busy = [tx.state, approveTx.state].some((s) =>
     ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(s.phase),
@@ -74,6 +85,13 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
     if (r) {
       setApprovedNow(null)
       void refetchAllowance()
+      setDone(
+        functionName === 'topUp'
+          ? `Added ${usdc(args[1] as bigint)} USDC. The budget is now ${usdc(cert.faceValue + (args[1] as bigint))} USDC.`
+          : functionName === 'extend'
+            ? `Extended. It now ends ${dayTimeLabel(args[1] as bigint)}.`
+            : `Took back ${usdc(cert.faceValue - cert.redeemed)} USDC.`,
+      )
       setPanel(null)
       onDone()
     }
@@ -84,8 +102,12 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
     const left = cert.faceValue - cert.redeemed
     return (
       <div className="mt-4">
+        {doneLine}
         <p className="text-sm text-ink-2">
-          Expired {utcDate(cert.expiresAt)}. {left > 0n ? `${usdc(left)} USDC was not spent.` : 'Everything was spent.'}
+          Ended <span suppressHydrationWarning>{dayTimeLabel(cert.expiresAt)}</span>.{' '}
+          {left > 0n
+            ? `${usdc(left)} USDC was not spent. Take it back with one network transaction.`
+            : 'Everything was spent.'}
         </p>
         <button
           type="button"
@@ -101,12 +123,8 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
   }
 
   // ── Top up / Extend ──
-  let add: bigint | null = null
-  try {
-    add = /^\d+(\.\d{1,6})?$/.test(amount.trim()) ? parseUnits(amount.trim(), 6) : null
-  } catch {
-    add = null
-  }
+  // a decimal comma works too; never a float (§22.5 h)
+  const add = parseAmount(amount)
   const problems: string[] = []
   if (panel === 'topup') {
     if (!add) problems.push('Enter an amount above 0 (up to 6 decimals).')
@@ -121,6 +139,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
 
   return (
     <div className="mt-4">
+      {doneLine}
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Budget actions</legend>
         {(
@@ -186,7 +205,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
             id={`${ids}-amt`}
             inputMode="decimal"
             value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(',', '.'))}
+            onChange={(e) => setAmount(e.target.value)}
             className="min-h-11 rounded border border-line bg-paper px-3 font-mono"
           />
           {problems.map((p) => (
@@ -194,8 +213,20 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
               {p}
             </p>
           ))}
+          {add !== null && add > 0n && (
+            <ol className="grid gap-1 text-sm">
+              <li className={needsApproval ? 'font-medium text-ink' : 'text-ink-2 line-through decoration-ink/30'}>
+                Step 1 of 2: let the contract move exactly {usdc(add)} USDC from your wallet. Nothing is sent yet.
+              </li>
+              <li className={needsApproval ? 'text-ink-2' : 'font-medium text-ink'}>
+                Step 2 of 2: add {usdc(add)} USDC to this budget. It still pays only the same seller.
+              </li>
+            </ol>
+          )}
           <button type="submit" className={buttonClass('primary')} disabled={busy || problems.length > 0 || !wallet}>
-            {needsApproval ? `1 · Approve ${amount} USDC` : `Top up ${amount} USDC`}
+            {needsApproval
+              ? `Step 1 of 2: Approve ${add ? usdc(add) : amount} USDC`
+              : `Step 2 of 2: Add ${add ? usdc(add) : amount} USDC`}
           </button>
           <TxStatus state={approveTx.state} explorer={chain.explorer} />
           <TxStatus state={tx.state} explorer={chain.explorer} onCheck={(h) => void tx.watch(h)} />
@@ -205,8 +236,8 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
       {panel === 'extend' && (
         <div id={`${ids}-extend`} className="mt-3 grid gap-2 rounded border border-line p-4">
           <p className="text-sm">
-            Now valid until <strong>{utcDate(cert.expiresAt)}</strong>. Extending keeps the money reserved for the same
-            seller for longer. You can’t shorten it.
+            Now ends <strong suppressHydrationWarning>{dayTimeLabel(cert.expiresAt)}</strong>. Extending keeps the money
+            reserved for the same seller for longer. You can’t shorten it.
           </p>
           <div className="flex flex-wrap gap-2">
             {EXTENSIONS.map((x) => {
@@ -217,7 +248,7 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
                   key={x.label}
                   type="button"
                   disabled={busy || tooFar || !wallet}
-                  title={tooFar ? 'A budget can last at most 365 days from now.' : undefined}
+                  aria-describedby={tooFar ? `${ids}-toofar` : undefined}
                   onClick={() => void send('extend', [cert.id, next])}
                   className={buttonClass('secondary')}
                 >
@@ -226,6 +257,11 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
               )
             })}
           </div>
+          {EXTENSIONS.some((x) => cert.expiresAt + x.s > now + MAX_LIFETIME) && (
+            <p id={`${ids}-toofar`} className="text-xs text-ink-2">
+              A budget can last at most 365 days from now, so longer options are off.
+            </p>
+          )}
           <TxStatus state={tx.state} explorer={chain.explorer} onCheck={(h) => void tx.watch(h)} />
         </div>
       )}

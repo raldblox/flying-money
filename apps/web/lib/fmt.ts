@@ -27,3 +27,24 @@ export function relTime(unixSeconds: bigint | number, now = Date.now() / 1000): 
 
 export const utcDate = (unixSeconds: bigint | number) =>
   `${new Date(Number(unixSeconds) * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC`
+
+/** "Fri 24 Oct": a readable date with a month name, in the viewer's time zone (§22.5 h). */
+export const dayLabel = (unixSeconds: bigint | number) =>
+  new Date(Number(unixSeconds) * 1000)
+    .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(',', '')
+
+/** "Fri 24 Oct, 18:00" in the viewer's time zone. */
+export const dayTimeLabel = (unixSeconds: bigint | number) =>
+  `${dayLabel(unixSeconds)}, ${new Date(Number(unixSeconds) * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+
+/**
+ * A typed USDC amount → base units, or null. Accepts a decimal point or a decimal comma ("3,50"), up to 6 decimals,
+ * no thousands separators. Never goes through a float.
+ */
+export function parseAmount(input: string): bigint | null {
+  const t = input.trim()
+  const m = /^(\d+)(?:[.,](\d{1,6}))?$/.exec(t)
+  if (!m) return null
+  return BigInt(m[1]!) * 1_000_000n + BigInt((m[2] ?? '').padEnd(6, '0') || '0')
+}

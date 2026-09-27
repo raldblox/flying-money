@@ -39,8 +39,8 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await expect(page.getByText('New payee: you haven’t verified this address')).toBeVisible()
   const spender = privateKeyToAccount(state().spenderKey).address
   await page.getByRole('textbox', { name: 'Agent (spender) address' }).fill(spender)
-  await page.getByRole('button', { name: /Approve 5 USDC/ }).click()
-  await page.getByRole('button', { name: 'Create the budget' }).click()
+  await page.getByRole('button', { name: /Approve 5.00 USDC/ }).click()
+  await page.getByRole('button', { name: /Create the budget/ }).click()
   await expect(page.getByText('Budget created.')).toBeVisible({ timeout: 60_000 })
   const id = (await page.locator('p.font-mono.break-all').first().textContent())!.trim()
   expect(id).toMatch(/^0x[0-9a-f]{64}$/)

@@ -15,12 +15,13 @@ import { decodeOffer, type Hex, type Offer } from '@flying-money/core'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { GrantSummary } from '@/components/grant-summary'
 import { useOnline } from '@/components/offline-ready'
 import { QrCode } from '@/components/qr'
 import { QrScanner } from '@/components/qr-scanner'
 import { buttonClass } from '@/components/section'
 import { loadCertificate } from '@/lib/chain'
-import { short, usdc, utcDate } from '@/lib/fmt'
+import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
 import { unsealKey, validPin } from '@/lib/pin-vault'
 import { holdLock } from '@/lib/till'
 import {
@@ -339,11 +340,24 @@ function Home({
                 <p className="mt-2 font-display text-4xl font-semibold lining-nums">
                   {usdc(left)} <span className="text-base font-normal text-ink-2">USDC left · on this phone</span>
                 </p>
-                <p className="mt-1 text-sm text-ink-2 lining-nums">
-                  of {usdc(c.faceValue)} · {expired ? 'expired' : `valid until ${utcDate(c.expiresAt)}`}
+                <p className="mt-1 text-sm text-ink-2 lining-nums" suppressHydrationWarning>
+                  of {usdc(c.faceValue)} · {expired ? 'ended' : `until ${dayLabel(c.expiresAt)}`}
                   {onChain[e.id] !== undefined && ` · collected by the shop so far: ${usdc(onChain[e.id]!)}`}
                 </p>
-                <p className="mt-1 font-mono text-xs text-ink-2">Only valid at {short(e.payee)}</p>
+                {/* the seller's name from the hand-over, not a raw address (§22.5 e) */}
+                <GrantSummary
+                  className="mt-2 text-sm"
+                  amount={c.faceValue}
+                  seller={e.label && e.label !== 'Budget' ? e.label : short(e.payee)}
+                  user="this phone"
+                  expiresAt={c.expiresAt}
+                  test={!getChain(e.chain).mainnet}
+                  perspective="holder"
+                />
+                <details className="mt-1 text-xs text-ink-2">
+                  <summary className="cursor-pointer">Seller address</summary>
+                  <span className="break-all font-mono">{e.payee}</span>
+                </details>
               </li>
             )
           })}

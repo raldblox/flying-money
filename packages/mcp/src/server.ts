@@ -46,7 +46,7 @@ function httpUrl(u: string): URL {
 /**
  * The Flying Money MCP server (BUILD_SPEC §8.4, §21.4.5): lets any MCP agent (Claude, Hermes, …) pay APIs from a
  * budget, and ask its owner for one. Six tools; none can approve, issue or top up a budget (that is the owner's own
- * on-chain action in the Counting House, R3), and none returns the spending key.
+ * on-chain action in the web app, R3), and none returns the spending key.
  */
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   const fm = cfg.client
@@ -74,7 +74,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     {
       title: 'Flying Money: budget status',
       description:
-        'Your Flying Money certificates: chain, the one payee each can pay, face value, spent, remaining and expiry (USDC). Read-only.',
+        'Your Flying Money budgets: chain, the one seller each can pay, amount, spent, remaining and end date (USDC). Read-only.',
       inputSchema: {},
     },
     async () => {
@@ -95,18 +95,18 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       await fm.ready
       const lines = fm.status().map((c) => {
         const ch = getChainById(c.chainId)?.chain.name ?? c.chain
-        return `- Certificate ${c.id} on ${ch}: you can pay ONLY ${c.payee}, up to ${usdc(c.remaining)} USDC more (of ${usdc(c.faceValue)}), until ${new Date(Number(c.expiresAt) * 1000).toISOString()}.`
+        return `- Budget ${c.id} on ${ch}: you can pay ONLY ${c.payee}, up to ${usdc(c.remaining)} USDC more (of ${usdc(c.faceValue)}), until ${new Date(Number(c.expiresAt) * 1000).toISOString()}. It can't be cancelled early; after the end date your owner can take back what's left.`
       })
       return text(
         [
-          'You pay APIs with Flying Money certificates. Rules:',
+          'You pay APIs with Flying Money budgets. Rules:',
           ...(lines.length
             ? lines
-            : ['- You have no usable certificate. Ask your funder to issue one in the Counting House.']),
+            : ['- You have no usable budget. Ask your owner for one with fm_request_budget (or on the Flying Money site).']),
           `- A single request may cost at most ${usdc(cfg.maxPricePerRequest)} USDC.`,
-          '- You can only pay the payee named on a certificate, never anyone else, and never more than its face value.',
+          '- You can only pay the seller named on a budget, never anyone else, and never more than its amount.',
           '- Use fm_quote to see a price before paying, and fm_paid_fetch to pay. Failed requests are not charged.',
-          '- You cannot raise your own budget. Only the funder can top up or extend a certificate.',
+          '- You cannot raise your own budget. Only your owner can top up or extend it.',
         ].join('\n'),
       )
     },
@@ -152,7 +152,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     {
       title: 'Flying Money: paid fetch',
       description:
-        'Fetch a URL from a Flying Money paid API, paying with a sealed note from your certificate. Refuses prices above max_price (USDC) or the per-request cap. Returns the response body and the payment receipt.',
+        'Fetch a URL from a Flying Money paid API, paying with a signed payment slip from your budget. Refuses prices above max_price (USDC) or the per-request cap. Returns the response body and the payment receipt.',
       inputSchema: {
         url: z.string().describe('Absolute http(s) URL'),
         method: z.enum(['GET', 'POST']).optional().describe('HTTP method (default GET)'),
@@ -190,13 +190,13 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       } catch (e) {
         const msg =
           e instanceof InsufficientBudgetError
-            ? 'Not paid: this would go past the certificate’s face value. Your budget is used up; ask the funder to top it up.'
+            ? 'Not paid: this would go past the budget’s amount. Your budget is used up; ask your owner to top it up.'
             : e instanceof PriceTooHighError
               ? `Not paid: the price (${usdc(e.offer.price)} USDC) is above ${
                   max_price !== undefined && e.max < cfg.maxPricePerRequest ? 'your max_price' : 'your per-request cap'
                 } of ${usdc(e.max)} USDC. Nothing was signed.`
               : e instanceof NoCertificateError
-                ? 'Not paid: none of your certificates can pay this seller (wrong payee or chain, or not enough time or budget left).'
+                ? 'Not paid: none of your budgets can pay this seller (wrong seller or chain, or not enough time or money left).'
                 : e instanceof PaymentRejectedError
                   ? `Not paid: the seller refused the note (${e.reason ?? e.status}).`
                   : e instanceof PendingUnresolvedError

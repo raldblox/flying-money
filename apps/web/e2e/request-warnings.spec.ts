@@ -30,7 +30,7 @@ test('an unknown agent asking to pay an unknown service is flagged, and needs an
   await expect(approve).toBeEnabled()
   await approve.click()
   // the warning stays in view while funding
-  await expect(page.getByRole('button', { name: /Approve 2 USDC/ })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('button', { name: /Approve 2.00 USDC/ })).toBeVisible({ timeout: 30_000 })
   await expect(banner).toBeVisible()
   if (process.env.E2E_SHOTS) {
     await page.setViewportSize({ width: 375, height: 812 })

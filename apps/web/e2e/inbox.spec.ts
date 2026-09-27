@@ -77,8 +77,8 @@ test('an agent asks through the inbox; the owner sees it, funds it, and the inbo
   await expect(page.getByText('Check before you pay')).toBeVisible({ timeout: 90_000 })
   await page.getByText('I asked my agent for this, and I’ve checked both addresses').click()
   await page.getByRole('button', { name: 'Approve and fund…' }).click()
-  await page.getByRole('button', { name: /Approve 2 USDC/ }).click()
-  await page.getByRole('button', { name: 'Fund the budget' }).click({ timeout: 60_000 })
+  await page.getByRole('button', { name: /Approve 2.00 USDC/ }).click()
+  await page.getByRole('button', { name: /Fund the budget/ }).click({ timeout: 60_000 })
   await expect(page.getByText('Approved. The budget is locked.')).toBeVisible({ timeout: 60_000 })
 
   // the inbox verified the funding on-chain before recording it (R2)

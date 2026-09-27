@@ -4,11 +4,13 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { AddressPill } from '@/components/address-pill'
 import { AutoRefresh } from '@/components/auto-refresh'
+import { GrantSummary } from '@/components/grant-summary'
 import { Seal } from '@/components/seal'
 import { StatusChip } from '@/components/status-chip'
 import { Tally } from '@/components/tally'
 import { certificateTimeline, loadCertificate, type TimelineEvent } from '@/lib/chain'
 import { relTime, short, usdc, utcDate } from '@/lib/fmt'
+import { budgetState, STATUS_LABEL } from '@/lib/glossary'
 import { SITE } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -56,10 +58,21 @@ export default async function CertificatePage({ params }: { params: Params }) {
         <h1 className="font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           Budget <span className="font-mono text-3xl sm:text-4xl">{short(id, 6, 4)}</span>
         </h1>
-        <StatusChip kind={status}>{status[0]!.toUpperCase() + status.slice(1)}</StatusChip>
+        <StatusChip kind={status}>{STATUS_LABEL[budgetState(cert, now)]}</StatusChip>
         <Seal size={40} label="Issued on-chain" />
         {status === 'open' && <AutoRefresh />}
       </div>
+
+      <GrantSummary
+        className="mt-4 max-w-3xl"
+        amount={cert.faceValue}
+        seller={short(cert.payee)}
+        user={short(cert.spender)}
+        expiresAt={cert.expiresAt}
+        test={!chain.mainnet}
+        perspective="holder"
+        funder={short(cert.funder)}
+      />
 
       {served && status !== 'closed' && (
         <section aria-labelledby="spend" className="mt-8 sheet grid gap-4 p-6 sm:grid-cols-3">
@@ -97,10 +110,10 @@ export default async function CertificatePage({ params }: { params: Params }) {
           <Row label="Face value">
             <span className="font-mono tabular-nums">{usdc(cert.faceValue)} USDC</span>
           </Row>
-          <Row label={cert.closed ? 'Leftovers returned' : 'Not collected yet'}>
+          <Row label={cert.closed ? 'Taken back by the funder' : 'Not collected yet'}>
             <span className="font-mono tabular-nums">{usdc(remaining)} USDC</span>
           </Row>
-          <Row label="Expires">
+          <Row label="Ends">
             <span>
               {utcDate(cert.expiresAt)} <span className="text-ink-2">({relTime(cert.expiresAt)})</span>
             </span>
@@ -114,8 +127,8 @@ export default async function CertificatePage({ params }: { params: Params }) {
         </div>
         {status !== 'closed' && (
           <p className="mt-3 text-sm text-ink-2">
-            Whatever isn’t collected goes back to whoever funded it after the end date: they take it back from their
-            Dashboard. Nobody can cancel it early.
+            After the end date, whoever funded it can take back what wasn’t collected, with one network transaction.
+            Nobody can cancel it early.
           </p>
         )}
       </section>
