@@ -23,7 +23,10 @@ export function Hero() {
             Fund a budget for a seller you choose. Use it yourself, or let a person or an AI assistant use it. See what
             was spent and what’s left.
           </p>
-          <DoorToggle className="mt-6" />
+          <div className="mt-6">
+            <ButtonLink href="/start">Get started →</ButtonLink>
+          </div>
+          <DoorToggle className="mt-8" />
           <DoorStack
             className="mt-5"
             agents={
@@ -35,9 +38,11 @@ export function Hero() {
                   back what’s left.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
-                  <ButtonLink href="/demo">Watch an agent pay →</ButtonLink>
-                  <ButtonLink href="/docs/agents" variant="secondary">
-                    Add it to your agent
+                  <ButtonLink href="/demo" variant="secondary">
+                    Watch an agent pay
+                  </ButtonLink>
+                  <ButtonLink href="/app/connect" variant="secondary">
+                    Connect your assistant
                   </ButtonLink>
                 </div>
               </>
@@ -50,7 +55,9 @@ export function Hero() {
                   pay a network fee. After the end date, you can take back what they didn’t spend.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
-                  <ButtonLink href="/shops">See how a café uses it →</ButtonLink>
+                  <ButtonLink href="/shops" variant="secondary">
+                    See how a café uses it
+                  </ButtonLink>
                   <ButtonLink href="/shop" variant="secondary">
                     Open a till for your shop
                   </ButtonLink>

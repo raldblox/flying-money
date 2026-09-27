@@ -8,6 +8,8 @@ import { buttonClass } from '@/components/section'
 import { TestNote } from '@/components/test-note'
 import { short } from '@/lib/fmt'
 import { useInbox } from '@/lib/use-inbox'
+import { e2eMode } from '@/lib/wagmi'
+import { hasBrowserWallet, walletAppLinks } from '@/lib/wallet-apps'
 import { useAccountCtx } from './context'
 
 const NAV = [
@@ -103,7 +105,12 @@ function NetworkNote() {
 /** Connect first, then the right network; pages only render for a connected wallet on the account's network. */
 function WalletGate({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    const t = setTimeout(() => setSlow(true), 3000)
+    return () => clearTimeout(t)
+  }, [])
   const { chain } = useAccountCtx()
   const { address, isConnected, isReconnecting, isConnecting } = useAccount()
   const walletChainId = useChainId()
@@ -113,27 +120,54 @@ function WalletGate({ children }: { children: ReactNode }) {
   // contacts are local to this device, and connecting an assistant only needs an address: they work without a wallet
   const needsWallet = !['/app/people', '/app/places', '/app/connect'].some((p) => path.startsWith(p))
 
-  if (!mounted || isReconnecting || isConnecting)
+  // never an empty placeholder for more than 3 s (§22.10 d): a reconnect that hangs falls through to the choices
+  if (!mounted || ((isReconnecting || isConnecting) && !slow))
     return <div className="sheet h-64 animate-pulse motion-reduce:animate-none" aria-busy="true" />
-  if (needsWallet && !isConnected)
+  if (needsWallet && !isConnected) {
+    const noWallet = !e2eMode && !hasBrowserWallet()
     return (
-      <div className="sheet grid place-items-center gap-4 px-6 py-16 text-center">
-        <p className="font-display text-4xl font-semibold">Connect your wallet</p>
-        <p className="max-w-md text-ink-2">
-          Your budgets, requests and payments are read from the blockchain for your wallet’s address. Nothing is stored
-          by us.
+      <div className="sheet grid justify-items-center gap-4 px-6 py-12 text-center">
+        <p className="font-display text-4xl font-semibold">
+          {noWallet ? 'This needs a wallet' : 'Connect your wallet'}
         </p>
-        {connectors.slice(0, 1).map((c) => (
-          <button
-            key={c.uid}
-            type="button"
-            onClick={() => connect({ connector: c })}
-            disabled={isPending}
-            className={buttonClass('primary')}
-          >
-            {isPending ? 'Connecting…' : 'Connect wallet'}
-          </button>
-        ))}
+        <p className="max-w-md text-ink-2">
+          {noWallet
+            ? 'Giving a budget and collecting payments use a crypto wallet: it holds the test USDC you give from, and you approve each step in it. This browser doesn’t have one.'
+            : 'Your budgets, requests and payments are read from the blockchain for your wallet’s address. Nothing is stored by us.'}
+        </p>
+        {noWallet ? (
+          <div className="grid w-full max-w-md gap-3 text-left">
+            <div className="rounded-md border border-line p-4">
+              <p className="font-medium">On a phone</p>
+              <p className="text-sm text-ink-2">Open this page inside your wallet app’s browser:</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {walletAppLinks(window.location.href).map((l) => (
+                  <a key={l.name} href={l.href} className={buttonClass('secondary')}>
+                    Open in {l.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-md border border-line p-4">
+              <p className="font-medium">On a computer</p>
+              <p className="text-sm text-ink-2">
+                Add a browser wallet such as MetaMask, Rabby or Coinbase Wallet, then reload this page.
+              </p>
+            </div>
+          </div>
+        ) : (
+          connectors.slice(0, 1).map((c) => (
+            <button
+              key={c.uid}
+              type="button"
+              onClick={() => connect({ connector: c })}
+              disabled={isPending}
+              className={buttonClass('primary')}
+            >
+              {isPending ? 'Connecting…' : 'Connect wallet'}
+            </button>
+          ))
+        )}
         {error && (
           <p role="alert" className="text-sm text-seal">
             {/no provider|not found/i.test(error.message)
@@ -141,8 +175,25 @@ function WalletGate({ children }: { children: ReactNode }) {
               : error.message.split('\n')[0]}
           </p>
         )}
+        <div className="mt-2 grid max-w-md gap-1 border-t border-line pt-4 text-sm text-ink-2">
+          <p>
+            Someone gave you a budget? You don’t need a crypto wallet:{' '}
+            <Link href="/wallet" className="text-indigo underline">
+              open it here
+            </Link>
+            .
+          </p>
+          <p>
+            Want your AI assistant to pay?{' '}
+            <Link href="/app/connect" className="text-indigo underline">
+              Connect it with just your address
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     )
+  }
   return (
     <>
       {isConnected && walletChainId !== chain.chain.id && (

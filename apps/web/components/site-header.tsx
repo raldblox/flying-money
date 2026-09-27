@@ -7,6 +7,7 @@ import { SITE } from '@/lib/site'
 import { deployedChains } from '@/lib/wagmi'
 
 const nav = [
+  { href: '/demo', label: 'Demo' },
   { href: '/docs/agents', label: 'Agents' },
   { href: '/shops', label: 'Shops' },
   { href: '/docs', label: 'Docs' },
@@ -58,23 +59,23 @@ export function SiteHeader() {
             ))}
           </ul>
           <AccountButton />
-          <Link href="/demo" className={`${buttonClass('primary')} min-h-10 px-4 text-sm`}>
-            Try the demo
+          <Link href="/start" className={`${buttonClass('primary')} min-h-10 px-4 text-sm`}>
+            Get started
           </Link>
         </nav>
 
         {/* mobile: a fixed panel, so opening it never moves the header */}
         <div className="flex items-center gap-2 md:hidden">
           <AccountButton compact />
-          {/* on the narrowest phones the Demo button moves into the menu so the Testnet badge stays readable */}
+          {/* on the narrowest phones the button moves into the menu so the Testnet badge stays readable */}
           <span className="hidden min-[420px]:block">
-            <Link href="/demo" className={`${buttonClass('primary')} min-h-10 px-3 text-sm`}>
-              Demo
+            <Link href="/start" className={`${buttonClass('primary')} min-h-10 px-3 text-sm`}>
+              Get started
             </Link>
           </span>
           <MobileMenu
             items={[
-              { href: '/demo', label: 'Demo' },
+              { href: '/start', label: 'Get started' },
               ...nav,
               { href: '/app', label: 'Open app' },
               { href: '/wallet', label: 'Wallet' },

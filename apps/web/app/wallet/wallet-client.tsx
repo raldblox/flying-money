@@ -232,8 +232,45 @@ function SetPin({
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [busy, setBusy] = useState(false)
+  // opened directly, with nothing to add: say what this wallet is before asking for a PIN (§22.10 d)
+  const [explained, setExplained] = useState(Boolean(intro))
   const ids = useId()
   const ok = validPin(a) && a === b
+  if (!explained)
+    return (
+      <section className="sheet mt-6 grid gap-5 p-6" aria-labelledby="wallet-what">
+        <h1 id="wallet-what" className="font-display text-4xl font-semibold">
+          Your wallet for budgets
+        </h1>
+        <TestNote />
+        <p className="text-lg text-ink-2">
+          This is where you keep budgets someone gave you, like lunch money for the canteen. You pay at the counter by
+          showing a QR code. You don’t need a crypto wallet, and you never pay a network fee.
+        </p>
+        <p className="text-ink-2">
+          Got a budget link? Open that link on this phone and it lands here. Or set up now and add it later.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className={buttonClass('primary')} onClick={() => setExplained(true)}>
+            Set up my wallet
+          </button>
+        </div>
+        <div className="grid gap-1 border-t border-line pt-4 text-sm text-ink-2">
+          <p>
+            Want to give someone a budget instead?{' '}
+            <a href="/app/give?for=person" className="text-indigo underline">
+              Give a budget
+            </a>
+          </p>
+          <p>
+            Take payments at a shop?{' '}
+            <a href="/shop" className="text-indigo underline">
+              Open a till
+            </a>
+          </p>
+        </div>
+      </section>
+    )
   return (
     <form
       className="sheet mt-6 grid gap-5 p-6"

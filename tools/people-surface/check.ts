@@ -51,6 +51,7 @@ export const SCOPE = [
   'app/wallet',
   'app/shop',
   'app/page.tsx',
+  'app/start',
   'components/hero.tsx',
   'components/door.tsx',
   'components/step-explorer.tsx',
