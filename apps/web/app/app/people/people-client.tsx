@@ -92,6 +92,9 @@ function Backup({ onChanged }: { onChanged: () => Promise<void> }) {
       <label htmlFor={`${ids}-p`} className="mt-3 block text-sm font-medium">
         Passphrase (8+ characters)
       </label>
+      <p id={`${ids}-why`} className="text-xs text-ink-2">
+        Export and import need the passphrase first.
+      </p>
       <input
         id={`${ids}-p`}
         type="password"
@@ -117,12 +120,15 @@ function Backup({ onChanged }: { onChanged: () => Promise<void> }) {
         >
           Export
         </button>
-        <label
-          htmlFor={`${ids}-f`}
-          className={`${buttonClass('secondary')} ${ok ? 'cursor-pointer' : 'pointer-events-none opacity-50'}`}
-        >
-          Import
-        </label>
+        {ok ? (
+          <label htmlFor={`${ids}-f`} className={`${buttonClass('secondary')} cursor-pointer`}>
+            Import
+          </label>
+        ) : (
+          <button type="button" disabled className={buttonClass('secondary')} aria-describedby={`${ids}-why`}>
+            Import
+          </button>
+        )}
         <input
           id={`${ids}-f`}
           type="file"

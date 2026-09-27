@@ -19,7 +19,7 @@ export function DocsNav({ current }: { current?: string }) {
                   <a
                     href={`/docs/${d.slug}`}
                     aria-current={current === d.slug ? 'page' : undefined}
-                    className={`block rounded px-2 py-1.5 hover:bg-paper-2 ${current === d.slug ? 'bg-paper-2 font-medium text-seal' : 'text-ink'}`}
+                    className={`block rounded px-2 py-1.5 hover:bg-paper-2 ${current === d.slug ? 'border-l-2 border-seal bg-paper-2 font-medium text-ink' : 'text-ink'}`}
                   >
                     {d.title}
                   </a>

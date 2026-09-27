@@ -18,6 +18,10 @@ export interface ExplorerStep {
 export function StepExplorer({ steps, cast }: { steps: ExplorerStep[]; cast: 'agents' | 'people' }) {
   const [active, setActive] = useState(0)
   const [auto, setAuto] = useState(true)
+  // reduced motion: never advance by itself (§22.5 h)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) setAuto(false)
+  }, [])
   const [visible, setVisible] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -77,9 +81,16 @@ export function StepExplorer({ steps, cast }: { steps: ExplorerStep[]; cast: 'ag
           )
         })}
       </ol>
-      <figure className="sheet p-3 sm:p-4">
+      <figure className="sheet relative p-3 sm:p-4">
+        <button
+          type="button"
+          onClick={() => setAuto(!auto)}
+          className="absolute right-3 top-3 z-10 min-h-9 rounded-[3px] border border-ink/25 bg-paper px-3 text-xs font-medium hover:border-ink focus-visible:outline-2 focus-visible:outline-indigo"
+        >
+          {auto ? 'Pause' : 'Play'}
+        </button>
         <MoneyFlow step={current.flow} cast={cast} className="w-full" />
-        <figcaption className="sr-only" aria-live="polite">
+        <figcaption className="sr-only" aria-live={auto ? 'off' : 'polite'}>
           Step {active + 1}: {current.t}. {current.d}
         </figcaption>
       </figure>

@@ -71,7 +71,7 @@ export function FunderActions({
   // a confirmed action says so and stays said, even after the list refreshes (§22.5 c)
   const doneLine = done && (
     <p role="status" className="mt-4 flex items-center gap-2 text-sm font-medium text-ink">
-      <span aria-hidden className="grid size-5 place-items-center rounded-full bg-seal text-xs text-on-seal">
+      <span aria-hidden className="grid size-5 place-items-center rounded-full bg-seal-button text-xs text-on-seal">
         ✓
       </span>
       {done}

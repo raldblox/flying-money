@@ -13,7 +13,7 @@ import {
 type Verdict = 'protected' | 'bounded' | 'your-risk' | 'by-design'
 
 const VERDICT: Record<Verdict, { label: string; className: string }> = {
-  protected: { label: 'Protected', className: 'border-celadon text-celadon' },
+  protected: { label: 'Protected', className: 'border-celadon bg-celadon/15 text-ink' },
   bounded: { label: 'Limited', className: 'border-ochre text-ochre' },
   'your-risk': { label: 'Your risk', className: 'border-amber text-amber' },
   'by-design': { label: 'By design', className: 'border-indigo text-indigo' },

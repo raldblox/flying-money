@@ -168,7 +168,7 @@ export function AllowRequests({
                 <span>
                   Up to <strong>{g.maxPerRequest} USDC</strong> per request · until{' '}
                   {new Date(g.expiresAt * 1000).toLocaleDateString()}{' '}
-                  <span className={state === 'Active' ? 'text-celadon' : 'text-ink-2'}>· {state}</span>
+                  <span className={state === 'Active' ? 'text-ink' : 'text-ink-2'}>· {state}</span>
                 </span>
                 {state === 'Active' && (
                   <button type="button" className="text-seal underline" onClick={() => void revoke(g.grantId)}>

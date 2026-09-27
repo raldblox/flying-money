@@ -121,7 +121,22 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
             Paid to <span className="font-mono">{short(payee)}</span> on {chain.chain.name}
           </p>
         </div>
-        <div role="tablist" aria-label="Till" className="flex gap-1 rounded-[4px] border border-ink/25 bg-paper/70 p-1">
+        {/* the tab pattern: arrow keys move between tabs, each tab controls its panel (§22.5 h) */}
+        <div
+          role="tablist"
+          aria-label="Till"
+          className="flex gap-1 rounded-[4px] border border-ink/25 bg-paper/70 p-1"
+          onKeyDown={(e) => {
+            const order: Tab[] = ['sell', 'ledger', 'settings']
+            const i = order.indexOf(tab)
+            const next =
+              e.key === 'ArrowRight' ? order[(i + 1) % 3] : e.key === 'ArrowLeft' ? order[(i + 2) % 3] : undefined
+            if (!next) return
+            e.preventDefault()
+            setTab(next)
+            document.getElementById(`till-tab-${next}`)?.focus()
+          }}
+        >
           {(
             [
               ['sell', 'Sell'],
@@ -131,9 +146,12 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
           ).map(([k, label]) => (
             <button
               key={k}
+              id={`till-tab-${k}`}
               type="button"
               role="tab"
               aria-selected={tab === k}
+              aria-controls="till-panel"
+              tabIndex={tab === k ? 0 : -1}
               onClick={() => setTab(k)}
               className={`min-h-10 rounded-[3px] px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-indigo ${tab === k ? 'bg-ink text-paper' : 'text-ink-2 hover:text-ink'}`}
             >
@@ -142,7 +160,7 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
           ))}
         </div>
       </div>
-      <div className="mt-6">
+      <div id="till-panel" role="tabpanel" aria-labelledby={`till-tab-${tab}`} className="mt-6">
         {tab === 'sell' && <Sell till={till} />}
         {tab === 'ledger' && <Ledger till={till} chainKey={chainKey} online={online} />}
         {tab === 'settings' && <Settings till={till} />}

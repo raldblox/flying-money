@@ -84,21 +84,31 @@ export function OpenShop() {
         )}
       </div>
       <div className="flex flex-wrap gap-3">
-        <a
-          href={ok ? pos : undefined}
-          aria-disabled={!ok}
-          className={`${buttonClass('primary')} ${ok ? '' : 'pointer-events-none opacity-50'}`}
-        >
-          Open the till →
-        </a>
-        <a
-          href={ok ? page : undefined}
-          aria-disabled={!ok}
-          className={`${buttonClass('secondary')} ${ok ? '' : 'pointer-events-none opacity-50'}`}
-        >
-          Shop page and counter QR
-        </a>
+        {ok ? (
+          <>
+            <a href={pos} className={buttonClass('primary')}>
+              Open the till →
+            </a>
+            <a href={page} className={buttonClass('secondary')}>
+              Shop page and counter QR
+            </a>
+          </>
+        ) : (
+          <>
+            <button type="button" disabled aria-describedby="shop-why" className={buttonClass('primary')}>
+              Open the till →
+            </button>
+            <button type="button" disabled aria-describedby="shop-why" className={buttonClass('secondary')}>
+              Shop page and counter QR
+            </button>
+          </>
+        )}
       </div>
+      {!ok && (
+        <p id="shop-why" className="text-sm text-ink-2">
+          Enter your shop’s name and the address that receives payments first.
+        </p>
+      )}
       <p className="text-sm text-ink-2">
         Bookmark the till on the device you will use at the counter, and open it once while online so it works offline
         afterwards. Nothing about your shop is stored on a server: the name lives in the link and on your device.

@@ -92,7 +92,7 @@ export function AccountHome() {
                 href={a.href}
                 className="group flex h-full flex-col gap-3 rounded-md border border-line bg-paper p-4 transition-colors hover:border-seal focus-visible:outline-2 focus-visible:outline-indigo"
               >
-                <span className="grid size-11 place-items-center rounded-full bg-seal text-on-seal transition-transform group-hover:scale-105">
+                <span className="grid size-11 place-items-center rounded-full bg-seal-button text-on-seal transition-transform group-hover:scale-105">
                   <svg
                     viewBox="0 0 24 24"
                     className="size-5"

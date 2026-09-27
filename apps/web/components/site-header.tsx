@@ -36,9 +36,10 @@ export function SiteHeader() {
               </span>
               <span
                 className={`smallcaps rounded-sm border px-1.5 py-0.5 text-[0.6rem] leading-none ${mainnet ? 'border-seal text-seal' : 'border-amber/70 text-amber'}`}
-                title={mainnet ? SITE.mainnetMode : `${SITE.testnetMode} · ${live.map((c) => c.chain.name).join(', ')}`}
               >
                 {mainnet ? 'Mainnet' : 'Testnet'}
+                {/* the explanation isn't hover-only (§22.5 h); money screens also carry the test note */}
+                <span className="sr-only">{mainnet ? `: ${SITE.mainnetMode}` : `: ${SITE.testnetMode}`}</span>
               </span>
             </span>
             <span className="smallcaps hidden text-xs text-ink-2 sm:block">money that flies, since 804</span>

@@ -24,13 +24,13 @@ export function BudgetsList() {
   return (
     <div>
       <h1 className="font-display text-4xl font-semibold">Budgets</h1>
-      <div role="tablist" aria-label="Filter budgets" className="mt-5 flex flex-wrap gap-2">
+      <fieldset className="mt-5 flex flex-wrap gap-2">
+        <legend className="sr-only">Filter budgets</legend>
         {FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
-            role="tab"
-            aria-selected={filter === f.key}
+            aria-pressed={filter === f.key}
             onClick={() => setFilter(f.key)}
             className={`min-h-10 rounded-full border px-4 text-sm font-medium ${filter === f.key ? 'border-ink bg-ink text-paper' : 'border-line text-ink-2 hover:border-ink hover:text-ink'}`}
           >
@@ -38,7 +38,7 @@ export function BudgetsList() {
             <span className="ml-1.5 opacity-70">{count(f.key)}</span>
           </button>
         ))}
-      </div>
+      </fieldset>
       {q.isPending ? (
         <div className="mt-4 grid gap-2" aria-busy="true">
           {[0, 1, 2, 3].map((k) => (

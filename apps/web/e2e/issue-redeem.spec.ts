@@ -52,7 +52,9 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await shot(page, '1-home')
   // Budgets shows it under Active
   await page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Budgets' }).click()
-  await expect(page.getByRole('tab', { name: /Active/ })).toHaveAttribute('aria-selected', 'true', { timeout: 90_000 })
+  await expect(page.getByRole('button', { name: /Active/ })).toHaveAttribute('aria-pressed', 'true', {
+    timeout: 90_000,
+  })
   await expect(page.getByText('5.00 / 5.00').first()).toBeVisible({ timeout: 30_000 })
 
   await shot(page, '3-budgets')

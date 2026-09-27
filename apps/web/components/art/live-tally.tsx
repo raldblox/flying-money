@@ -206,7 +206,7 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
             className={`note-in flex items-center justify-between rounded-[3px] border border-line bg-paper/80 px-3 py-1 text-sm ${i ? 'opacity-60' : ''}`}
           >
             <span className="truncate text-ink-2">
-              <span className="text-celadon">✓</span> {f.label} <span className="text-ink-2/80">· {payee}</span>
+              <span className="text-ink">✓</span> {f.label} <span className="text-ink-2/80">· {payee}</span>
             </span>
             <span className="font-mono tabular-nums text-ink">−{fmt(f.cents)}</span>
           </div>
@@ -222,7 +222,7 @@ export function LiveTally({ face, payee, holder, expires, items, floor }: LiveTa
         <button
           type="button"
           onClick={overspend}
-          className="min-h-10 rounded-[3px] border border-seal/60 px-3 text-sm font-medium text-seal transition-colors hover:bg-seal hover:text-on-seal focus-visible:outline-2 focus-visible:outline-indigo"
+          className="min-h-10 rounded-[3px] border border-seal/60 px-3 text-sm font-medium text-seal transition-colors hover:bg-seal-button hover:text-on-seal focus-visible:outline-2 focus-visible:outline-indigo"
         >
           Try to overspend
         </button>

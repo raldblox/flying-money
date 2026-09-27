@@ -17,13 +17,13 @@ const usdc = (v: string) => {
 
 const INBOX_STATUS: Record<InboxItem['status'], { label: string; className: string }> = {
   asked: { label: 'Waiting for you', className: 'border-amber/60 text-amber' },
-  approved: { label: 'Funded', className: 'border-celadon/60 text-celadon' },
+  approved: { label: 'Funded', className: 'border-celadon bg-celadon/15 text-ink' },
   declined: { label: 'Declined', className: 'border-line text-ink-2' },
   expired: { label: 'Expired', className: 'border-line text-ink-2' },
 }
 const SEEN_STATUS: Record<SeenRequest['status'], { label: string; className: string }> = {
   waiting: { label: 'Waiting for you', className: 'border-amber/60 text-amber' },
-  funded: { label: 'Funded', className: 'border-celadon/60 text-celadon' },
+  funded: { label: 'Funded', className: 'border-celadon bg-celadon/15 text-ink' },
   declined: { label: 'Declined', className: 'border-line text-ink-2' },
 }
 

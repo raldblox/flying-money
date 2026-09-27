@@ -46,7 +46,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                     <>
                       <span
                         aria-hidden
-                        className="ml-auto grid min-w-5 place-items-center rounded-full bg-seal px-1.5 text-xs font-semibold text-on-seal"
+                        className="ml-auto grid min-w-5 place-items-center rounded-full bg-seal-button px-1.5 text-xs font-semibold text-on-seal"
                       >
                         {inbox.waiting}
                       </span>

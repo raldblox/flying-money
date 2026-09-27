@@ -112,7 +112,7 @@ function Phone({ state }: { state: 'idle' | 'scan' | 'confirm' | 'code' | 'done'
             <p className="smallcaps text-[0.65rem] text-ink-2">Mia’s wallet</p>
             <p className="mt-1 font-mono text-xl tabular-nums">20.00</p>
             <p className="text-[0.7rem] text-ink-2">at Lantern Café</p>
-            <span className="mt-4 inline-block rounded bg-seal px-4 py-1.5 text-sm font-semibold text-on-seal">
+            <span className="mt-4 inline-block rounded bg-seal-button px-4 py-1.5 text-sm font-semibold text-on-seal">
               Pay
             </span>
           </div>
@@ -147,7 +147,7 @@ function Phone({ state }: { state: 'idle' | 'scan' | 'confirm' | 'code' | 'done'
         )}
         {state === 'done' && (
           <div key="done" className="caption-in">
-            <p className="text-4xl text-celadon">✓</p>
+            <p className="text-4xl text-ink">✓</p>
             <p className="mt-1 text-sm font-medium">Paid 3.50</p>
             <p className="font-mono text-lg tabular-nums">16.50 left</p>
           </div>

@@ -273,12 +273,12 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
           <Fact icon={<IconAgent className="size-9" />} label="Who asks">
             <p className="font-medium">{agentName ?? 'An agent key you haven’t saved'}</p>
             <p className="font-mono text-xs text-ink-2">{short(req.requester)}</p>
-            <p className="mt-1 text-xs text-celadon">✓ Signed by this key: the request wasn’t changed</p>
+            <p className="mt-1 text-xs text-ink">✓ Signed by this key: the request wasn’t changed</p>
           </Fact>
           <Fact icon={<IconServe className="size-9" />} label="Who can be paid">
             <p className="font-medium">{placeName}</p>
             <p className="font-mono text-xs text-ink-2">{short(req.payee)}</p>
-            <p className={`mt-1 text-xs ${place?.verified ? 'text-celadon' : 'text-amber'}`}>
+            <p className={`mt-1 text-xs ${place?.verified ? 'text-ink' : 'text-amber'}`}>
               {place ? place.badge : '⚠ Not one of your saved places: check this address'}
             </p>
           </Fact>

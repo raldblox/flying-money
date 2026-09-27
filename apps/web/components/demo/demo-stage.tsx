@@ -393,7 +393,7 @@ function ThiefRow({ attempts }: { attempts: ThiefAttempt[] }) {
               <span className="thief-shot rounded-[3px] border border-seal bg-seal/10 px-1.5 py-0.5 font-mono text-[0.7rem] text-seal">
                 slip
               </span>
-              <IconShield className="size-9 text-celadon" />
+              <IconShield className="size-9 text-ink" />
               <span className="text-xs text-ink-2">{TARGET[a.target]}</span>
             </div>
             <p className="mt-3 text-sm">{a.reason}</p>
