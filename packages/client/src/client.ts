@@ -44,13 +44,21 @@ import type {
   RequestStore,
 } from './store.js'
 
+/** Where each error code is explained (§22.6). */
+export const ERROR_DOCS = 'https://useflyingmoney.vercel.app/docs/agents'
+const docFor = (code: string) => `${ERROR_DOCS}#${code.replace(/_/g, '-')}`
+
 export class NoCertificateError extends Error {
+  readonly code = 'no_certificate'
+  readonly docUrl = docFor('no_certificate')
   constructor(public offer: Offer) {
     super('NoCertificateError: no certificate matches this offer (payee, chain, remaining face value, lifetime)')
     this.name = 'NoCertificateError'
   }
 }
 export class PriceTooHighError extends Error {
+  readonly code = 'price_too_high'
+  readonly docUrl = docFor('price_too_high')
   constructor(
     public offer: Offer,
     public max: bigint,
@@ -60,6 +68,8 @@ export class PriceTooHighError extends Error {
   }
 }
 export class InsufficientBudgetError extends Error {
+  readonly code = 'insufficient_budget'
+  readonly docUrl = docFor('insufficient_budget')
   constructor(
     public certificateId: Hex,
     public needed: bigint,
@@ -71,6 +81,8 @@ export class InsufficientBudgetError extends Error {
 }
 /** The seller rejected the note without a receipt (never admitted). The pending note was cleared (D3). */
 export class PaymentRejectedError extends Error {
+  readonly code = 'payment_rejected'
+  readonly docUrl = docFor('payment_rejected')
   constructor(
     public status: number,
     public reason: string | null,
@@ -82,6 +94,8 @@ export class PaymentRejectedError extends Error {
 }
 /** The pending note could not be delivered yet. It stays pending and is resent (never re-signed) later. */
 export class PendingUnresolvedError extends Error {
+  readonly code = 'pending_unresolved'
+  readonly docUrl = docFor('pending_unresolved')
   constructor(public certificateId: Hex) {
     super('pending note not yet resolved; it will be resent')
     this.name = 'PendingUnresolvedError'

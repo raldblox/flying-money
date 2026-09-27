@@ -22,6 +22,8 @@ export interface FlyingMoneyMcpConfig {
   maxBodyChars?: number
   /** An owner is configured: the agent may ask for budgets (§21.4). */
   canRequest?: boolean
+  /** The site where the owner reviews requests (FM_REQUEST_LINK_BASE), for URL-mode elicitation of inbox requests */
+  approvalBase?: string
   fetch?: typeof fetch
 }
 
@@ -274,6 +276,27 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       : {}),
   })
 
+  /**
+   * §22.6: where the client supports URL-mode elicitation, offer the owner the approval page directly (the client
+   * shows the full URL and asks before opening it). Approval still happens only in the web app, never in chat (R3).
+   * Never blocks the tool: a client that doesn't answer within a few seconds just gets the text result.
+   */
+  async function offerApproval(r: Awaited<ReturnType<FlyingMoneyClient['requestBudget']>>) {
+    const caps = server.server.getClientCapabilities() as { elicitation?: { url?: object } } | undefined
+    if (!caps?.elicitation?.url) return
+    const url = r.link ?? (cfg.approvalBase ? `${cfg.approvalBase.replace(/\/$/, '')}/app/requests` : undefined)
+    if (!url) return
+    const ask = server.server
+      .elicitInput({
+        mode: 'url',
+        elicitationId: r.requestId,
+        url,
+        message: `Your assistant asks you for a budget of ${usdc(r.request.amount)} USDC. Open this page to review it; only you can fund it, from your own wallet.`,
+      })
+      .catch(() => null)
+    await Promise.race([ask, new Promise((res) => setTimeout(res, 5000))])
+  }
+
   server.registerTool(
     'fm_request_budget',
     {
@@ -305,6 +328,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           reason,
           origin: target(url),
         })
+        await offerApproval(r)
         return json(describe(r))
       } catch (e) {
         return text(`Could not create the request: ${(e as Error).message}`, true)

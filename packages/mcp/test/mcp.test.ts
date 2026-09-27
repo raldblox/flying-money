@@ -1,10 +1,11 @@
 import { setLocalDeployment } from '@flying-money/chains'
-import { createFlyingMoneyClient, memoryStore } from '@flying-money/client'
+import { createFlyingMoneyClient, memoryRequestStore, memoryStore } from '@flying-money/client'
 import { type Certificate, certificateId, type Hex } from '@flying-money/core'
 import { createOracle } from '@flying-money/oracle'
 import { memoryStore as sellerStore } from '@flying-money/server'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { describe, expect, it } from 'vitest'
 import { createFlyingMoneyMcp } from '../src/server.js'
@@ -128,5 +129,50 @@ describe('@flying-money/mcp (§8.4)', () => {
     const { call } = await setup()
     const r = await call('fm_paid_fetch', { url: 'file:///etc/passwd' })
     expect(r.isError).toBe(true)
+  })
+
+  it('§22.6: fm_request_budget offers the approval page via URL-mode elicitation when the client supports it', async () => {
+    const payee = privateKeyToAccount(generatePrivateKey()).address
+    const owner = privateKeyToAccount(generatePrivateKey()).address
+    const agent = privateKeyToAccount(generatePrivateKey())
+    const oracle = createOracle({
+      accepts: ['anvil'],
+      payee,
+      store: sellerStore(),
+      readCertificate: async () => null,
+      fetchWeather: async () => ({ temperature_c: 20, wind_kmh: 5, time: new Date().toISOString() }),
+    })
+    const doFetch = ((u: RequestInfo | URL, init?: RequestInit) =>
+      oracle.app.fetch(new Request(u, init))) as typeof fetch
+    const fm = createFlyingMoneyClient({
+      chains: ['anvil'],
+      spender: agent,
+      store: memoryStore(),
+      certificates: [],
+      maxPricePerRequest: 50_000n,
+      readCertificate: async () => null,
+      fetch: doFetch,
+      owner,
+      requestLinkBase: 'https://site.test',
+      requestStore: memoryRequestStore(),
+    })
+    const server = createFlyingMoneyMcp({ client: fm, maxPricePerRequest: 50_000n, fetch: doFetch, canRequest: true })
+    const [a, b] = InMemoryTransport.createLinkedPair()
+    const client = new Client({ name: 'url-client', version: '1' }, { capabilities: { elicitation: { url: {} } } })
+    const asked: Array<{ mode?: string; url?: string; message?: string }> = []
+    client.setRequestHandler(ElicitRequestSchema, async (req) => {
+      asked.push(req.params as { mode?: string; url?: string; message?: string })
+      return { action: 'accept' }
+    })
+    await Promise.all([server.connect(a), client.connect(b)])
+    const r = await client.callTool({
+      name: 'fm_request_budget',
+      arguments: { url: 'http://oracle.test/v1/tea-price?city=Luoyang', amount: '0.05', days: 3, reason: 'Tea prices' },
+    })
+    expect(r.isError).toBeFalsy()
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatchObject({ mode: 'url' })
+    expect(asked[0]!.url).toMatch(/^https:\/\/site\.test\/app\/requests\/new#fm1\./)
+    expect(asked[0]!.message).toMatch(/budget/i)
   })
 })

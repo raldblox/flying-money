@@ -54,3 +54,11 @@ describe('F11: Markdown is sanitised', () => {
     expect(html).toContain('&lt;b&gt;')
   })
 })
+
+describe('headings can be linked to (§22.6 docUrl anchors)', () => {
+  it('gives each heading a slug id, still sanitised', () => {
+    const html = renderMarkdown('### no_certificate\n\n## Error <b>codes</b>')
+    expect(html).toContain('<h3 id="no-certificate">')
+    expect(html).not.toContain('<b>')
+  })
+})

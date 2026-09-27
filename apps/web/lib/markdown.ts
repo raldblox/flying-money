@@ -15,6 +15,15 @@ const md = new Marked({
   async: false,
   renderer: {
     html: ({ text }) => escapeHtml(text),
+    // headings get an id, so a page can link to a section (e.g. an SDK error code's docUrl, §22.6)
+    heading({ tokens, depth, text }) {
+      const id = text
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+      return `<h${depth} id="${id}">${this.parser.parseInline(tokens)}</h${depth}>
+`
+    },
   },
   walkTokens: (token) => {
     if ((token.type === 'link' || token.type === 'image') && !safeUrl(token.href)) token.href = '#'

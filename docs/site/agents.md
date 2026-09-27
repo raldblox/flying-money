@@ -62,6 +62,25 @@ console.log(fm.status()) // remaining budget per certificate
 | `PaymentRejectedError` | The seller refused the note without taking payment |
 | `PendingUnresolvedError` | A previous note hasn't been confirmed yet; it will be resent, never re-signed |
 
+## Error codes
+
+Every SDK error has a stable `code` and a `docUrl` pointing here.
+
+### no_certificate
+None of your budgets pays this seller on this chain, has enough left, or lasts long enough. With an owner configured, ask for one (`requestBudget`, or `fm_request_budget` in MCP).
+
+### price_too_high
+The price is above your ceiling: `maxPricePerRequest`, or this call's own `maxPrice`. Nothing was signed.
+
+### insufficient_budget
+Paying would go past the budget's amount. Ask your owner to top it up.
+
+### payment_rejected
+The seller refused the slip without taking payment. Nothing is owed for it.
+
+### pending_unresolved
+A previous slip hasn't been confirmed yet. It will be resent as is, never re-signed.
+
 **Using Claude or another MCP agent?** Skip the code: the [MCP server](/docs/mcp) gives it `fm_quote` and `fm_paid_fetch` tools with the same rules.
 
 See also: [Client reference](/docs/client) · [Protocol](/docs/protocol) · [Guarantees](/docs/guarantees)

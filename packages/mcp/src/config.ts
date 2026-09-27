@@ -14,6 +14,8 @@ export interface McpEnvConfig {
   canRequest: boolean
   /** Public internet only (audit F6): used by the tools and by the payment client alike. */
   fetch: typeof fetch
+  /** Where the owner reviews requests (for URL-mode elicitation). */
+  approvalBase: string
 }
 
 /** Where approval links open by default (§21.4.2 link channel). */
@@ -78,5 +80,11 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
         }
       : {}),
   })
-  return { client, maxPricePerRequest, canRequest: Boolean(owner), fetch }
+  return {
+    client,
+    maxPricePerRequest,
+    canRequest: Boolean(owner),
+    fetch,
+    approvalBase: env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE,
+  }
 }
