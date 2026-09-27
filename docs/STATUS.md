@@ -2,6 +2,15 @@
 
 Spec: `docs/BUILD_SPEC.md` v1.5 (§21 normative) · Decisions: `docs/DECISIONS.md` · Plan: §17 Sprint A (deadline **4 Oct 2026**)
 
+## §22.2 release blockers A1–A5 (27 Sep): ✅ `pnpm verify --e2e` green
+
+- **A1** replay tombstones outlive the 30-day outcome cache (410 `outcome-expired`, no charge, no re-run).
+- **A2** the per-call `max_price` is enforced on the offer that is signed.
+- **A3** the till admits one purchase at a time, so the offline float holds under concurrency.
+- **A4** a top-up is approved only on evidence of new funding by the owner.
+- **A5** a generated key survives until the funder confirms the hand-over.
+- Each was reproduced by a failing test first. Also fixed: inbox errors recognised by shape, so a dev recompile or separate route bundle can't turn a 400 into a 500.
+
 ## Spec v1.6 adopted (27 Sep): §22 decided; next is release slice R1
 
 - The product review is decided in BUILD_SPEC §22 (D42). Five engineering findings (A1–A5) are confirmed in source and are now release blockers, fixed tests-first.

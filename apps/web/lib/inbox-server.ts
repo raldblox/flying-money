@@ -64,8 +64,14 @@ export function getInbox(): Inbox {
 
 export function inboxErrorResponse(e: unknown): Response {
   const headers = { 'cache-control': 'no-store' }
-  if (e instanceof InboxError)
-    return Response.json({ error: e.code, message: e.message }, { status: e.status, headers })
+  // by shape, not only instanceof: the cached inbox may come from another copy of the module (route bundles, dev
+  // recompiles), whose InboxError is a different class
+  const ie = e as { name?: unknown; status?: unknown; code?: unknown; message?: unknown } | null
+  if (
+    e instanceof InboxError ||
+    (ie?.name === 'InboxError' && typeof ie.status === 'number' && typeof ie.code === 'string')
+  )
+    return Response.json({ error: ie!.code, message: ie!.message }, { status: ie!.status as number, headers })
   console.error('inbox', e)
   return Response.json({ error: 'internal' }, { status: 500, headers })
 }
