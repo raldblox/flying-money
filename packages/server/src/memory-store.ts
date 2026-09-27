@@ -148,6 +148,16 @@ export function memoryStore(opts: MemoryStoreOptions = {}): NoteStore & { snapsh
       const r = certs.get(normKey(key))
       return r ? best(r, max) : null
     },
+    // this store never evicts outcomes, so a final outcome is its own replay tombstone (§22.2 A1)
+    async tombstone(key, requestId) {
+      const o = outcomes.get(oid(key, requestId))
+      if (!o || o.status === 'PENDING') return null
+      return {
+        status: o.status,
+        price: o.price,
+        ...(o.requestHash !== undefined ? { requestHash: o.requestHash } : {}),
+      }
+    },
     async outcome(key, requestId) {
       const o = outcomes.get(oid(key, requestId))
       if (!o) return null

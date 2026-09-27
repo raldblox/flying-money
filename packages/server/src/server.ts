@@ -45,7 +45,7 @@ export type OfferReason =
 
 export type HandleResult =
   | { kind: 'offer'; status: 402; offer: Offer; reason: OfferReason }
-  | { kind: 'error'; status: 400 | 401 | 409 | 503; error: string }
+  | { kind: 'error'; status: 400 | 401 | 409 | 410 | 503; error: string }
   | { kind: 'served'; status: 200; receipt: Receipt; result: ExecResult; replay: boolean; ctx: PaymentContext }
   | { kind: 'failed'; status: 502; receipt: Receipt; replay: boolean; ctx: PaymentContext }
 
@@ -231,6 +231,26 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
       ? { kind: 'error', status: 409, error: 'memo-reused: this note was already used for a different request' }
       : null
 
+  // A replay of a request whose cached outcome was evicted (§22.2 A1): refused, nothing charged, handler never run.
+  async function tombstoned(
+    key: CertKey,
+    requestId: Hex,
+    note: SignedNote,
+    cert: Certificate,
+    requestHash: Hex | undefined,
+  ): Promise<HandleResult | null> {
+    const t = await store.tombstone?.(key, requestId)
+    if (!t) return null
+    if (!verifyNoteSignature(note, cert.spender)) return { kind: 'error', status: 401, error: 'bad signature' }
+    if (t.requestHash !== undefined && t.requestHash.toLowerCase() !== requestHash?.toLowerCase())
+      return { kind: 'error', status: 409, error: 'memo-reused: this note was already used for a different request' }
+    return {
+      kind: 'error',
+      status: 410,
+      error: 'outcome-expired: this request was already completed; its stored response is no longer available',
+    }
+  }
+
   async function handle(
     input: { noteHeader: string | null | undefined; price: bigint; requestHash?: Hex },
     execute: (ctx: PaymentContext) => Promise<ExecResult>,
@@ -273,6 +293,9 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
       if (!verifyNoteSignature(note, cert.spender)) return { kind: 'error', status: 401, error: 'bad signature' }
       return mismatch(existing, input.requestHash) ?? fromOutcome(existing, ctx, cert, execute)
     }
+    // §22.2 A1: the cached outcome may be gone, but the request is still known: never admit it again
+    const gone = await tombstoned(key, requestId, note, cert, input.requestHash)
+    if (gone) return gone
 
     // 3. certificate checks
     if (!sameAddress(cert.payee, config.payee)) return offerResult(price, 'wrong-payee')
@@ -319,8 +342,10 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
     if (b === 'INSUFFICIENT') return offerResult(price, 'insufficient')
     if (b === 'DUPLICATE') {
       const o = await store.outcome(key, requestId)
-      if (!o) throw new Error('duplicate without outcome')
-      return mismatch(o, input.requestHash) ?? fromOutcome(o, ctx, cert, execute)
+      if (o) return mismatch(o, input.requestHash) ?? fromOutcome(o, ctx, cert, execute)
+      const t = await tombstoned(key, requestId, note, cert, input.requestHash)
+      if (t) return t
+      throw new Error('duplicate without outcome')
     }
     return run(ctx, cert, execute)
   }

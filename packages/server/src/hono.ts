@@ -82,6 +82,7 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
             headers: {
               'content-type': 'application/json',
               ...(r.status === 409 ? { [REASON_HEADER]: 'memo-reused' } : {}),
+              ...(r.status === 410 ? { [REASON_HEADER]: 'outcome-expired' } : {}),
             },
           })
         case 'served': {

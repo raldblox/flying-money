@@ -27,6 +27,7 @@ describe('redis key schema (§21.5)', () => {
       [
         `${cert}notes`,
         `${cert}out:${n.signed.memo.toLowerCase()}`,
+        `${cert}seen`,
         `${cert}state`,
         `${base}certs`,
         `${base}sub`,
@@ -38,6 +39,9 @@ describe('redis key schema (§21.5)', () => {
     expect(ttl).toBeGreaterThan(29 * 86_400)
     expect(ttl).toBeLessThanOrEqual(30 * 86_400)
     expect(await redis.ttl(`${cert}state`)).toBe(-1) // seller state never expires
+    // §22.2 A1: the replay tombstone outlives the 30-day outcome
+    expect(await redis.ttl(`${cert}seen`)).toBe(-1)
+    expect(await redis.hget(`${cert}seen`, n.signed.memo.toLowerCase())).toMatch(/^SERVED\|/)
   })
 
   it('two payees on one database never see each other', async () => {

@@ -65,12 +65,13 @@ local function sub(a, b)
 end
 `
 
-// KEYS: out, st, notes, pending, certs
-// ARGV: price, cumulative, noteHeader, faceValue, nowMs, pendingMember, certKey, requestHash ('' = none)
+// KEYS: out, st, notes, pending, certs, seen
+// ARGV: price, cumulative, noteHeader, faceValue, nowMs, pendingMember, certKey, requestHash ('' = none), requestId
 const BEGIN =
   LUA_PRELUDE +
   `
 if redis.call('EXISTS', KEYS[1]) == 1 then return 'DUPLICATE' end
+if redis.call('HEXISTS', KEYS[6], ARGV[9]) == 1 then return 'DUPLICATE' end
 if redis.call('EXISTS', KEYS[2]) == 0 then return 'NO_STATE' end
 local st = redis.call('HMGET', KEYS[2], 'accepted', 'consumed', 'reserved')
 local price, cum, face = ARGV[1], ARGV[2], ARGV[4]
@@ -89,8 +90,8 @@ redis.call('SADD', KEYS[5], ARGV[7])
 return 'ADMITTED'
 `
 
-// KEYS: out, st, pending
-// ARGV: ok ('1'|'0'), responseRef ('' = none), nowMs, pendingMember, hasRef ('1'|'0'), outcomeTtlSeconds
+// KEYS: out, st, pending, seen
+// ARGV: ok ('1'|'0'), responseRef ('' = none), nowMs, pendingMember, hasRef ('1'|'0'), outcomeTtlSeconds, requestId
 const FINISH =
   LUA_PRELUDE +
   `
@@ -107,6 +108,11 @@ if ARGV[1] == '1' then
 else
   redis.call('HSET', KEYS[1], 'status', 'FAILED_CREDITED')
 end
+-- §22.2 A1: the tombstone outlives the cached outcome (no TTL; kept with the certificate)
+local fin = redis.call('HMGET', KEYS[1], 'status', 'requestHash')
+local h = fin[2]
+if type(h) ~= 'string' then h = '' end
+redis.call('HSET', KEYS[4], ARGV[7], fin[1] .. '|' .. o[2] .. '|' .. h)
 redis.call('EXPIRE', KEYS[1], ARGV[6])
 redis.call('ZREM', KEYS[3], ARGV[4])
 return 'DONE'
@@ -145,7 +151,8 @@ const STALE = `return redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])`
 const MEMBERS = `return redis.call('SMEMBERS', KEYS[1])`
 const GET = `return redis.call('HGET', KEYS[1], 'json')`
 const SET = `if ARGV[1] == '' then return redis.call('DEL', KEYS[1]) end return redis.call('HSET', KEYS[1], 'json', ARGV[1])`
-/** §21.5: an outcome record is kept 30 days after it becomes final (SERVED or FAILED_CREDITED). */
+/** §21.5: the cached outcome (with its response) is kept 30 days after it becomes final; the replay tombstone stays (§22.2 A1). */
+const TOMBSTONE = `return redis.call('HGET', KEYS[1], ARGV[1])`
 const OUTCOME_TTL_SECONDS = 30 * 86_400
 
 const pad78 = (n: bigint) => n.toString().padStart(78, '0')
@@ -168,6 +175,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
     st: (key: CertKey) => `${cert(key)}state`,
     notes: (key: CertKey) => `${cert(key)}notes`,
     out: (key: CertKey, rid: Hex) => `${cert(key)}out:${normId(rid)}`,
+    seen: (key: CertKey) => `${cert(key)}seen`,
     pending: `${S}pending`,
     certs: (chainId: number) => `${S}${chainId}:certs`,
     sub: (chainId: number) => `${S}${chainId}:sub`,
@@ -200,6 +208,12 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
       return s ? { accepted: s.accepted, consumed: s.consumed, reserved: s.reserved, status: s.status } : null
     },
     bestNote,
+    async tombstone(key, requestId) {
+      const v = await r.eval(TOMBSTONE, [k.seen(key)], [normId(requestId)])
+      if (v === null || v === undefined || v === false || v === '') return null
+      const [status = '', price = '0', hash = ''] = String(v).split('|')
+      return { status, price: BigInt(price), ...(hash ? { requestHash: hash as Hex } : {}) }
+    },
     async outcome(key, requestId) {
       const a = (await r.eval(OUTCOME, [k.out(key, requestId)], [])) as Bulk[]
       const [status, price, ref, hash] = [0, 1, 2, 3].map((i) => str(a[i]))
@@ -215,7 +229,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
       const res = str(
         await r.eval(
           BEGIN,
-          [k.out(key, requestId), k.st(key), k.notes(key), k.pending, k.certs(chainOfKey(key))],
+          [k.out(key, requestId), k.st(key), k.notes(key), k.pending, k.certs(chainOfKey(key)), k.seen(key)],
           [
             price.toString(),
             note.cumulative.toString(),
@@ -225,6 +239,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
             member(key, requestId),
             normKey(key),
             requestHash?.toLowerCase() ?? '',
+            normId(requestId),
           ],
         ),
       )
@@ -236,7 +251,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
       const res = str(
         await r.eval(
           FINISH,
-          [k.out(key, requestId), k.st(key), k.pending],
+          [k.out(key, requestId), k.st(key), k.pending, k.seen(key)],
           [
             ok ? '1' : '0',
             responseRef ?? '',
@@ -244,6 +259,7 @@ export function redisStoreFromEval(r: RedisEval, opts: RedisStoreOptions = {}): 
             member(key, requestId),
             responseRef !== undefined ? '1' : '0',
             String(OUTCOME_TTL_SECONDS),
+            normId(requestId),
           ],
         ),
       )

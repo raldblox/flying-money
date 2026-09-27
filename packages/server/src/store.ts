@@ -46,6 +46,11 @@ export interface NoteStore {
   /** Highest stored note with cumulative ≤ maxCumulative. */
   bestNote(key: CertKey, maxCumulative: bigint): Promise<SignedNote | null>
   outcome(key: CertKey, requestId: Hex): Promise<Outcome | null>
+  /**
+   * §22.2 A1: a final request's replay tombstone (status, price, requestHash), kept for as long as the certificate can
+   * be used, after its cached outcome may have been evicted. Stores that never evict outcomes can omit it.
+   */
+  tombstone?(key: CertKey, requestId: Hex): Promise<{ status: string; price: bigint; requestHash?: Hex } | null>
   /** Atomic §6.5 step 7: re-checks S2 inside the transaction; reserved += price. */
   begin(
     key: CertKey,
