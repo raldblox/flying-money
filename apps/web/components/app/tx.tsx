@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react'
 import type { Hex, PublicClient, TransactionReceipt } from 'viem'
 import { short } from '@/lib/fmt'
+import { txErrorMessage } from '@/lib/tx-errors'
 
 /** §12.4 lifecycle: preparing → awaiting wallet → submitted → confirming → confirmed | failed. */
 export type TxPhase = 'idle' | 'preparing' | 'awaiting-wallet' | 'submitted' | 'confirming' | 'confirmed' | 'failed'
@@ -70,15 +71,8 @@ export function useTx(publicClient: PublicClient | undefined) {
   return { state, run, watch, reset }
 }
 
-function friendly(e: unknown): string {
-  const m = (e as { shortMessage?: string; message?: string })?.shortMessage ?? (e as Error)?.message ?? String(e)
-  if (/user rejected|denied/i.test(m)) return 'You rejected the request in your wallet.'
-  if (/reverted with the following reason:\s*$/i.test(m.split('\n')[0]!))
-    return 'Your wallet could not send this transaction. Check that it is on the network shown on this page; if it is, set that network’s RPC in your wallet to the public one (for Arbitrum Sepolia: https://sepolia-rollup.arbitrum.io/rpc) and try again.'
-  if (/does not match the target chain|chain mismatch/i.test(m))
-    return 'Your wallet is on another network. Switch it to the network shown on this page, then try again.'
-  return m.split('\n')[0]!
-}
+// the wallet's own reason, never a guess (lib/tx-errors)
+const friendly = (e: unknown) => txErrorMessage(e)
 
 export function TxStatus({
   state,

@@ -2,7 +2,7 @@
 import type { ChainConfig } from '@flying-money/chains'
 import { type Certificate, flyingMoneyAbi } from '@flying-money/core'
 import { useId, useState } from 'react'
-import { erc20Abi, parseUnits } from 'viem'
+import { erc20Abi, parseEventLogs, parseUnits } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { buttonClass } from '@/components/section'
 import { usdc, utcDate } from '@/lib/fmt'
@@ -34,6 +34,8 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
   const ids = useId()
   const [amount, setAmount] = useState('1')
 
+  // right after an approve, trust the receipt's Approval event over a possibly lagging RPC read
+  const [approvedNow, setApprovedNow] = useState<bigint | null>(null)
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: chain.usdc,
     abi: erc20Abi,
@@ -70,6 +72,8 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
       return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
+      setApprovedNow(null)
+      void refetchAllowance()
       setPanel(null)
       onDone()
     }
@@ -110,7 +114,10 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
       problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
     if (add && balance !== undefined && add > balance) problems.push(`Your wallet holds ${usdc(balance)} USDC.`)
   }
-  const needsApproval = panel === 'topup' && add !== null && allowance !== undefined && allowance < add
+  const effectiveAllowance =
+    allowance === undefined ? undefined : approvedNow !== null && approvedNow > allowance ? approvedNow : allowance
+  const needsApproval =
+    panel === 'topup' && add !== null && effectiveAllowance !== undefined && effectiveAllowance < add
 
   return (
     <div className="mt-4">
@@ -163,7 +170,12 @@ export function FunderActions({ chain, cert, onDone }: { chain: ChainConfig; cer
                     args: [chain.flyingMoney!, add!],
                   }),
                 )
-                .then((r) => r && refetchAllowance())
+                .then((r) => {
+                  if (!r) return
+                  const [ev] = parseEventLogs({ abi: erc20Abi, logs: r.logs, eventName: 'Approval' })
+                  if (ev) setApprovedNow(ev.args.value)
+                  void refetchAllowance()
+                })
             else void send('topUp', [cert.id, add])
           }}
         >

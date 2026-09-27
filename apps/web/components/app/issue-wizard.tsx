@@ -139,6 +139,9 @@ export function IssueWizard({
     const [log] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
     if (!log) return
     if (p.generated) setGenerated(p.generated)
+    // the budget used the approval up
+    setApprovedNow(null)
+    void refetchAllowance()
     setIssued({ id: log.args.id, hash: receipt.transactionHash })
     onIssued({
       id: log.args.id,
@@ -217,7 +220,12 @@ export function IssueWizard({
   if (face && balance !== undefined && face > balance)
     problems.push(`Your wallet holds ${usdc(balance)} USDC on ${chain.chain.name}.`)
 
-  const needsApproval = face !== null && allowance !== undefined && allowance < face
+  // The receipt's Approval event is the truth right after an approve: a load-balanced RPC can still serve the old
+  // allowance for a moment, which used to leave the form asking to approve again
+  const [approvedNow, setApprovedNow] = useState<bigint | null>(null)
+  const effectiveAllowance =
+    allowance === undefined ? undefined : approvedNow !== null && approvedNow > allowance ? approvedNow : allowance
+  const needsApproval = face !== null && effectiveAllowance !== undefined && effectiveAllowance < face
   const busy = [approveTx.state, issueTx.state].some((s) =>
     ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(s.phase),
   )
@@ -233,6 +241,20 @@ export function IssueWizard({
 
   async function approve() {
     if (!wallet || !publicClient || !face || !chain.flyingMoney || !address) return
+    // never send a second approve: if the chain already has enough, just move on
+    const current = await publicClient
+      .readContract({
+        address: chain.usdc,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [address, chain.flyingMoney],
+      })
+      .catch(() => undefined)
+    if (current !== undefined && current >= face) {
+      setApprovedNow(current)
+      void refetchAllowance()
+      return
+    }
     const r = await approveTx.run(async () => {
       const gas = await publicClient.estimateContractGas({
         account: address,
@@ -250,7 +272,12 @@ export function IssueWizard({
         gas: withMargin(gas),
       })
     })
-    if (r) await refetchAllowance()
+    if (r) {
+      const [ev] = parseEventLogs({ abi: erc20Abi, logs: r.logs, eventName: 'Approval' })
+      if (ev && sameAddress(ev.args.owner, address) && sameAddress(ev.args.spender, chain.flyingMoney))
+        setApprovedNow(ev.args.value)
+      void refetchAllowance()
+    }
   }
 
   async function issue() {
@@ -259,13 +286,25 @@ export function IssueWizard({
     const expiresAt = timestamp + durations[durationIdx]!.seconds
     let pending: PendingIssue | undefined
     const receipt = await issueTx.run(async () => {
-      const { request } = await publicClient.simulateContract({
-        account: address,
-        address: chain.flyingMoney!,
-        abi: flyingMoneyAbi,
-        functionName: 'issue',
-        args: [payee, spender, face!, expiresAt],
-      })
+      // right after an approve, a lagging RPC node may not see it yet: give it a few seconds
+      const simulate = () =>
+        publicClient.simulateContract({
+          account: address,
+          address: chain.flyingMoney!,
+          abi: flyingMoneyAbi,
+          functionName: 'issue',
+          args: [payee, spender, face!, expiresAt],
+        })
+      let sim: Awaited<ReturnType<typeof simulate>> | undefined
+      for (let i = 0; !sim; i++) {
+        try {
+          sim = await simulate()
+        } catch (e) {
+          if (i >= 4 || !/allowance/i.test(String((e as Error).message))) throw e
+          await new Promise((r) => setTimeout(r, 1500))
+        }
+      }
+      const { request } = sim
       const gas = await publicClient.estimateContractGas(request)
       const hash = await wallet.writeContract({ ...request, chain: chain.chain, gas: withMargin(gas) })
       pending = {
