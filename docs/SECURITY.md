@@ -1,7 +1,8 @@
 # Security: guarantees, threat model, test evidence
 
-> **Audit status: not audited.** Invariant- and property-tested. Testnets, plus mainnets with immutable caps
-> (100 USDC per certificate, 1,000 USDC deployment-wide). Say this on every page that handles funds.
+> **Audit status: not audited.** Invariant- and property-tested. The recorded deployment is Arbitrum Sepolia (testnet).
+> Mainnet configuration includes immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide);
+> configuration is not evidence of a mainnet deployment or production readiness.
 
 ## What is guaranteed (and nothing stronger)
 
@@ -12,7 +13,7 @@
 | Party | Guarantee | Conditions |
 |---|---|---|
 | Payee | Every redeemable note is backed by funds reserved exclusively for it; redeeming a redeemable note pays exactly `cumulative − redeemed` | Redeems before `expiresAt`; token not frozen; chain live; its acceptance state is authoritative |
-| Funder | Never loses more than `faceValue`; gets the remainder back after expiry | — |
+| Funder | Spending is bounded by `faceValue`; can reclaim the remainder after expiry | Successful on-chain reclaim; chain live; token not frozen; gas required |
 | Funder (spender key stolen) | Loss ≤ remaining face value of certificates bound to that key | — |
 | Spender | Cannot be charged more than the highest cumulative it signed; retries never create extra charges; network failures never raise its obligation | Signatures over cumulative totals; `requestId` idempotency; durable outbox |
 | Everyone | Funds go only to the payee named at issuance | — |

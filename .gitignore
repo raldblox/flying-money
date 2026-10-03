@@ -36,3 +36,9 @@ playwright-report/
 
 .vercel
 .env*.local
+
+# Local submission production drafts, private review notes and duplicate media.
+# Curated judge-facing artifacts live directly in docs/submissions/.
+/docs/submissions/arbitrum-open-house-2026-10-02/
+# Historical, untriaged working audit; current limitations are in public review readiness.
+/docs/AUDIT_2026-09-25.md
