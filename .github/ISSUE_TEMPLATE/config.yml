@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://useflyingmoney.vercel.app/docs
+    about: Protocol, contract, SDK and MCP references
+  - name: Security vulnerability
+    url: https://github.com/raldblox/flying-money/security/advisories/new
+    about: Report privately, never in a public issue

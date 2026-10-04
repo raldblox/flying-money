@@ -1,5 +1,9 @@
 # Security: guarantees, threat model, test evidence
 
+## Reporting a vulnerability
+
+Please **don't open a public issue** for a security problem. Report it privately through GitHub: **Security → Report a vulnerability** on this repository. If that isn't available, open an issue titled "Security contact request" with no details, and a maintainer will reply with a private channel. We aim to acknowledge reports within 3 days. This is a testnet project without a bug bounty; please don't test against other people's funds or budgets.
+
 > **Audit status: not audited.** Invariant- and property-tested. The recorded deployment is Arbitrum Sepolia (testnet).
 > Mainnet configuration includes immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide);
 > configuration is not evidence of a mainnet deployment or production readiness.
@@ -32,7 +36,7 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 | Payee tries to overcharge | Impossible beyond notes the spender signed | Cumulative totals signed by the spender |
 | Payee serves nothing | Funder loses up to what the agent signed | Payment ≠ service; bounded by face value |
 | Funder tries to pull funds early | Not possible | No cancel; reclaim only after expiry |
-| Very short expiry | Rejected below 1 h by the contract; servers require `minRemainingLifetime` | §7.1, §6.5 |
+| Very short expiry | Rejected below 1 h by the contract; servers require `minRemainingLifetime` | Contract `issue`; [seller check](site/protocol.md) |
 | Replay on another chain/contract | Invalid | EIP-712 domain |
 | Signature malleability | Rejected | OZ ECDSA low-s |
 | Front-running a redeem | Harmless | Funds always go to the payee |
@@ -42,7 +46,7 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 | ERC-1271 / contract-signature revocation | Not applicable | ECDSA-only spenders; validity never depends on chain state |
 | Buyer retries after a timeout | No double charge, no duplicate side effect | `requestId` idempotency (S1) |
 | Buyer crashes mid-request | No higher note is ever signed; the pending note is resent | Durable outbox (C1) |
-| Seller crashes after accepting, before serving | Buyer's retry resumes it; otherwise the sweeper resolves it (done → served; not started → credit) | §6.5 steps 4, 9, 10 |
+| Seller crashes after accepting, before serving | Buyer's retry resumes it; otherwise the sweeper resolves it (done → served; not started → credit) | [Seller algorithm](site/protocol.md): resume and sweeper |
 | Adversarial spender sends many concurrent requests reusing the same credit | Only as many are admitted as `accepted − consumed − reserved` allows | `reserved` + atomic re-check in `begin` (S4) |
 | Funder uses its own wallet as the spender, or payee = spender | Rejected by the contract | Structural key isolation in `issue` |
 | Unaudited contract bug on mainnet | Exposure bounded deployment-wide | `maxTotalOutstanding` (1,000 USDC) + `maxFaceValue` (100 USDC) |
@@ -62,9 +66,9 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 ## Contract test evidence (`contracts/`)
 
 Toolchain: solc 0.8.24, OpenZeppelin 5.1.0, `evm_version = shanghai`, optimizer 200 runs.
-`contracts/src/FlyingMoney.sol` is byte-for-byte the BUILD_SPEC §7.2 reference implementation.
+`contracts/src/FlyingMoney.sol` is the reference implementation of the [contract specification](site/contract.md).
 
-**Unit tests (`test/FlyingMoney.t.sol`): 25 pass** (24 FlyingMoney, 1 MockUSDC). Coverage of BUILD_SPEC §7.4:
+**Unit tests (`test/FlyingMoney.t.sol`): 25 pass** (24 FlyingMoney, 1 MockUSDC). Coverage:
 
 - **Issue (#1, #2, #4c, #4d):** fields, exact pull, nonce and id derivation; parameter and lifetime bounds; the fee-on-transfer fixture (`UnsupportedToken`); `payee == contract`; `spender == funder` or `payee`.
 - **Redeem (#3, #4, #4b, #5–#8):**
@@ -97,7 +101,7 @@ They run against an uncapped deployment and a capped one (300 / 1,000 USDC). The
 | I6 | No transfers for a certificate after it is reclaimed |
 | I7 | `redeemed` never decreases; payout == highest redeemed cumulative |
 
-## Gas (§7.4 #13)
+## Gas
 
 Measured with `pnpm --filter @flying-money/contracts gas` (`forge test --isolate --gas-report`). Each call runs as its own transaction with cold storage, and the figures include the 21,000 base cost.
 

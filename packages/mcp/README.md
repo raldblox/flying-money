@@ -1,6 +1,6 @@
 # MCP server (`@flying-money/mcp`)
 
-Docs: https://useflyingmoney.vercel.app/agent.md · Spec: `docs/BUILD_SPEC.md` §8.4, §21.4, §22.10
+Docs: https://useflyingmoney.vercel.app/agent.md · Reference: [docs/site/mcp.md](../../docs/site/mcp.md)
 
 An MCP server that lets any MCP-capable agent (Claude Desktop or Claude Code, Hermes-based agents, and others) pay APIs from a budget its owner gives it, and ask its owner for one. The budget's limits are enforced on-chain, not by the prompt.
 

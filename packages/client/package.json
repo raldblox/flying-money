@@ -1,7 +1,24 @@
 {
   "name": "@flying-money/client",
   "version": "0.1.0",
+  "description": "Buyer SDK for Flying Money: pay HTTP 402 APIs from a capped USDC budget, with a crash-safe outbox.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raldblox/flying-money.git",
+    "directory": "packages/client"
+  },
+  "homepage": "https://useflyingmoney.vercel.app/docs",
+  "bugs": "https://github.com/raldblox/flying-money/issues",
+  "keywords": [
+    "usdc",
+    "payments",
+    "ai-agents",
+    "http-402",
+    "eip-712",
+    "arbitrum",
+    "budget"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {

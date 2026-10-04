@@ -1,7 +1,24 @@
 {
   "name": "@flying-money/core",
   "version": "0.1.0",
+  "description": "Flying Money core: budget and payment-slip types, EIP-712 signing and verification, the fm1 wire format.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raldblox/flying-money.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://useflyingmoney.vercel.app/docs",
+  "bugs": "https://github.com/raldblox/flying-money/issues",
+  "keywords": [
+    "usdc",
+    "payments",
+    "ai-agents",
+    "http-402",
+    "eip-712",
+    "arbitrum",
+    "budget"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {

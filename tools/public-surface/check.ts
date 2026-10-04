@@ -1,6 +1,6 @@
-// Public-surface check for `pnpm verify` (BUILD_SPEC §21.2): after a production build of the site, no served HTML,
-// markdown, llms file, route body, OG metadata, manifest, public asset or client/server bundle may contain an event
-// term from denylist.txt.
+// Public-surface check for `pnpm verify`: after a production build of the site, no served HTML, markdown, llms file,
+// route body, OG metadata, manifest, public asset or client/server bundle may contain a term from denylist.txt or
+// from the optional, git-ignored denylist.local.txt.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -8,8 +8,10 @@ const root = join(import.meta.dirname, '..', '..')
 const web = join(root, 'apps', 'web')
 
 export function denylist(): string[] {
-  return readFileSync(join(import.meta.dirname, 'denylist.txt'), 'utf8')
-    .split(/\r?\n/)
+  return ['denylist.txt', 'denylist.local.txt']
+    .map((f) => join(import.meta.dirname, f))
+    .filter((p) => existsSync(p))
+    .flatMap((p) => readFileSync(p, 'utf8').split(/\r?\n/))
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('#'))
 }

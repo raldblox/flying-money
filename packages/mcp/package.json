@@ -2,6 +2,23 @@
   "name": "@flying-money/mcp",
   "version": "0.1.0",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raldblox/flying-money.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://useflyingmoney.vercel.app/docs",
+  "bugs": "https://github.com/raldblox/flying-money/issues",
+  "keywords": [
+    "usdc",
+    "payments",
+    "ai-agents",
+    "http-402",
+    "eip-712",
+    "arbitrum",
+    "budget",
+    "mcp"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {

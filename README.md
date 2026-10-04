@@ -1,21 +1,21 @@
 # 飛錢 Flying Money
 
-Hand over a budget, not your wallet. Prepaid, capped USDC budgets for AI agents and the people you pay for.
+**Give a budget. Not your wallet.** Prepaid, capped USDC budgets for AI agents and the people you pay for.
 
 Flying Money lets an owner set aside USDC for one seller, one spender and one end date. The spender (an AI agent or a phone) pays with signed slips carrying the running total. After verifying funding, the seller checks slips against its local payment records and collects accrued spending on-chain before expiry, without a blockchain transaction for every purchase. The spender can't authorize more than the budget, the money can only reach the named seller, and the owner can reclaim the remainder on-chain after expiry. No project token, no protocol fees (network gas still applies), no admin keys. MIT.
 
-[Live demo](https://useflyingmoney.vercel.app/demo) · [Get started](https://useflyingmoney.vercel.app/start) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Demo video](https://youtu.be/nXiIVI49u2g) · [Pitch video](https://youtu.be/LdDnMqgmUc8) · [Pitch deck](docs/submissions/flying-money-pitch.pdf)
+[Live demo](https://useflyingmoney.vercel.app/demo) · [Get started](https://useflyingmoney.vercel.app/start) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Demo video (3 min)](https://youtu.be/nXiIVI49u2g)
 
 > **Status:** unaudited, invariant-tested. Live on Arbitrum Sepolia (test money). Mainnets will run under immutable caps (100 USDC per certificate, 1,000 USDC per deployment).
 
-## Review it in 5 minutes (no install)
+## Try it in 5 minutes (no install)
 
 1. **Watch a real run.** Open the [live demo](https://useflyingmoney.vercel.app/demo) and press **Run it for real**. A scripted agent pays the Silk Road Oracle API 20 times from a 0.30 test-USDC budget on Arbitrum Sepolia; every collection links to the explorer. Tick **Cut the network** or **Steal the agent key** first to watch payments continue during a seller RPC outage, and a thief get refused three ways.
 2. **Read the contract.** [FlyingMoney on Arbitrum Sepolia](https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract) (verified source): no owner, no admin, no pause, no fee, no upgrade.
 3. **Try it as a person or shop.** Open [Get started](https://useflyingmoney.vercel.app/start). Giving a budget needs a browser wallet on Arbitrum Sepolia with test USDC ([Circle faucet](https://faucet.circle.com)) and a little test ETH. Then, in two windows of one browser: open the hand-over link in the [wallet](https://useflyingmoney.vercel.app/wallet) (no crypto wallet needed), [open a till](https://useflyingmoney.vercel.app/shop) for the same shop address, and pay with **Copy the code** instead of a camera.
 4. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The npm package isn't published yet, so `/agent.md` builds the MCP server from this repository.
 
-What is real and what isn't: the demo's buyer is scripted (not an autonomous AI), and its slips travel in-process to the seller; the transactions and test USDC are real. Testnet only, unaudited. Details: [review notes and limits](docs/submissions/REVIEW_READINESS_2026-10-03.md).
+What is real and what isn't: the demo's buyer is scripted (not an autonomous AI), and its slips travel in-process to the seller; the transactions and test USDC are real. Testnet only, unaudited. Details: [security model and limits](docs/SECURITY.md).
 
 ## The idea in 30 seconds
 
@@ -129,7 +129,11 @@ We started out building offline cash between strangers. Our own adversarial revi
 
 ## Status
 
-Testnet, unaudited, invariant-tested (contract invariants I1–I7; off-chain C1 and S1–S4). Build log: [docs/STATUS.md](docs/STATUS.md). Decisions: [docs/DECISIONS.md](docs/DECISIONS.md). Spec: [docs/BUILD_SPEC.md](docs/BUILD_SPEC.md). For coding agents: [AGENTS.md](AGENTS.md).
+Testnet, unaudited, invariant-tested (contract invariants I1–I7; off-chain C1 and S1–S4). Specification: [protocol](docs/site/protocol.md) and [contract](docs/site/contract.md). Security model and test evidence: [docs/SECURITY.md](docs/SECURITY.md). Design notes: [x402 and MPP comparison](docs/design/compatibility-x402-mpp.md).
+
+## Contributing
+
+Issues and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately ([how](docs/SECURITY.md#reporting-a-vulnerability)). Using a coding agent? Point it at [AGENTS.md](AGENTS.md).
 
 ## License
 

@@ -1,10 +1,4 @@
-# Terms that must never appear on a public surface (BUILD_SPEC §21.2). One per line, case-insensitive.
-Colosseum
-World's Fair
-World’s Fair
-Metropolis
-Open House
-Microgrant
-DoraHacks
+# Terms that must never appear on the public site. One per line, case-insensitive.
+# Maintainers can add private terms in denylist.local.txt (git-ignored); both lists are checked.
 hackathon
 buildathon

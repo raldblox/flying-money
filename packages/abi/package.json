@@ -1,7 +1,24 @@
 {
   "name": "@flying-money/abi",
   "version": "0.1.0",
+  "description": "ABI of the Flying Money budget contract (FlyingMoney.sol).",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raldblox/flying-money.git",
+    "directory": "packages/abi"
+  },
+  "homepage": "https://useflyingmoney.vercel.app/docs",
+  "bugs": "https://github.com/raldblox/flying-money/issues",
+  "keywords": [
+    "usdc",
+    "payments",
+    "ai-agents",
+    "http-402",
+    "eip-712",
+    "arbitrum",
+    "budget"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {

@@ -42,7 +42,7 @@ export interface ChainConfig {
   maxFaceValue: bigint
   /**
    * Mirrors the deployment's immutable deployment-wide cap (§7.1 #9, §7.5). 0 = unlimited.
-   * Added to the §5.4 interface by DECISIONS.md D1 so every constructor argument comes from the registry.
+   * Part of the registry so every constructor argument comes from it.
    */
   maxTotalOutstanding: bigint
   /** Keyless source verification endpoint (Blockscout API), when the chain has one (DECISIONS D16). */

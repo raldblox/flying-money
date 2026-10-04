@@ -1,0 +1,21 @@
+name: Idea or request
+description: Suggest an improvement or a new use
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation and who it's for (an agent builder, a shop, a family…)
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+  - type: checkboxes
+    id: promise
+    attributes:
+      label: The core promise
+      options:
+        - label: This keeps a budget limited to one seller, one spending key, its amount and its end date
