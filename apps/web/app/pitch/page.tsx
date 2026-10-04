@@ -60,7 +60,7 @@ export default function PitchPage() {
             signed slips carrying the running total. The seller checks each slip on its own machine in milliseconds and
             collects everything later in one transaction. The spender can’t authorize more than the budget, the money
             can only reach the named seller, and every valid slip is already backed by money set aside for that seller.
-            Leftovers return to the owner.
+            The owner takes back what’s left after the end date.
           </p>
         </Block>
         <Block title="Why now">

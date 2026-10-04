@@ -21,8 +21,10 @@ describe('/agent.md', () => {
     expect(md).toContain('https://example.test/app/requests')
   })
 
-  it('is honest when the package cannot be installed yet', () => {
+  it('falls back to building from the public source when npm has no package', () => {
     expect(md).toMatch(/not found/i)
+    expect(md).toContain('git clone --depth 1 https://github.com/raldblox/flying-money ~/.flying-money/src')
+    expect(md).toContain('packages/mcp/dist/bin.js')
   })
 
   it('the copyable instruction names the page and the owner wallet', () => {

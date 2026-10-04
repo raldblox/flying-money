@@ -172,7 +172,7 @@ export function reduceStory(s: Story, e: DemoEvent): Story {
         caption: {
           title: 'Budget locked. The agent can start paying.',
           detail:
-            'Only the Silk Road Oracle can be paid from it, only with this agent’s key, for 7 days. Leftovers go back to the owner.',
+            'Only the Silk Road Oracle can be paid from it, only with this agent’s key, for 7 days. After that, the owner can take back what’s left.',
           tone: 'indigo',
         },
       }

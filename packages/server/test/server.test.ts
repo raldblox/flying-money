@@ -343,7 +343,11 @@ for (const [name, make] of storeFactories()) {
       const n = await note(spenderKey, cert.id, 10n)
       let calls = 0
       void server.handle({ noteHeader: n.header, price: 10n }, () => new Promise<ExecResult>(() => {})) // crash
-      await until(async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING')
+      // a remote store (Upstash) can be slow under full-suite load: same allowance as the suite's own timeout
+      await until(
+        async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING',
+        Math.max(10_000, remoteTimeout(name) / 2),
+      )
       const r = await server.handle({ noteHeader: n.header, price: 10n }, (ctx) =>
         jobs.runOnce(ctx.requestId, async () => {
           calls++
@@ -368,7 +372,11 @@ for (const [name, make] of storeFactories()) {
       }
       // admitted for request A, then stuck PENDING (slow handler)
       void server.handle({ noteHeader: n.header, price: 10n, requestHash: A }, () => new Promise<ExecResult>(() => {}))
-      await until(async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING')
+      // a remote store (Upstash) can be slow under full-suite load: same allowance as the suite's own timeout
+      await until(
+        async () => (await store.outcome(key, n.signed.memo))?.status === 'PENDING',
+        Math.max(10_000, remoteTimeout(name) / 2),
+      )
       // the same note replayed for request B while PENDING: refused, the handler does not run
       for (let i = 0; i < 5; i++)
         expect(await server.handle({ noteHeader: n.header, price: 10n, requestHash: B }, exec)).toMatchObject({

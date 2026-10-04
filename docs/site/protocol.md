@@ -71,4 +71,4 @@ Per certificate, the buyer durably stores `accepted`, `consumed` and at most one
 
 ## At a counter
 
-The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a payment-slip QR (the signed note) with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED · merchant risk** (offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).
+The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a payment-slip QR (the signed note) with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (shown as "Accepted: covered by a checked budget"; certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED** (shown as "Accepted at your own risk: not checked yet"; offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).

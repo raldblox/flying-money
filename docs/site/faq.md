@@ -30,7 +30,7 @@ No. A link or QR code plus a PIN. The money goes from the parent into the contra
 Names never go on-chain, and people get fresh random spending addresses. But flows between addresses are public. We don't claim anonymity.
 
 **Does it work offline?**
-Notes can be signed and verified without a connection, and a shop's till keeps accepting certificates it has already checked. We don't offer offline payments between strangers, because that can't be guaranteed without an online authority, trusted hardware or an identity system. A first-time certificate offline is shown as **Unverified · merchant risk**.
+Notes can be signed and verified without a connection, and a shop's till keeps accepting certificates it has already checked. We don't offer offline payments between strangers, because that can't be guaranteed without an online authority, trusted hardware or an identity system. A budget the till has never seen, while offline, is shown as **Accepted at your own risk: not checked yet**.
 
 **What are the fees?**
 None from Flying Money. The seller pays gas when collecting (one transaction for many payments); on Arc, gas is paid in USDC.

@@ -6,9 +6,12 @@ Submission material only (BUILD_SPEC §21.2): not served by the app or included 
 
 ## Review the product
 
-- [Website](https://useflyingmoney.vercel.app/)
-- [Demo](https://useflyingmoney.vercel.app/demo): illustration first; the real-run control starts the testnet flow.
-- [Dashboard](https://useflyingmoney.vercel.app/app): budget requests, owner approvals and funded budgets.
+- [Demo video (3 min)](https://youtu.be/nXiIVI49u2g) · [Pitch video (3.5 min)](https://youtu.be/LdDnMqgmUc8)
+- [Website](https://useflyingmoney.vercel.app/) and [Get started](https://useflyingmoney.vercel.app/start): four guided paths.
+- [Demo](https://useflyingmoney.vercel.app/demo): illustration first; **Run it for real** starts the testnet flow (real transactions, test USDC, explorer links).
+- [Account app](https://useflyingmoney.vercel.app/app): budget requests, owner approvals and funded budgets (needs a browser wallet on Arbitrum Sepolia).
+- [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) and [/agent.md](https://useflyingmoney.vercel.app/agent.md): one message sets up an MCP assistant. The npm package is not published; `/agent.md` builds it from this public repository (checked from a fresh clone on 4 October).
+- A step-by-step 5-minute path is at the top of the [root README](../../README.md#review-it-in-5-minutes-no-install).
 - [Developer documentation](https://useflyingmoney.vercel.app/docs)
 - [Pitch deck, revision 5](flying-money-pitch.pdf)
 - [Current review evidence and limitations](REVIEW_READINESS_2026-10-03.md)
@@ -43,4 +46,4 @@ Contract invariants I1–I7, client C1 and seller S1–S4 are not substitutes fo
 
 ## Submission completion is separate
 
-The deck is prepared. Final video links, form values, eligibility and submission confirmation must be checked in the organizer portal. This repository document is not proof of submission, awards, approval or mainnet readiness.
+The deck and both videos are linked above. Form values, eligibility and submission confirmation must be checked in the organizer portal. This repository document is not proof of submission, awards, approval or mainnet readiness.

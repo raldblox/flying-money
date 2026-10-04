@@ -1,5 +1,7 @@
 # Public review readiness — 3 October 2026
 
+> **Update, 4 October 2026.** The inbox release blocker below is fixed: the Redis store pruned the owner index with wall time instead of the inbox's clock, so the fixture's records vanished once real time passed its fixed date. The store now uses the inbox clock; the assertions are unchanged. Two Upstash waits in the seller tests were given the suite's existing remote-store allowance after timing out under full-suite load. **`pnpm verify --e2e` then passed with `TURBO_FORCE=true` (no cached tests): unit, store and invariant tests on memory, Redis mock and Upstash; forge invariants; and 10 Playwright browser tests.** Also checked on 4 October: the production demo's real run (20 paid calls, 3 Arbitrum Sepolia collections, explorer links); a fresh public clone builds the MCP server in under a minute, starts with only `FM_OWNER`, makes its own key, quotes the hosted seller, returns `no_certificate`, and produces a budget-request link that opens on the live site; both submission videos play signed out. Still true: unaudited, testnet only, MCP package not on npm (`/agent.md` builds it from source).
+
 Scope: pending public-repository documentation and submission artifacts at source commit `6080946`. This is not an independent security audit, full Git-history secret audit, live deployment verification or release approval.
 
 ## Checks performed

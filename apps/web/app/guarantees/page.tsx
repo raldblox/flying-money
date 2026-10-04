@@ -104,7 +104,7 @@ const THREATS = [
   [
     'First-time customer while the POS is offline',
     'A fabricated budget is possible',
-    'Shown as UNVERIFIED · merchant risk, capped by the first-visit limit',
+    'Shown as “Accepted at your own risk: not checked yet”, capped by the first-visit limit',
   ],
   [
     'Agent tries to raise its own budget via MCP',

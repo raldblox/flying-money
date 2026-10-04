@@ -136,7 +136,7 @@ const USES = [
   {
     Icon: IconGift,
     t: 'A gift for one shop',
-    d: 'Sent as a link. Whatever isn’t spent returns to the sender after the end date.',
+    d: 'Sent as a link. After the end date, the sender can take back whatever isn’t spent.',
   },
 ]
 

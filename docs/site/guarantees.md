@@ -32,7 +32,7 @@ We make three claims, and no stronger ones:
 ## At a shop counter
 
 - **Accepted (GUARANTEED):** the till read this certificate on the blockchain earlier, and the note passes the seller checks against the till's own ledger. This holds if the till's ledger is authoritative (one till, or synced devices within per-device floats), its clock is roughly right, and the shop collects before the end date.
-- **Unverified · merchant risk:** offline, first-time certificate. **Not a Flying Money guarantee.** Someone could present a made-up certificate. It is the shop's own credit decision, capped by its first-visit limit, and re-checked when the till reconnects.
+- **Accepted at your own risk: not checked yet:** offline, a budget (certificate) the till has never checked. **Not a Flying Money guarantee.** Someone could present a made-up certificate. It is the shop's own credit decision, capped by its first-visit limit, and re-checked when the till reconnects.
 
 ## Control: what a funder can and can't do
 

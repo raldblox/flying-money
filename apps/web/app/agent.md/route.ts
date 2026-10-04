@@ -10,6 +10,7 @@ export function GET() {
     agentMd(
       SITE.url,
       deployedChains().map((c) => c.key),
+      SITE.github,
     ),
     { headers: { 'content-type': 'text/markdown; charset=utf-8' } },
   )

@@ -117,8 +117,11 @@ function WalletGate({ children }: { children: ReactNode }) {
   const { connect, connectors, isPending, error } = useConnect()
   const { switchChain, isPending: switching } = useSwitchChain()
   const path = usePathname() ?? ''
-  // contacts are local to this device, and connecting an assistant only needs an address: they work without a wallet
-  const needsWallet = !['/app/people', '/app/places', '/app/connect'].some((p) => path.startsWith(p))
+  // contacts are local to this device, connecting an assistant only needs an address, and a request can be read before
+  // connecting (its own Connect button gates Approve): they work without a wallet
+  const needsWallet = !['/app/people', '/app/places', '/app/connect', '/app/requests/new'].some((p) =>
+    path.startsWith(p),
+  )
 
   // never an empty placeholder for more than 3 s (§22.10 d): a reconnect that hangs falls through to the choices
   if (!mounted || ((isReconnecting || isConnecting) && !slow))

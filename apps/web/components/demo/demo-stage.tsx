@@ -309,7 +309,11 @@ function BudgetBar({ story }: { story: Story }) {
           label="Served, not yet collected"
           value={money(waiting)}
         />
-        <Legend swatch="border border-line bg-paper" label="Unspent: returns to the owner" value={money(unspent)} />
+        <Legend
+          swatch="border border-line bg-paper"
+          label="Unspent: the owner can take it back after the end date"
+          value={money(unspent)}
+        />
       </ul>
     </div>
   )

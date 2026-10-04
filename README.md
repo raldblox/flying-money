@@ -4,18 +4,27 @@ Hand over a budget, not your wallet. Prepaid, capped USDC budgets for AI agents 
 
 Flying Money lets an owner set aside USDC for one seller, one spender and one end date. The spender (an AI agent or a phone) pays with signed slips carrying the running total. After verifying funding, the seller checks slips against its local payment records and collects accrued spending on-chain before expiry, without a blockchain transaction for every purchase. The spender can't authorize more than the budget, the money can only reach the named seller, and the owner can reclaim the remainder on-chain after expiry. No project token, no protocol fees (network gas still applies), no admin keys. MIT.
 
-[Live demo](https://useflyingmoney.vercel.app/demo) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Shop mode](https://useflyingmoney.vercel.app/shops) · 2-min video (coming)
+[Live demo](https://useflyingmoney.vercel.app/demo) · [Get started](https://useflyingmoney.vercel.app/start) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Demo video](https://youtu.be/nXiIVI49u2g) · [Pitch video](https://youtu.be/LdDnMqgmUc8) · [Pitch deck](docs/submissions/flying-money-pitch.pdf)
 
 > **Status:** unaudited, invariant-tested. Live on Arbitrum Sepolia (test money). Mainnets will run under immutable caps (100 USDC per certificate, 1,000 USDC per deployment).
 
+## Review it in 5 minutes (no install)
+
+1. **Watch a real run.** Open the [live demo](https://useflyingmoney.vercel.app/demo) and press **Run it for real**. A scripted agent pays the Silk Road Oracle API 20 times from a 0.30 test-USDC budget on Arbitrum Sepolia; every collection links to the explorer. Tick **Cut the network** or **Steal the agent key** first to watch payments continue during a seller RPC outage, and a thief get refused three ways.
+2. **Read the contract.** [FlyingMoney on Arbitrum Sepolia](https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract) (verified source): no owner, no admin, no pause, no fee, no upgrade.
+3. **Try it as a person or shop.** Open [Get started](https://useflyingmoney.vercel.app/start). Giving a budget needs a browser wallet on Arbitrum Sepolia with test USDC ([Circle faucet](https://faucet.circle.com)) and a little test ETH. Then, in two windows of one browser: open the hand-over link in the [wallet](https://useflyingmoney.vercel.app/wallet) (no crypto wallet needed), [open a till](https://useflyingmoney.vercel.app/shop) for the same shop address, and pay with **Copy the code** instead of a camera.
+4. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The npm package isn't published yet, so `/agent.md` builds the MCP server from this repository.
+
+What is real and what isn't: the demo's buyer is scripted (not an autonomous AI), and its slips travel in-process to the seller; the transactions and test USDC are real. Testnet only, unaudited. Details: [review notes and limits](docs/submissions/REVIEW_READINESS_2026-10-03.md).
+
 ## The idea in 30 seconds
 
-1. **Issue.** Lock 5 USDC for **one seller**, spendable only by **one agent key**, until a date.
-2. **Seal.** Every request carries a signed note over the running total: "total so far: 0.37".
-3. **Serve.** The seller checks the note against previously verified funding and authoritative payment records. Each purchase does not require a new blockchain transaction.
-4. **Redeem.** Before expiry, the seller collects the increase in the signed running total since its last collection. After expiry, the funder can submit a transaction to reclaim the remainder.
+1. **Fund.** Lock 5 USDC for **one seller**, spendable only by **one agent key**, until a date.
+2. **Pay.** Every request carries a signed payment slip over the running total.
+3. **Serve.** The seller checks the slip against previously verified funding and its own payment records. A purchase does not need its own blockchain transaction.
+4. **Collect.** Before the end date, the seller collects the increase in the signed running total since its last collection. After the end date, the owner can take back the rest with one transaction.
 
-The same certificates work for people: a café tab, an allowance, a gift. The holder pays by showing a QR code at the counter. Offline acceptance requires previously verified funding and authoritative local payment records; collection still requires blockchain connectivity before expiry.
+In the code a budget is a *certificate* and a slip is a *note*. The same budgets work for people: a café tab, an allowance, a gift. The holder pays by showing a QR code at the counter. Offline acceptance requires previously verified funding and authoritative local payment records; collection still requires blockchain connectivity before expiry.
 
 ## Try it
 
@@ -23,7 +32,7 @@ The same certificates work for people: a café tab, an allowance, a gift. The ho
 git submodule update --init --recursive
 pnpm install
 pnpm build
-pnpm --filter @flying-money/web exec next dev --webpack --port 3000   # the site, Counting House, demo, till, wallet
+pnpm --filter @flying-money/web exec next dev --webpack --port 3000   # the site, account app, demo, till, wallet
 pnpm verify                                                            # the full gate: lint, build, types, tests, secret scan
 pnpm contracts:test                                                    # Foundry unit + invariant tests
 pnpm --filter @flying-money/agent demo:local                           # agent ↔ Oracle on a local anvil
@@ -103,7 +112,7 @@ Agent / wallet ──signed notes (HTTP header or QR)──▶ Seller (verifies 
 | `packages/core` | Types, EIP-712, verification, the `fm1.` wire format |
 | `packages/client` | Buyer SDK with a durable outbox; the counter wallet |
 | `packages/server` | Seller SDK: middleware, Redis/Upstash stores, redeemer, the shop till |
-| `apps/web` | Site, docs, Counting House, live demo, till and wallet (Next.js) |
+| `apps/web` | Site, docs, account app, live demo, till and wallet (Next.js) |
 | `apps/oracle` · `apps/agent` | The Silk Road Oracle (a paid API) and the Merchant agent that buys from it |
 
 Gas (Arbitrum, measured): `redeem` 85,758; `redeemMany` of 10 notes 328,192.
@@ -116,7 +125,7 @@ Twelve centuries later, AI agents are the new merchants and APIs are the new cit
 
 ## Why no offline cash
 
-We started out building offline cash between strangers. Our own adversarial review proved software alone can't stop someone paying two offline strangers with the same money, so we removed it. A shop's till does keep accepting certificates it has already checked while offline, and says **Unverified · merchant risk** for new ones. We only ship what the math guarantees.
+We started out building offline cash between strangers. Our own adversarial review proved software alone can't stop someone paying two offline strangers with the same money, so we removed it. A shop's till does keep accepting budgets it has already checked while offline, and says **Accepted at your own risk: not checked yet** for new ones. We only ship what the math guarantees.
 
 ## Status
 

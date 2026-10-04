@@ -6,7 +6,7 @@ export function agentInstruction(base: string, owner: string): string {
   return `Set up Flying Money payments for me. Read ${base.replace(/\/$/, '')}/agent.md and follow it. My wallet is ${owner}.`
 }
 
-export function agentMd(base: string, chainKeys: string[]): string {
+export function agentMd(base: string, chainKeys: string[], repo = 'https://github.com/raldblox/flying-money'): string {
   const site = base.replace(/\/$/, '')
   const chains = chainKeys.join(',')
   const env = { FM_OWNER: '<OWNER_WALLET>', ...(chains ? { AGENT_CHAINS: chains } : {}) }
@@ -53,8 +53,26 @@ For clients that only speak HTTP, run \`npx -y @flying-money/mcp --http 8788\` a
 On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\`. Never print,
 copy, or send that file. It holds no money; it can only spend budgets your owner funds.
 
-If \`npx\` says the package is not found, stop and tell your owner: "The Flying Money MCP server isn't published yet,
-so I can't install it here."
+### If \`npx\` says the package is not found: build it from source
+
+The npm package may not be published yet. The source is public (${repo}). If you can run commands (needs git,
+Node 22+ and pnpm, e.g. \`corepack enable\`):
+
+\`\`\`bash
+git clone --depth 1 ${repo} ~/.flying-money/src
+cd ~/.flying-money/src && pnpm install --frozen-lockfile && pnpm --filter "@flying-money/mcp..." build
+\`\`\`
+
+Then use the same settings as above, but with \`node\` and the built file instead of \`npx -y @flying-money/mcp\`:
+command \`node\`, argument \`<HOME>/.flying-money/src/packages/mcp/dist/bin.js\` (the full path; \`~\` is not expanded
+in JSON configs). For Claude Code:
+
+\`\`\`bash
+claude mcp add flying-money ${envFlags} -- node <HOME>/.flying-money/src/packages/mcp/dist/bin.js
+\`\`\`
+
+If you can't run commands, tell your owner: "The Flying Money MCP server isn't on npm yet; it has to be built from
+source on this computer first," and show them these steps.
 
 ## 2. Check it works
 
