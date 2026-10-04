@@ -71,7 +71,8 @@ export interface InboxStore {
   /** Atomically: not a duplicate, no open request for (requester, payee, chain), owner and daily limits. */
   put(rec: InboxRecord, o: { nowMs: number; ttlSeconds: number; day: string; limits: InboxLimits }): Promise<PutResult>
   get(requestId: Hex): Promise<InboxRecord | null>
-  list(owner: Hex): Promise<InboxRecord[]>
+  /** `nowMs` is the inbox's clock, so pruning agrees with expiry checks (defaults to the real time). */
+  list(owner: Hex, o?: { nowMs: number }): Promise<InboxRecord[]>
   /** Saves a decided record (keeping its expiry) and frees its slot. */
   decide(rec: InboxRecord): Promise<boolean>
   revoke(owner: Hex, grantId: Hex): Promise<void>
@@ -218,7 +219,7 @@ export function createInbox(opts: {
     },
 
     async list(owner: Hex): Promise<InboxRecord[]> {
-      const all = await store.list(lower(owner))
+      const all = await store.list(lower(owner), { nowMs: now() })
       return all
         .filter((r) => r.owner === lower(owner))
         .map(view)
@@ -435,9 +436,10 @@ export function redisInboxStore(r: RedisEval, prefix: string): InboxStore {
       const v = str(await r.eval(GET, [k.rec(id)], []))
       return v ? (JSON.parse(v) as InboxRecord) : null
     },
-    async list(owner) {
+    async list(owner, o) {
       // keep decided records until they expire; drop ids whose record expired
-      const ids = ((await r.eval(IDS, [k.owner(owner)], [String(Date.now() - 60_000)])) as unknown[]).map(String)
+      const nowMs = o?.nowMs ?? Date.now()
+      const ids = ((await r.eval(IDS, [k.owner(owner)], [String(nowMs - 60_000)])) as unknown[]).map(String)
       if (ids.length === 0) return []
       const vals = (await r.eval(MGET, ids.map(k.rec), [])) as unknown[]
       return vals
