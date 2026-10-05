@@ -58,8 +58,8 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
   if (owner && !/^0x[0-9a-fA-F]{40}$/.test(owner)) throw new Error('FM_OWNER must be an address (0x + 40 hex)')
   if (certificates.some((c) => !/^0x[0-9a-fA-F]{64}$/.test(c)))
     throw new Error('AGENT_CERTIFICATES must list certificate ids (0x + 64 hex), comma-separated')
-  if (certificates.length === 0 && !owner)
-    throw new Error('set AGENT_CERTIFICATES (budgets to use), or FM_OWNER so the agent can ask its owner for one')
+  // neither is fine: the server still starts, and fm_status tells the agent what to ask its owner for (an owner may
+  // not have a wallet yet; setup shouldn't wait for one)
   const chains = (env.AGENT_CHAINS?.trim() || env.AGENT_CHAIN?.trim() || deployedChains().join(','))
     .split(',')
     .map((s) => s.trim())

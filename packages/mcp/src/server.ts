@@ -92,7 +92,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           ? {
               next: cfg.canRequest
                 ? 'You have no budget yet. Tell your owner your spending address; when a paid service needs one, call fm_request_budget and give your owner the link it returns.'
-                : 'You have no budget and no owner is configured (FM_OWNER). Tell the user to set FM_OWNER to their wallet address.',
+                : `You have no budget and no owner yet. Ask the person you work for for the address of the wallet they will fund budgets from, then set FM_OWNER to it in your MCP settings. If they have no wallet, explain that it is a free browser app (MetaMask, Rabby, Coinbase Wallet) and that testing uses free test money; ${(cfg.approvalBase ?? 'https://useflyingmoney.vercel.app').replace(/\/$/, '')}/start walks them through it. Nothing can be spent until they approve a budget.`,
             }
           : {}),
       })

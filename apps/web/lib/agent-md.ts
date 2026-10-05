@@ -30,8 +30,14 @@ You are reading this because your owner asked you to set up Flying Money payment
 paid APIs from a **budget** your owner gives you: a set amount of USDC that can pay **one seller**, until an end date.
 You never hold your owner's money or wallet. Test money only; not audited.
 
-Your owner gave you their wallet address (0x followed by 40 hex characters). Below it is written as \`<OWNER_WALLET>\`.
-If you don't have it, ask your owner for their wallet *address* (never anything else).
+Use your judgement: these are the facts you need, not a script. Adapt the steps to the app you run in and to your
+owner (the person who will fund your budgets).
+
+**Your owner's wallet address** (0x followed by 40 hex characters, written below as \`<OWNER_WALLET>\`) is the one
+thing you need from them. If they didn't give it, ask for the *address* only, never a key or recovery phrase. If they
+don't have a crypto wallet, don't stop: set up without \`FM_OWNER\` now (the server starts without it) and explain in
+plain words that approving a budget later needs a free browser wallet app (MetaMask, Rabby, Coinbase Wallet) and free
+test money; ${site}/start walks them through it. Add \`FM_OWNER\` when they have an address.
 
 ## 1. Add the Flying Money MCP server
 

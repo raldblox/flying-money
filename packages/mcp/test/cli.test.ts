@@ -54,10 +54,13 @@ describe('flying-money-mcp one-shot modes', { timeout: 60_000 }, () => {
     expect(run(['call', 'fm_quote', 'not json'], OWNER).code).toBe(2)
   })
 
-  it('a missing owner is a one-line error, not a stack trace', () => {
+  it('starts without an owner and says what to ask for; a malformed owner is a one-line error', () => {
     const r = run(['--check'])
-    expect(r.code).toBe(1)
-    expect(r.err.trim().split('\n')).toHaveLength(1)
-    expect(r.err).toMatch(/FM_OWNER/)
+    expect(r.code).toBe(0)
+    expect(JSON.parse(r.out).fm_status.next).toMatch(/no owner yet/i)
+    const bad = run(['--check'], { FM_OWNER: '0x123' })
+    expect(bad.code).toBe(1)
+    expect(bad.err.trim().split(/\r?\n/)).toHaveLength(1)
+    expect(bad.err).toMatch(/FM_OWNER/)
   })
 })

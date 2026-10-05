@@ -46,7 +46,7 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 
 | Variable | |
 |---|---|
-| `FM_OWNER` | Your owner's wallet address, so you can ask them for budgets |
+| `FM_OWNER` | Your owner's wallet address, so you can ask them for budgets. Can be added later: without it the server still starts, and `fm_status` says what to ask your owner for |
 | `FM_OWNER_GRANT` | Optional: the owner's permission to send requests straight to their inbox (from People & agents in the app) |
 | `AGENT_KEY` | Optional: bring your own spending key instead of the one the server makes |
 | `FM_KEY_FILE` | Where the made key is kept (default `agent-key` next to `FM_STORE`) |
