@@ -87,6 +87,15 @@ describe('@flying-money/mcp (§8.4)', () => {
     for (const n of names) expect(n).not.toMatch(/approve|issue|top_?up|fund|key|grant/)
   })
 
+  it('tells every connected agent the stance: its own key, the owner’s budget, never the owner’s wallet', async () => {
+    const { client } = await setup()
+    const i = client.getInstructions() ?? ''
+    expect(i).toMatch(/never ask for, accept or store your owner’s wallet key or recovery phrase/i)
+    expect(i).toMatch(/ONE seller/)
+    expect(i).toMatch(/can’t be cancelled before the end date/)
+    expect(i).toMatch(/goes back to them/)
+  })
+
   it('fm_status and fm_explain describe the budget in plain terms, without the private key', async () => {
     const { call, cert, key, payee } = await setup()
     const s = await call('fm_status')

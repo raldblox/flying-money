@@ -68,7 +68,8 @@ if (args.includes('--check')) {
   const { client, call } = await inProcess()
   const tools = (await client.listTools()).tools.map((t) => t.name)
   const status = await call('fm_status')
-  console.log(JSON.stringify({ ok: true, tools, fm_status: JSON.parse(status.text || '{}') }, null, 2))
+  const instructions = client.getInstructions()
+  console.log(JSON.stringify({ ok: true, tools, fm_status: JSON.parse(status.text || '{}'), instructions }, null, 2))
   await done(client, 0)
 }
 

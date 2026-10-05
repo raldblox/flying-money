@@ -18,6 +18,8 @@ Deployed now: ${chains || 'none yet'}. Unaudited; test networks only.
 **AI agent asked to set up payments? Read [${base}/agent.md](${base}/agent.md) and follow it.**
 
 Key rules for agents:
+- Don't hold or manage your owner's wallet. You use your own spending key (it holds nothing); your owner sets money aside for you as a budget from their own wallet. Never ask for, accept or store a wallet key or recovery phrase: suggest a budget instead.
+- A budget pays one seller until its end date; it can't be cancelled early, and what you don't spend goes back to your owner after it. Ask for what the task needs.
 - You can only pay the payee named on your certificate, never more than its face value.
 - On HTTP 402 with a \`Flying-Money-Offer\` header, sign a Note with cumulative = max(accepted, consumed + price) and memo = a fresh requestId, save it, and retry with \`Flying-Money-Note\`. On a timeout, resend the SAME note. Never sign a higher one because of a network failure.
 - Never sign a cumulative above face value. Never ask the user for their main wallet key.

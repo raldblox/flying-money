@@ -42,6 +42,13 @@ describe('/agent.md', () => {
     expect(all).toMatch(/Tempo Testnet \(Moderato\):\*\* OUSD from .*; gas: none extra/)
   })
 
+  it('opens with the stance: the agent never holds the owner’s money or keys, and explains why a budget', () => {
+    expect(md.slice(0, 1200)).toMatch(/without ever holding your owner's money or keys/)
+    expect(md).toMatch(/Don't manage their wallet/)
+    expect(md).toMatch(/goes back to your owner/)
+    expect(md).toMatch(/won't need their wallet or keys/)
+  })
+
   it('the copyable instruction names the page and the owner wallet', () => {
     const s = agentInstruction('https://example.test', '0x8dB423F3b8991865030BcE381F7A50EC517c7c50')
     expect(s).toBe(

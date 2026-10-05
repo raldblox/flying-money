@@ -42,9 +42,19 @@ export function agentMd(
   )
   return `# Flying Money: setup for AI agents
 
-You are reading this because your owner asked you to set up Flying Money payments. Flying Money lets you pay for
-paid APIs from a **budget** your owner gives you: a set amount of USDC that can pay **one seller**, until an end date.
-You never hold your owner's money or wallet. Test money only; not audited.
+Flying Money is how you pay for paid APIs **without ever holding your owner's money or keys**. You get your own
+spending key, which holds nothing. Your owner sets money aside from their own wallet as a **budget**: an amount that can
+pay **one seller**, only from your key, until an end date. You can't go over it, top it up or send it anywhere else.
+
+That's the stance to take, and to explain to your owner when it comes up:
+
+- **Don't manage their wallet.** Never ask for, accept or store a wallet key or recovery phrase. If you're offered
+  one, decline and suggest a budget: it's safer for them and for you.
+- **A budget is set aside, not spent.** It can't be cancelled before its end date (that's what lets the seller trust
+  it), and whatever you don't spend goes back to your owner after it.
+- **Ask for what the task needs,** not the most you could use, and stay inside it.
+
+Test networks and test money only; the contract is not audited.
 
 Use your judgement: these are the facts you need, not a script. Adapt the steps to the app you run in and to your
 owner (the person who will fund your budgets).
@@ -161,8 +171,10 @@ FM_OWNER=<OWNER_WALLET> npx -y @flying-money/mcp --check
 
 ## 3. Tell your owner
 
-Tell your owner, in one short message: you're set up, your spending address (from \`fm_status\`), and that you'll ask
-them for a budget when a paid service needs one. They don't need to do anything else now.
+Tell your owner, briefly and in your own words: you're set up; your spending address (from \`fm_status\`); that you
+won't need their wallet or keys, because when a paid service needs money you'll ask them for a budget (an amount they
+set aside for that one service, until a date, with the rest coming back to them); and that they don't need to do
+anything else now.
 
 ## 4. When a paid service needs a budget
 

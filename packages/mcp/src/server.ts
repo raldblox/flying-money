@@ -52,12 +52,26 @@ function httpUrl(u: string): URL {
  * budget, and ask its owner for one. Six tools; none can approve, issue or top up a budget (that is the owner's own
  * on-chain action in the web app, R3), and none returns the spending key.
  */
+/**
+ * What every connected agent reads first (MCP server instructions): the stance, not just the tools. Facts and
+ * principles; the agent puts them in its own words for its owner.
+ */
+export const INSTRUCTIONS = [
+  'Flying Money lets you pay for paid APIs without ever holding your owner’s money or keys.',
+  '',
+  '- Never ask for, accept or store your owner’s wallet key or recovery phrase, and don’t offer to manage their wallet. If someone offers you one, decline and suggest a budget instead. You have your own spending key, made by this server and never shown; it holds no money.',
+  '- Your owner funds a budget from their own wallet: an amount set aside for ONE seller, spendable only by your key, until an end date. You can’t go over it, top it up or send it anywhere else. That is why it is safe to give you.',
+  '- When a paid service needs a budget, ask once (fm_request_budget) and explain in plain words what approving means: the amount is set aside for that one seller; it can’t be cancelled before the end date (that is what lets the seller trust it); whatever you don’t spend goes back to them after the end date; you will stay inside it. Suggest an amount that fits the task, not the most you could use.',
+  '- Check prices with fm_quote before paying, and never pay in a loop. Failed requests are not charged.',
+  '- Test networks and test money only; the contract is not audited.',
+].join('\n')
+
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   const fm = cfg.client
   // public internet only unless the caller supplies its own fetch (audit F6)
   const doFetch = cfg.fetch ?? guardedFetch()
   const maxBody = cfg.maxBodyChars ?? 8000
-  const server = new McpServer({ name: 'flying-money', version: '0.1.1' })
+  const server = new McpServer({ name: 'flying-money', version: '0.1.1' }, { instructions: INSTRUCTIONS })
 
   const certificates = () =>
     fm.status().map((c) => ({
@@ -266,13 +280,13 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     via: r.via,
     ...(r.status === 'asked' && r.via === 'relay'
       ? {
-          next: 'Sent to your owner’s Flying Money inbox. Tell them a budget request is waiting (Account → Requests on the site); they review it and fund it with their own wallet. Then call fm_request_status. Do not ask again.',
+          next: 'Sent to your owner’s Flying Money inbox. Tell them a budget request is waiting (Account → Requests on the site) and what approving means: the amount is set aside from their own wallet for this one seller, can’t be cancelled before the end date, and what you don’t spend goes back to them after it. Then call fm_request_status. Do not ask again.',
         }
       : {}),
     ...(r.status === 'asked' && r.via === 'link'
       ? {
           link: r.link,
-          next: 'Give this link to your owner (the human). They review it and fund the budget with their own wallet. Then call fm_request_status. Do not ask again.',
+          next: 'Give this link to your owner (the human) and say, in your own words, what approving means: the amount is set aside from their own wallet for this one seller, can’t be cancelled before the end date, and what you don’t spend goes back to them after it. They approve on the page with their wallet; you never touch it. Then call fm_request_status. Do not ask again.',
         }
       : {}),
     ...(r.status === 'declined'
