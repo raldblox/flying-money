@@ -88,8 +88,8 @@ export default function ChainsPage() {
         </table>
       </div>
       <p className="mt-4 text-sm text-ink-2">
-        Mainnet deployments carry immutable caps: per-certificate cap 100 USDC · deployment-wide cap 1,000 USDC.
-        Unaudited. On Arc, USDC is also the gas token; Flying Money uses only its ERC‑20 interface (6 decimals).
+        Test networks only: the contract is unaudited, so every deployment holds test money. Budgets settle in USDC (in
+        OUSD on Tempo, which has no Circle USDC). On Tempo and Arc, gas is paid in stablecoins too.
       </p>
     </div>
   )

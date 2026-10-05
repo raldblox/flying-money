@@ -27,7 +27,7 @@ We make three claims, and no stronger ones:
 - That a note reaches the seller (if it doesn't, the seller simply doesn't serve).
 - That the seller collects before the end date (its SDK does this automatically).
 - That the USDC issuer never freezes funds.
-- That the code is bug-free: it is **unaudited** software, invariant-tested, running on testnets and small capped mainnet deployments (100 USDC per certificate, 1,000 USDC per deployment).
+- That the code is bug-free: it is **unaudited** software, invariant-tested, running on test networks only.
 
 ## At a shop counter
 

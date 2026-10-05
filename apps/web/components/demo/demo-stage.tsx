@@ -29,9 +29,12 @@ export function DemoStage({
   story,
   mode,
   action,
+  reserveThief = false,
 }: {
   story: Story
   mode: 'live' | 'illustration'
+  /** the thief scenario is on: keep its row's space from the start, so nothing jumps when it begins */
+  reserveThief?: boolean
   /** shown with the result: the next thing to do */
   action?: ReactNode
 }) {
@@ -44,20 +47,22 @@ export function DemoStage({
         <div className="flex flex-wrap items-center gap-2">
           <span className={`h-2 w-8 rounded-full ${toneBar[caption.tone]}`} aria-hidden />
           <p className="smallcaps text-xs text-ink-2">{PHASE_LABEL[story.phase]}</p>
-          {mode === 'illustration' && (
-            <span className="smallcaps ml-auto rounded-sm border border-line px-2 py-0.5 text-[0.7rem] text-ink-2">
-              Illustration · not a live run
-            </span>
-          )}
+          <span
+            className={`smallcaps ml-auto rounded-sm border border-line px-2 py-0.5 text-[0.7rem] text-ink-2 ${mode === 'illustration' ? '' : 'invisible'}`}
+            aria-hidden={mode === 'illustration' ? undefined : true}
+          >
+            Illustration · not a live run
+          </span>
         </div>
-        <div aria-live="polite" className="min-h-[7.5rem] sm:min-h-[6.5rem]">
+        {/* a fixed height: captions of different lengths never move what's below (stable to film) */}
+        <div aria-live="polite" className="h-[10rem] overflow-hidden sm:h-[8.5rem]">
           <h3
             key={caption.title}
-            className="caption-in mt-2 font-display text-2xl font-semibold leading-tight text-balance sm:text-3xl"
+            className="caption-in mt-2 line-clamp-2 font-display text-2xl font-semibold leading-tight text-balance sm:text-3xl"
           >
             {caption.title}
           </h3>
-          <p key={caption.detail} className="caption-in mt-1.5 max-w-3xl text-ink-2">
+          <p key={caption.detail} className="caption-in mt-1.5 line-clamp-3 max-w-3xl text-ink-2 sm:line-clamp-2">
             {caption.detail}
           </p>
         </div>
@@ -104,20 +109,22 @@ export function DemoStage({
         />
       </div>
 
-      {story.phase === 'done' && story.done && <Result story={story} action={action} />}
-
       <div className="grid gap-6 border-t border-line bg-paper-2/40 px-5 py-6 sm:px-7">
         <BudgetBar story={story} />
         <CallsAndCollections story={story} mode={mode} />
-        {story.thief.length > 0 && <ThiefRow attempts={story.thief} />}
+        {(reserveThief || story.thief.length > 0) && <ThiefRow attempts={story.thief} />}
       </div>
+
+      {/* the finale's space is always kept (invisible until the run is done), so revealing it moves nothing */}
+      <Result story={story} action={action} />
     </figure>
   )
 }
 
 /** The finale: the four numbers that matter, big. */
 function Result({ story, action }: { story: Story; action?: ReactNode }) {
-  const d = story.done!
+  const shown = story.phase === 'done' && Boolean(story.done)
+  const d = story.done ?? { served: 0, redemptions: 0, redeemed: '0', remaining: '0' }
   const tiles = [
     { big: String(d.served), small: 'paid API calls' },
     { big: String(d.redemptions), small: `blockchain transaction${d.redemptions === 1 ? '' : 's'}` },
@@ -125,16 +132,19 @@ function Result({ story, action }: { story: Story; action?: ReactNode }) {
     { big: money(BigInt(d.remaining)), small: 'USDC the owner can take back' },
   ]
   return (
-    <div className="caption-in border-t border-line px-5 py-6 sm:px-7">
+    <div
+      className={`border-t border-line px-5 py-6 sm:px-7 ${shown ? 'caption-in' : 'opacity-45'}`}
+      aria-hidden={shown ? undefined : true}
+    >
       <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {tiles.map((t) => (
           <li key={t.small} className="rounded-md border border-line bg-paper p-4">
-            <p className="font-display text-4xl font-semibold tabular-nums sm:text-5xl">{t.big}</p>
-            <p className="mt-1 text-sm text-ink-2">{t.small}</p>
+            <p className="font-display text-4xl font-semibold tabular-nums sm:text-5xl">{shown ? t.big : '—'}</p>
+            <p className="mt-1 min-h-10 text-sm text-ink-2">{t.small}</p>
           </li>
         ))}
       </ul>
-      {action && <div className="mt-5 flex flex-wrap items-center gap-3">{action}</div>}
+      <div className="mt-5 flex min-h-12 flex-wrap items-center gap-3">{shown ? action : null}</div>
     </div>
   )
 }
@@ -170,9 +180,12 @@ function Actor({
       </div>
       <div className="min-w-0">
         <p className="font-display text-lg font-semibold leading-tight">{name}</p>
-        <p className="smallcaps text-[0.7rem] text-ink-2">{tagline}</p>
-        <p className="mt-1 font-mono text-sm tabular-nums">{stat}</p>
-        <p className={`mt-0.5 line-clamp-2 text-xs ${warn ? 'text-amber' : 'text-ink-2'}`}>{sub}</p>
+        <p className="smallcaps truncate text-[0.7rem] text-ink-2" title={tagline}>
+          {tagline}
+        </p>
+        <p className="mt-1 truncate font-mono text-sm tabular-nums">{stat}</p>
+        {/* always two lines tall, whatever the text, so the row never changes height */}
+        <p className={`mt-0.5 line-clamp-2 h-8 text-xs ${warn ? 'text-amber' : 'text-ink-2'}`}>{sub}</p>
       </div>
     </div>
   )
@@ -302,7 +315,7 @@ function BudgetBar({ story }: { story: Story }) {
         />
         <span className="absolute inset-y-0 right-0 w-1 bg-seal" aria-hidden />
       </div>
-      <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+      <ul className="mt-2 grid gap-x-5 gap-y-1 text-sm md:grid-cols-[auto_auto_1fr]">
         <Legend swatch="bg-celadon" label="Collected by the seller" value={money(collected)} />
         <Legend
           swatch="bg-[repeating-linear-gradient(135deg,var(--celadon)_0_4px,transparent_4px_7px)] border border-celadon"
@@ -341,7 +354,11 @@ function CallsAndCollections({ story, mode }: { story: Story; mode: 'live' | 'il
         </p>
         <p className="text-xs text-ink-2">Each square is one API call paid with a slip.</p>
       </div>
-      <div className="mt-3 grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}>
+      <div
+        className="mt-3 grid gap-1 sm:gap-1.5"
+        // the second row (collection brackets) is reserved from the start
+        style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`, gridTemplateRows: 'auto 2.25rem' }}
+      >
         {Array.from({ length: total }, (_, i) => {
           const served = i < story.calls
           return (
@@ -390,7 +407,10 @@ function ThiefRow({ attempts }: { attempts: ThiefAttempt[] }) {
       </p>
       <ol className="mt-3 grid gap-3 md:grid-cols-3">
         {attempts.map((a, i) => (
-          <li key={a.id} className="caption-in relative overflow-hidden rounded-md border border-line bg-paper p-4">
+          <li
+            key={a.id}
+            className="caption-in relative min-h-[9.5rem] md:min-h-[11.5rem] overflow-hidden rounded-md border border-line bg-paper p-4"
+          >
             <p className="smallcaps text-[0.7rem] text-ink-2">Attempt {i + 1}</p>
             <p className="mt-1 text-sm font-medium">{a.title}</p>
             <div className="mt-3 flex items-center gap-3">
@@ -406,6 +426,17 @@ function ThiefRow({ attempts }: { attempts: ThiefAttempt[] }) {
                 REFUSED
               </span>
             )}
+          </li>
+        ))}
+        {/* the attempts still to come keep their space */}
+        {Array.from({ length: Math.max(0, 3 - attempts.length) }, (_, i) => (
+          <li
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder slots
+            key={`slot-${i}`}
+            aria-hidden
+            className="min-h-[9.5rem] md:min-h-[11.5rem] rounded-md border border-dashed border-line p-4"
+          >
+            <p className="smallcaps text-[0.7rem] text-ink-2">Attempt {attempts.length + i + 1}</p>
           </li>
         ))}
       </ol>

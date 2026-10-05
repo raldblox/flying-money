@@ -49,18 +49,11 @@ describe('sellerStoreFromEnv', () => {
     expect(c.prefix).toBe('fm:custom:testnet:')
   })
 
-  it('mainnet guards: FM_ENV=mainnet and a "mainnet" prefix for mainnet chains, and never mixed with testnets', () => {
-    const mk = (env: Record<string, string>, accepts: Parameters<typeof sellerStoreFromEnv>[0]['accepts']) => () =>
-      sellerStoreFromEnv({ env: { ...up, ...env }, payee, accepts, requireDurable: true })
-    expect(mk({}, ['arbitrum'])).toThrow(/FM_ENV/)
-    expect(mk({ FM_ENV: 'mainnet', FM_REDIS_PREFIX: 'fm:v1:prod:' }, ['arbitrum'])).toThrow(/prefix/)
-    expect(mk({ FM_ENV: 'mainnet' }, ['arbitrum', 'arbitrum-sepolia'])).toThrow(/testnet/)
-    expect(mk({ FM_ENV: 'staging' }, ['arbitrum-sepolia'])).toThrow(/FM_ENV/)
-    expect(mk({ FM_ENV: 'mainnet' }, ['arbitrum'])()).toMatchObject({ fmEnv: 'mainnet', prefix: 'fm:v1:mainnet:' })
-    // a mainnet seller never runs on memory, even in development
-    expect(() =>
-      sellerStoreFromEnv({ env: { FM_ENV: 'mainnet' }, payee, accepts: ['arbitrum'], requireDurable: false }),
-    ).toThrow(DurableStoreRequiredError)
+  it('FM_ENV must be testnet or mainnet (the registry is test networks only; the mainnet guards stay as defence)', () => {
+    const mk = (env: Record<string, string>) => () =>
+      sellerStoreFromEnv({ env: { ...up, ...env }, payee, accepts: ['arbitrum-sepolia'], requireDurable: true })
+    expect(mk({ FM_ENV: 'staging' })).toThrow(/FM_ENV/)
+    expect(mk({ FM_ENV: 'testnet' })()).toMatchObject({ fmEnv: 'testnet' })
   })
 })
 

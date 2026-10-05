@@ -182,19 +182,11 @@ export function DemoClient({
 
   return (
     <div className="mt-8 grid gap-5">
-      {error && (
-        <div role="alert" className="sheet border-l-4 border-seal p-5 text-sm">
-          <p>{error}</p>
-          <button type="button" onClick={backToIllustration} className="mt-2 text-indigo underline">
-            Watch the illustration instead
-          </button>
-        </div>
-      )}
-
       <div ref={stageRef} className="scroll-mt-4" />
       <DemoStage
         story={story}
         mode={mode}
+        reserveThief={stealKey}
         action={
           mode === 'illustration' ? (
             <>
@@ -218,7 +210,13 @@ export function DemoClient({
       <div className="sheet grid gap-4 p-4 sm:p-5">
         <h2 className="font-display text-2xl font-semibold">Run it yourself</h2>
         <div className="flex flex-wrap items-center gap-4">
-          <button type="button" onClick={run} disabled={phase === 'running'} className={buttonClass('primary')}>
+          {/* a fixed width: the label changes during a run, the layout must not */}
+          <button
+            type="button"
+            onClick={run}
+            disabled={phase === 'running'}
+            className={`${buttonClass('primary')} w-full sm:w-[17rem]`}
+          >
             {phase === 'running' ? 'Running on the blockchain…' : phase === 'idle' ? 'Run it for real' : 'Run again'}
           </button>
           <p className="text-sm text-ink-2">
@@ -245,11 +243,16 @@ export function DemoClient({
             )}{' '}
             with test money: a real 0.30 USDC budget, 20 real paid calls, real transactions you can check.
           </p>
-          {mode === 'live' && phase !== 'running' && (
-            <button type="button" onClick={backToIllustration} className="text-sm text-indigo underline">
-              Back to the illustration
-            </button>
-          )}
+          {/* always laid out, hidden when not useful, so the row never re-wraps mid-film */}
+          <button
+            type="button"
+            onClick={backToIllustration}
+            className={`text-sm text-indigo underline ${mode === 'live' && phase !== 'running' ? '' : 'invisible'}`}
+            aria-hidden={mode === 'live' && phase !== 'running' ? undefined : true}
+            tabIndex={mode === 'live' && phase !== 'running' ? undefined : -1}
+          >
+            Back to the illustration
+          </button>
         </div>
         <fieldset className="grid gap-3 sm:grid-cols-2" disabled={phase === 'running'}>
           <legend className="smallcaps mb-2 text-xs text-ink-2">Also show</legend>
@@ -271,6 +274,15 @@ export function DemoClient({
             </button>
           ))}
         </fieldset>
+        {/* below the stage, never above it: an error must not push the stage while someone is filming */}
+        {error && (
+          <div role="alert" className="border-l-4 border-seal bg-paper p-4 text-sm">
+            <p>{error}</p>
+            <button type="button" onClick={backToIllustration} className="mt-2 text-indigo underline">
+              Watch the illustration instead
+            </button>
+          </div>
+        )}
       </div>
 
       {mode === 'live' && log.length > 0 && (

@@ -1,9 +1,0 @@
-{
-  "key": "base",
-  "chainId": 8453,
-  "mainnet": true,
-  "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  "usdcDecimals": 6,
-  "maxFaceValue": 100000000,
-  "maxTotalOutstanding": 1000000000
-}

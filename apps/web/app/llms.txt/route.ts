@@ -7,13 +7,13 @@ export const dynamic = 'force-static'
 export function GET() {
   const base = SITE.url
   const chains = deployedChains()
-    .map((c) => `${c.chain.name} (${c.chain.id}${c.mainnet ? ', mainnet, capped' : ', testnet'})`)
+    .map((c) => `${c.chain.name} (${c.chain.id}, testnet)`)
     .join(', ')
   const body = `# Flying Money
 
 > Prepaid, capped budgets for AI agents and people ("hand over a budget, not your wallet"). A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally and redeems the latest note on-chain in one transaction. Same contract source on every supported EVM chain. No token.
 
-Deployed now: ${chains || 'none yet'}. Unaudited. ${deployedChains().some((c) => c.mainnet) ? 'Mainnet deployments run under immutable caps.' : 'No mainnet deployment yet; mainnets will launch under immutable caps.'}
+Deployed now: ${chains || 'none yet'}. Unaudited; test networks only.
 
 **AI agent asked to set up payments? Read [${base}/agent.md](${base}/agent.md) and follow it.**
 

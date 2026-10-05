@@ -1,40 +1,24 @@
 import type { Chain, Hex } from 'viem'
-import {
-  anvil,
-  arbitrum,
-  arbitrumSepolia,
-  arc as arcMainnet,
-  arcTestnet,
-  base,
-  baseSepolia,
-  mainnet as ethereum,
-  monad,
-  monadTestnet,
-  sepolia,
-  tempoModerato,
-} from 'viem/chains'
+import { anvil, arbitrumSepolia, arcTestnet, baseSepolia, monadTestnet, sepolia, tempoModerato } from 'viem/chains'
 
 /**
  * @flying-money/chains — the ONLY place chain IDs, RPCs, USDC addresses, explorers and caps live
- * (BUILD_SPEC §5.4). No other code may hard-code these values.
+ * (BUILD_SPEC §5.4). No other code may hard-code these values. Test networks only: the contract is unaudited.
  */
 
 export type ChainKey =
-  | 'arbitrum'
   | 'arbitrum-sepolia'
-  | 'monad'
   | 'monad-testnet'
-  | 'arc'
   | 'arc-testnet'
-  | 'base'
   | 'base-sepolia'
-  | 'ethereum'
   | 'ethereum-sepolia'
   | 'tempo-testnet'
   | 'anvil'
 
 export interface ChainConfig {
   key: ChainKey
+  /** The network's short brand name for copy ("Arbitrum", "Tempo"); `chain.name` is the full testnet name. */
+  brand: string
   chain: Chain
   mainnet: boolean
   /**
@@ -68,34 +52,17 @@ export interface ChainConfig {
 export const USDC_DECIMALS = 6 as const
 const ZERO: Hex = '0x0000000000000000000000000000000000000000'
 
-/** Mainnet launch caps (§7.1 #9, §7.5): 100 USDC per certificate, 1,000 USDC deployment-wide. */
-export const MAINNET_MAX_FACE_VALUE = 100_000_000n
-export const MAINNET_MAX_TOTAL_OUTSTANDING = 1_000_000_000n
-
 const explorerOf = (c: Chain): string => c.blockExplorers?.default.url ?? ''
 const CIRCLE_FAUCET = 'https://faucet.circle.com'
 
 type Base = Omit<ChainConfig, 'flyingMoney' | 'deployedBlock'>
 
 const testnetCaps = { maxFaceValue: 0n, maxTotalOutstanding: 0n }
-const mainnetCaps = { maxFaceValue: MAINNET_MAX_FACE_VALUE, maxTotalOutstanding: MAINNET_MAX_TOTAL_OUTSTANDING }
 
 export const baseRegistry: Record<ChainKey, Base> = {
-  arbitrum: {
-    key: 'arbitrum',
-    blockscoutApi: 'https://arbitrum.blockscout.com/api/',
-    chain: arbitrum,
-    mainnet: true,
-    usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-    gasToken: 'ETH',
-    explorer: explorerOf(arbitrum),
-    faucets: [],
-    confirmations: 1,
-    ...mainnetCaps,
-    notes: ['An Ethereum layer 2; gas is paid in ETH.', 'Close to existing agent and DeFi ecosystems.'],
-  },
   'arbitrum-sepolia': {
     key: 'arbitrum-sepolia',
+    brand: 'Arbitrum',
     blockscoutApi: 'https://arbitrum-sepolia.blockscout.com/api/',
     chain: arbitrumSepolia,
     mainnet: false,
@@ -107,20 +74,9 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...testnetCaps,
     notes: ['The Arbitrum test network: test USDC from the Circle faucet, test ETH for gas.'],
   },
-  monad: {
-    key: 'monad',
-    chain: monad,
-    mainnet: true,
-    usdc: '0x754704Bc059F8C67012fEd69BC8A327a5aafb603',
-    gasToken: 'MON',
-    explorer: explorerOf(monad),
-    faucets: [],
-    confirmations: 1,
-    ...mainnetCaps,
-    notes: ['Gas is paid in MON.', 'Fast blocks: a seller’s single collect transaction lands almost at once.'],
-  },
   'monad-testnet': {
     key: 'monad-testnet',
+    brand: 'Monad',
     chain: monadTestnet,
     mainnet: false,
     usdc: '0x534b2f3A21130d7a60830c2Df862319e593943A3',
@@ -131,23 +87,9 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...testnetCaps,
     notes: ['The Monad test network: test USDC from the Circle faucet, test MON for gas.'],
   },
-  arc: {
-    key: 'arc',
-    chain: arcMainnet,
-    mainnet: true,
-    usdc: '0x3600000000000000000000000000000000000000',
-    gasToken: 'USDC',
-    explorer: 'https://explorer.arc.io',
-    faucets: [],
-    confirmations: 0,
-    ...mainnetCaps,
-    notes: [
-      'Gas is paid in USDC, so shops and sellers only ever need USDC.',
-      'Sub-second, deterministic finality: a collect is final as soon as it lands.',
-    ],
-  },
   'arc-testnet': {
     key: 'arc-testnet',
+    brand: 'Arc',
     chain: arcTestnet,
     mainnet: false,
     usdc: '0x3600000000000000000000000000000000000000',
@@ -158,21 +100,9 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...testnetCaps,
     notes: ['The Arc test network: gas is paid in test USDC from the Circle faucet.'],
   },
-  base: {
-    key: 'base',
-    blockscoutApi: 'https://base.blockscout.com/api/',
-    chain: base,
-    mainnet: true,
-    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    gasToken: 'ETH',
-    explorer: explorerOf(base),
-    faucets: [],
-    confirmations: 1,
-    ...mainnetCaps,
-    notes: ['An Ethereum layer 2; gas is paid in ETH.', 'Close to existing agent-payment ecosystems.'],
-  },
   'base-sepolia': {
     key: 'base-sepolia',
+    brand: 'Base',
     blockscoutApi: 'https://base-sepolia.blockscout.com/api/',
     chain: baseSepolia,
     mainnet: false,
@@ -184,21 +114,9 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...testnetCaps,
     notes: ['The Base test network: test USDC from the Circle faucet, test ETH for gas.'],
   },
-  ethereum: {
-    key: 'ethereum',
-    blockscoutApi: 'https://eth.blockscout.com/api/',
-    chain: ethereum,
-    mainnet: true,
-    usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    gasToken: 'ETH',
-    explorer: explorerOf(ethereum),
-    faucets: [],
-    confirmations: 2,
-    ...mainnetCaps,
-    notes: ['Ethereum mainnet; gas is paid in ETH and costs more than on layer 2s.'],
-  },
   'ethereum-sepolia': {
     key: 'ethereum-sepolia',
+    brand: 'Ethereum',
     blockscoutApi: 'https://eth-sepolia.blockscout.com/api/',
     chain: sepolia,
     mainnet: false,
@@ -212,6 +130,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
   },
   'tempo-testnet': {
     key: 'tempo-testnet',
+    brand: 'Tempo',
     sourcifyUrl: 'https://contracts.tempo.xyz',
     chain: tempoModerato,
     mainnet: false,
@@ -228,6 +147,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
   },
   anvil: {
     key: 'anvil',
+    brand: 'Anvil',
     chain: anvil,
     mainnet: false,
     usdc: ZERO, // MockUSDC, registered at runtime via setLocalDeployment()
@@ -242,15 +162,10 @@ export const baseRegistry: Record<ChainKey, Base> = {
 
 /** Spec-mandated RPC defaults where §5.4/§18 give one explicitly; other chains use viem's default. */
 export const rpcEnvVar: Record<ChainKey, string> = {
-  arbitrum: 'RPC_ARBITRUM',
   'arbitrum-sepolia': 'RPC_ARBITRUM_SEPOLIA',
-  monad: 'RPC_MONAD',
   'monad-testnet': 'RPC_MONAD_TESTNET',
-  arc: 'RPC_ARC',
   'arc-testnet': 'RPC_ARC_TESTNET',
-  base: 'RPC_BASE',
   'base-sepolia': 'RPC_BASE_SEPOLIA',
-  ethereum: 'RPC_ETHEREUM',
   'ethereum-sepolia': 'RPC_ETHEREUM_SEPOLIA',
   'tempo-testnet': 'RPC_TEMPO_TESTNET',
   anvil: 'RPC_ANVIL',
@@ -258,10 +173,8 @@ export const rpcEnvVar: Record<ChainKey, string> = {
 
 const specRpc: Partial<Record<ChainKey, string>> = {
   'monad-testnet': 'https://testnet-rpc.monad.xyz',
-  arc: 'https://rpc.mainnet.arc.io',
   'arc-testnet': 'https://rpc.testnet.arc.io',
   // viem's defaults for these are rate-limited third-party endpoints
-  ethereum: 'https://ethereum-rpc.publicnode.com',
   'ethereum-sepolia': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
 

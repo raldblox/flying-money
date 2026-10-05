@@ -2,29 +2,14 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import {
-  allChains,
-  baseRegistry,
-  chainKeys,
-  getChain,
-  getChainById,
-  MAINNET_MAX_FACE_VALUE,
-  MAINNET_MAX_TOTAL_OUTSTANDING,
-  rpcUrl,
-  setLocalDeployment,
-} from '../src/index.js'
+import { allChains, baseRegistry, chainKeys, getChain, getChainById, rpcUrl, setLocalDeployment } from '../src/index.js'
 
 // Expected values transcribed from BUILD_SPEC §5.4 (the normative table).
 const SPEC = {
-  arbitrum: [42161, '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', 'ETH', true],
   'arbitrum-sepolia': [421614, '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d', 'ETH', false],
-  monad: [143, '0x754704Bc059F8C67012fEd69BC8A327a5aafb603', 'MON', true],
   'monad-testnet': [10143, '0x534b2f3A21130d7a60830c2Df862319e593943A3', 'MON', false],
-  arc: [5042, '0x3600000000000000000000000000000000000000', 'USDC', true],
   'arc-testnet': [5042002, '0x3600000000000000000000000000000000000000', 'USDC', false],
-  base: [8453, '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 'ETH', true],
   'base-sepolia': [84532, '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 'ETH', false],
-  ethereum: [1, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'ETH', true],
   'ethereum-sepolia': [11155111, '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', 'ETH', false],
   'tempo-testnet': [42431, '0x20c0000000000000000000006a37da5c996874be', 'USD', false],
   anvil: [31337, '0x0000000000000000000000000000000000000000', 'ETH', false],
@@ -45,29 +30,21 @@ describe('chain registry (§5.4)', () => {
     })
   }
 
-  it('mainnets carry both caps (100 / 1,000 USDC); testnets are unlimited (0)', () => {
+  it('test networks only, all uncapped (the contract is unaudited)', () => {
     for (const c of allChains()) {
-      if (c.mainnet) {
-        expect(c.maxFaceValue).toBe(100_000_000n)
-        expect(c.maxTotalOutstanding).toBe(1_000_000_000n)
-      } else {
-        expect(c.maxFaceValue).toBe(0n)
-        expect(c.maxTotalOutstanding).toBe(0n)
-      }
+      expect(c.mainnet).toBe(false)
+      expect(c.maxFaceValue).toBe(0n)
+      expect(c.maxTotalOutstanding).toBe(0n)
     }
-    expect(MAINNET_MAX_FACE_VALUE).toBe(100_000_000n)
-    expect(MAINNET_MAX_TOTAL_OUTSTANDING).toBe(1_000_000_000n)
   })
 
   it('Arc has deterministic finality (confirmations 0) and USDC gas', () => {
-    expect(getChain('arc').confirmations).toBe(0)
     expect(getChain('arc-testnet').confirmations).toBe(0)
   })
 
   it('uses spec RPCs, and RPC_<KEY> env overrides them', () => {
     expect(rpcUrl('monad-testnet')).toBe('https://testnet-rpc.monad.xyz')
     expect(rpcUrl('arc-testnet')).toBe('https://rpc.testnet.arc.io')
-    expect(rpcUrl('arc')).toBe('https://rpc.mainnet.arc.io')
     expect(rpcUrl('arbitrum-sepolia', { RPC_ARBITRUM_SEPOLIA: 'http://x' })).toBe('http://x')
     for (const k of chainKeys) expect(rpcUrl(k)).toMatch(/^https?:\/\//)
   })
@@ -88,7 +65,7 @@ describe('chain registry (§5.4)', () => {
     })
     expect(getChain('anvil').usdc).toBe('0x00000000000000000000000000000000000000aa')
     expect(getChain('anvil').flyingMoney).toBe('0x00000000000000000000000000000000000000bb')
-    expect(getChain('arbitrum').usdc).toBe(SPEC.arbitrum[1])
+    expect(getChain('arbitrum-sepolia').usdc).toBe(SPEC['arbitrum-sepolia'][1])
   })
 
   it('generated Solidity registry files are up to date', () => {

@@ -12,7 +12,7 @@ It uses HTTP 402, but it's a *prefunded tab*: one settlement for many requests, 
 It is a one-way channel in spirit. The differences: anyone can redeem, the spending key is separate from the funder, there is no close negotiation, and it comes as an HTTP-native SDK for agents.
 
 **Which chain?**
-All of them. The same contract and protocol run on Arbitrum, Monad, Arc and Base, each with that chain's Circle USDC and caps. Arc lets sellers operate with USDC only (it is also the gas token). Adding a chain is one registry entry. See [Deployments](/chains).
+Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum and Tempo test networks, with that chain's USDC (OUSD on Tempo). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
 
 **Do certificates move between chains?**
 No, and nothing is bridged. A seller can accept notes on several chains; each chain settles independently. No bridge risk.
@@ -36,4 +36,4 @@ Notes can be signed and verified without a connection, and a shop's till keeps a
 None from Flying Money. The seller pays gas when collecting (one transaction for many payments); on Arc, gas is paid in USDC.
 
 **Is it audited?**
-No. It is invariant-tested and runs on testnets and small, capped mainnet deployments. An audit comes before any caps are lifted.
+No. It is invariant-tested and runs on test networks only. An independent audit comes before any real-money launch.

@@ -33,14 +33,14 @@ Spenders are verified with **ECDSA only** (`ECDSA.tryRecover`, low-s). There is 
 
 `InvalidParams` · `UnknownCertificate` · `NotFunder` · `Expired` · `NotExpired` · `Closed` · `ExceedsFaceValue` · `ExceedsCap` · `InvalidSignature` · `NothingToRedeem` · `UnsupportedToken`
 
-## Launch caps
+## Optional caps
 
-Two immutable caps, set at deployment (0 = unlimited):
+Two immutable caps can be set at deployment (0 = unlimited):
 
-- `maxFaceValue`: per-certificate cap. Mainnets: **100 USDC**.
-- `maxTotalOutstanding`: deployment-wide cap. Mainnets: **1,000 USDC**.
+- `maxFaceValue`: per-certificate cap.
+- `maxTotalOutstanding`: deployment-wide cap.
 
-There is no admin, so caps can never be raised, only superseded by a new deployment. Testnets are uncapped.
+There is no admin, so caps can never be raised, only superseded by a new deployment. Every current deployment is on a test network and uncapped.
 
 ## Invariants (tested with Foundry, 256 runs × depth 50)
 

@@ -1,7 +1,7 @@
 // The hosted Silk Road Oracle (§21.6): a durable §6.5 seller on Vercel serverless, sharing its state, redeemer lock and
 // sweeper through Upstash (§21.5). The same builder runs the local node server (src/main.ts) with hosted = false.
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { type ChainKey, isChainKey, setLocalDeployment } from '@flying-money/chains'
+import { type ChainKey, chainKeys, getChain, isChainKey, setLocalDeployment } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
 import {
   type CertificateReader,
@@ -131,7 +131,9 @@ export function hostedOracleFromEnv(
   env: Record<string, string | undefined>,
   opts: { hosted: boolean; readCertificate?: CertificateReader },
 ) {
-  const accepts = (env.ORACLE_ACCEPTS ?? 'arbitrum-sepolia').split(',').map((s) => s.trim())
+  // default: every network the contract is deployed on, so no chain is favoured over another
+  const deployed = chainKeys.filter((k) => k !== 'anvil' && getChain(k).flyingMoney).join(',')
+  const accepts = (env.ORACLE_ACCEPTS?.trim() || deployed).split(',').map((s) => s.trim())
   for (const k of accepts) if (!isChainKey(k)) throw new Error(`ORACLE_ACCEPTS: unknown chain ${k}`)
   if (accepts.includes('anvil')) {
     if (opts.hosted) throw new Error('anvil is local only')

@@ -83,11 +83,7 @@ const THREATS = [
     'Reserved accounting with an atomic re-check',
   ],
   ['Funder’s own wallet as the spender, or payee = spender', 'Rejected by the contract', 'Structural key isolation'],
-  [
-    'Unaudited contract bug on mainnet',
-    'Exposure bounded deployment-wide',
-    '1,000 USDC deployment cap + 100 USDC per budget',
-  ],
+  ['A bug in the unaudited contract', 'Only test money is exposed', 'Test networks only, until an independent audit'],
   ['Stablecoin freeze or blocklist', 'Funds stuck', 'Inherent to the token; disclosed'],
   ['The RPC lies to the seller', 'The seller may accept notes against a fake budget', 'Use a trusted RPC; disclosed'],
   [
@@ -136,8 +132,7 @@ export default function GuaranteesPage() {
 
       <p className="mt-6 sheet p-5 text-ink-2">
         <strong className="text-ink">Audit status: not audited.</strong> Its safety rules are checked by automated tests
-        that run thousands of random scenarios. Test networks only for now. Real-money networks will launch with fixed
-        caps (100 USDC per budget, 1,000 USDC in total).
+        that run thousands of random scenarios. Test networks only, until an independent audit.
       </p>
 
       <h2 className="mt-12 font-display text-3xl font-semibold">The three claims we make, and no stronger ones</h2>

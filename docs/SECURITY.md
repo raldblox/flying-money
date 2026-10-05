@@ -4,9 +4,8 @@
 
 Please **don't open a public issue** for a security problem. Report it privately through GitHub: **Security → Report a vulnerability** on this repository. If that isn't available, open an issue titled "Security contact request" with no details, and a maintainer will reply with a private channel. We aim to acknowledge reports within 3 days. This is a testnet project without a bug bounty; please don't test against other people's funds or budgets.
 
-> **Audit status: not audited.** Invariant- and property-tested. The recorded deployment is Arbitrum Sepolia (testnet).
-> Mainnet configuration includes immutable caps (100 USDC per certificate, 1,000 USDC deployment-wide);
-> configuration is not evidence of a mainnet deployment or production readiness.
+> **Audit status: not audited.** Invariant- and property-tested. Test networks only (Arbitrum, Base, Ethereum and
+> Tempo testnets); there is no mainnet deployment.
 
 ## What is guaranteed (and nothing stronger)
 
@@ -49,7 +48,7 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 | Seller crashes after accepting, before serving | Buyer's retry resumes it; otherwise the sweeper resolves it (done → served; not started → credit) | [Seller algorithm](site/protocol.md): resume and sweeper |
 | Adversarial spender sends many concurrent requests reusing the same credit | Only as many are admitted as `accepted − consumed − reserved` allows | `reserved` + atomic re-check in `begin` (S4) |
 | Funder uses its own wallet as the spender, or payee = spender | Rejected by the contract | Structural key isolation in `issue` |
-| Unaudited contract bug on mainnet | Exposure bounded deployment-wide | `maxTotalOutstanding` (1,000 USDC) + `maxFaceValue` (100 USDC) |
+| Unaudited contract bug | Only test money is exposed | Test networks only until an independent audit; the contract also supports immutable caps (`maxFaceValue`, `maxTotalOutstanding`) |
 | Stablecoin freeze or blocklist | Funds stuck; a redeem to a blocklisted payee reverts | Inherent to the token; disclosed |
 | RPC lies to the server | Server may accept notes against a fake certificate | Use a trusted RPC; disclosed |
 | Customer's phone stolen | Thief can spend only at the named shop(s), up to the remaining face value | Payee-scoped + cap; PIN-encrypted key; keep face values small |

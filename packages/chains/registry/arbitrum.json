@@ -1,9 +1,0 @@
-{
-  "key": "arbitrum",
-  "chainId": 42161,
-  "mainnet": true,
-  "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-  "usdcDecimals": 6,
-  "maxFaceValue": 100000000,
-  "maxTotalOutstanding": 1000000000
-}
