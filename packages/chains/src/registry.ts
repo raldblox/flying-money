@@ -26,6 +26,8 @@ export interface ChainConfig {
    * it is OUSD (a TIP-20 USD stablecoin, also 6 decimals). Zero address for `anvil` until MockUSDC is registered.
    */
   usdc: Hex
+  /** The settlement stablecoin's symbol when it isn't Circle USDC (OUSD on Tempo testnet). */
+  stablecoin?: string
   /** What pays gas: a native token, or USD stablecoins on Tempo (which has no native token). */
   gasToken: 'ETH' | 'MON' | 'USDC' | 'USD'
   explorer: string
@@ -135,6 +137,7 @@ export const baseRegistry: Record<ChainKey, Base> = {
     chain: tempoModerato,
     mainnet: false,
     usdc: '0x20c0000000000000000000006a37da5c996874be',
+    stablecoin: 'OUSD',
     gasToken: 'USD',
     explorer: explorerOf(tempoModerato),
     faucets: ['https://docs.tempo.xyz/quickstart/faucet'],

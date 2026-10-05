@@ -1,3 +1,5 @@
+import { getChain, isChainKey } from '@flying-money/chains'
+
 /**
  * /agent.md (BUILD_SPEC §22.10 a): setup instructions written for an AI agent, so its owner only has to paste one
  * sentence. The server makes its own spending key (§22.10 b), so nobody runs a terminal command by hand.
@@ -14,6 +16,20 @@ export function agentMd(
 ): string {
   const site = base.replace(/\/$/, '')
   const demo = `${demoSeller.replace(/\/$/, '')}/v1/tea-price?city=Luoyang`
+  // where each network's test money comes from (the registry), so the agent can suggest the easiest one
+  const faucets = chainKeys
+    .filter(isChainKey)
+    .map(getChain)
+    .map((c) => {
+      const gas =
+        c.gasToken === 'ETH'
+          ? 'test ETH (search for a faucet for this network)'
+          : c.gasToken === 'USD' || c.gasToken === 'USDC'
+            ? 'none extra: fees are paid in stablecoins'
+            : `test ${c.gasToken}`
+      return `  - **${c.chain.name}:** ${c.stablecoin ?? 'USDC'} from ${c.faucets.join(', ') || 'a faucet for this network'}; gas: ${gas}`
+    })
+    .join('\n')
   const chains = chainKeys.join(',')
   const env = { FM_OWNER: '<OWNER_WALLET>', ...(chains ? { AGENT_CHAINS: chains } : {}) }
   const envFlags = Object.entries(env)
@@ -109,6 +125,24 @@ claude mcp add flying-money ${envFlags} -- node <HOME>/.flying-money/src/package
 \`\`\`
 
 If you can't run commands, show your owner these steps and ask them to run them.
+
+## If your owner needs a wallet or test money
+
+The wallet is always your owner's: they hold it, they approve each budget from it, and you only ever spend the budgets
+they approve. Use what you know about them to pick the easiest path, and keep it short for someone new to crypto.
+
+- **They already use a crypto wallet?** Use that one. Any Ethereum-compatible wallet that can connect to a website
+  works (browser extensions such as MetaMask, Rabby or Coinbase Wallet).
+- **They don't?** Suggest a free browser extension wallet; it takes a couple of minutes. Explain that it's like an
+  account they own, and that testing costs nothing.
+- **Test money is free.** A budget is funded in a test stablecoin (USDC, or OUSD on Tempo), and approving one is a transaction that needs the network's
+  gas token:
+
+${faucets}
+
+  Pick the network that's easiest for them. A faucet may ask them to sign in or solve a CAPTCHA; that part is theirs.
+
+Then send them the approval link from \`fm_request_budget\`; they open it at ${site}/app/requests with their wallet.
 
 ## 2. Check it works
 

@@ -34,6 +34,14 @@ describe('/agent.md', () => {
     expect(md).toMatch(/FM_KEY_FILE/)
   })
 
+  it('suggests wallets and free test money per network, from the registry, keeping the wallet the owner’s', () => {
+    const all = agentMd('https://example.test', ['arbitrum-sepolia', 'tempo-testnet'])
+    expect(all).toMatch(/If your owner needs a wallet or test money/)
+    expect(all).toMatch(/wallet is always your owner's/)
+    expect(all).toMatch(/Arbitrum Sepolia:\*\* USDC from https:\/\/faucet\.circle\.com/)
+    expect(all).toMatch(/Tempo Testnet \(Moderato\):\*\* OUSD from .*; gas: none extra/)
+  })
+
   it('the copyable instruction names the page and the owner wallet', () => {
     const s = agentInstruction('https://example.test', '0x8dB423F3b8991865030BcE381F7A50EC517c7c50')
     expect(s).toBe(
