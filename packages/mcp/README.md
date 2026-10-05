@@ -68,6 +68,16 @@ In `claude_desktop_config.json`:
 }
 ```
 
+## No MCP client? One-shot commands
+
+Every tool also runs as a one-shot command that prints its result on stdout (the exit code is 1 when the tool reports an error). Any language can call it as a subprocess; the key, the payment log and approved budgets persist between calls. See [Agents](https://useflyingmoney.vercel.app/docs/agents) for a Python example.
+
+```bash
+FM_OWNER=0xYourWallet npx -y @flying-money/mcp call fm_quote '{"url":"https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang"}'
+```
+
+`npx -y @flying-money/mcp --help` lists the tools and their inputs.
+
 ## Any MCP client over HTTP
 
 ```bash

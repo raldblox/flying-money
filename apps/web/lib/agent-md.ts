@@ -63,8 +63,20 @@ ${json}
 For clients that only speak HTTP, run \`npx -y @flying-money/mcp --http 8788\` and connect to
 \`http://127.0.0.1:8788/mcp\` (this machine only).
 
-**No MCP at all?** You can still pay: Flying Money sellers answer HTTP 402 with an offer, and the TypeScript client
-pays it for you (${site}/docs/client). Sellers that speak x402 V2 advertise the \`flying-money\` scheme in
+**No MCP at all?** Run the same tools as one-shot commands, from any language or shell. Each prints its result on stdout
+(JSON, the same as the MCP tool returns; the exit code is 1 when the tool reports an error, such as
+\`{"error":"no_certificate",…}\` when you have no budget yet). The key, payment log and approved budgets are kept on
+disk between calls, exactly as for the server:
+
+\`\`\`bash
+export FM_OWNER=<OWNER_WALLET>
+npx -y @flying-money/mcp call fm_status
+npx -y @flying-money/mcp call fm_quote '{"url":"${demo}"}'
+npx -y @flying-money/mcp call fm_paid_fetch '{"url":"${demo}"}'
+\`\`\`
+
+\`npx -y @flying-money/mcp --help\` lists every tool and its input. TypeScript agents can use the client library
+instead (${site}/docs/client). Sellers that speak x402 V2 advertise the \`flying-money\` scheme in
 \`PAYMENT-REQUIRED\` (${repo}/blob/main/docs/design/x402-flying-money-scheme.md).
 
 On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\` (your home

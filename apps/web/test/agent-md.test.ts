@@ -27,6 +27,13 @@ describe('/agent.md', () => {
     expect(md).toContain('packages/mcp/dist/bin.js')
   })
 
+  it('lets the agent check its setup, try a real seller, and pay without MCP', () => {
+    expect(md).toContain('npx -y @flying-money/mcp --check')
+    expect(md).toContain('npx -y @flying-money/mcp call fm_paid_fetch')
+    expect(md).toContain('https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang')
+    expect(md).toMatch(/FM_KEY_FILE/)
+  })
+
   it('the copyable instruction names the page and the owner wallet', () => {
     const s = agentInstruction('https://example.test', '0x8dB423F3b8991865030BcE381F7A50EC517c7c50')
     expect(s).toBe(

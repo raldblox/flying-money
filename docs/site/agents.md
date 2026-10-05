@@ -57,6 +57,37 @@ console.log(fm.status()) // remaining budget per certificate
 
 `fm.fetch` behaves like `fetch`. When the server answers `402` with a `Flying-Money-Offer` header, the client signs a payment slip for the price, saves it, and retries with a `Flying-Money-Note` header. You get the paid response.
 
+## Python, Go or any other language
+
+There is no native SDK outside TypeScript yet, but your agent can still pay. The MCP package runs each tool as a one-shot command that prints its result on stdout, so any language can call it as a subprocess (Node 22+ must be installed). The exit code is 1 when the tool reports an error, for example `{"error":"no_certificate",…}` when there is no budget yet. The spending key, the payment log and approved budgets are kept on disk between calls (`~/.flying-money/`, or `FM_KEY_FILE` / `FM_STORE`), so a crash or a retry never pays twice.
+
+```python
+import json, os, shutil, subprocess
+
+NPX = shutil.which("npx") or "npx"  # finds npx.cmd on Windows
+ENV = {**os.environ, "FM_OWNER": "0xYourOwnersWallet"}
+
+def fm(tool, **args):
+    # one Flying Money tool; returns (ok, result)
+    p = subprocess.run([NPX, "-y", "@flying-money/mcp", "call", tool, json.dumps(args)],
+                       capture_output=True, text=True, env=ENV)
+    try:
+        out = json.loads(p.stdout)
+    except ValueError:
+        out = p.stdout.strip()
+    return p.returncode == 0, out
+
+url = "https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang"
+ok, status = fm("fm_status")              # status["spendingAddress"]: tell your owner
+ok, res = fm("fm_paid_fetch", url=url)    # pays from a budget; returns the body and the payment
+if not ok and isinstance(res, dict) and res.get("error") == "no_certificate":
+    ok, req = fm("fm_request_budget", url=url, amount="0.50", days=7, reason="Tea prices for my report")
+    print("Ask your owner to approve:", req.get("link") or req)
+    # later: fm("fm_request_status", requestId=req["requestId"]), then fm_paid_fetch again
+```
+
+`npx -y @flying-money/mcp --help` lists every tool and its input. To implement the protocol natively instead, see [Protocol](/docs/protocol).
+
 ## Rules the client follows (and your agent should too)
 
 - **You can only pay the seller named on the budget**, and never more than its amount in total.
