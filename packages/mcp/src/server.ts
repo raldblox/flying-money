@@ -189,6 +189,8 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         // max_price is enforced by the client on the offer it signs, not on a separate quote (§22.2 A2)
         const maxPrice = max_price !== undefined ? parseUnits(max_price, 6) : undefined
         let payment: { price: bigint; cumulative: bigint } | undefined
+        // the saved state must be loaded first, or a fresh process reports the running total as this call's price
+        await fm.ready
         const before = new Map(fm.status().map((c) => [c.id, c.spentLocal]))
         const res = await fm.fetch(target, init, maxPrice !== undefined ? { maxPrice } : {})
         for (const c of fm.status()) {
