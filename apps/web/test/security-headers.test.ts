@@ -21,11 +21,13 @@ describe('F11: strict CSP on key-holding pages', () => {
   it('allows only nonce-carrying scripts, and no eval in production', () => {
     const csp = strictCsp('abc123', { dev: false })
     expect(csp).toMatch(/script-src 'self' 'nonce-abc123' 'strict-dynamic'(;| )/)
-    expect(csp).not.toMatch(/unsafe-eval/)
+    // JavaScript eval stays off; only WebAssembly may compile (the sound carrier's decoder)
+    expect(csp).not.toMatch(/'unsafe-eval'/)
+    expect(csp).toMatch(/script-src[^;]*'wasm-unsafe-eval'/)
     expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/)
     for (const d of ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'", "form-action 'self'"])
       expect(csp).toContain(d)
-    expect(strictCsp('n', { dev: true })).toMatch(/unsafe-eval/)
+    expect(strictCsp('n', { dev: true })).toMatch(/'unsafe-eval'/)
   })
 })
 

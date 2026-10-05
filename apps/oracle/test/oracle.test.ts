@@ -73,6 +73,7 @@ describe('Silk Road Oracle (§13.1)', () => {
       '/v1/route': 20_000n,
       '/v1/weather': 10_000n,
       '/v1/proverb': 5_000n,
+      '/v1/certificate': 10_000n,
     })
     for (const [path, price] of Object.entries(PRICES)) {
       const r = await oracle.app.request(`http://oracle.test${path}`, {
@@ -102,6 +103,19 @@ describe('Silk Road Oracle (§13.1)', () => {
     const proverb = await (await pay('/v1/proverb', 5_000n)).res.json()
     expect(proverb.text.length).toBeGreaterThan(10)
     expect(proverb.source).toMatch(/Legge|public domain/i)
+
+    // the keepsake: the visitor's name (cleaned, capped) and the verified payment that bought it
+    const cert = await (
+      await pay(`/v1/certificate?name=${encodeURIComponent(' Ada\u0007 Lovelace ')}`, 10_000n)
+    ).res.json()
+    expect(cert).toMatchObject({
+      kind: 'flying-money-certificate',
+      name: 'Ada Lovelace',
+      paid: '10000',
+      chainId: CHAIN_ID,
+    })
+    expect(cert.serial).toMatch(/^[0-9A-F]{8}$/)
+    expect(cert.proverb.text.length).toBeGreaterThan(10)
   })
 
   it('weather is real (injected in tests), attributed, and fetched once per requestId', async () => {

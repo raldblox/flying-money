@@ -23,6 +23,7 @@
     "@flying-money/server": "workspace:*",
     "@noble/hashes": "^2.4.0",
     "@tanstack/react-query": "^5.103.2",
+    "ggwave": "0.4.0",
     "jsqr": "^1.4.0",
     "marked": "^18.0.14",
     "next": "^16.3.6",

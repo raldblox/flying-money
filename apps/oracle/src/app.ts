@@ -34,6 +34,7 @@ export const PRICES: Record<string, bigint> = {
   '/v1/route': 20_000n, // 0.02
   '/v1/weather': 10_000n, // 0.01
   '/v1/proverb': 5_000n, // 0.005
+  '/v1/certificate': 10_000n, // 0.01: a personal 飛錢 certificate, the keepsake of a paid slip
 }
 
 export interface WeatherNow {
@@ -206,6 +207,34 @@ export function createOracle(config: OracleConfig) {
     return c.json(p)
   })
 
+  // A personal 飛錢 certificate: the details of the payment that bought it, drawn as a keepsake by the site. The name
+  // is the visitor's own words (trimmed, no control characters); everything else comes from the verified payment.
+  app.get('/v1/certificate', (c) => {
+    const { requestId, certificateId, chainId, payee, price } = c.get('flyingMoney')
+    // no control characters (they'd break the drawing), trimmed, at most 40 characters
+    const name = [...(c.req.query('name') ?? '')]
+      .filter((ch) => {
+        const code = ch.codePointAt(0) ?? 0
+        return code >= 0x20 && code !== 0x7f
+      })
+      .join('')
+      .trim()
+      .slice(0, 40)
+    const p = PROVERBS[Number.parseInt(requestId.slice(-4), 16) % PROVERBS.length]!
+    return c.json({
+      kind: 'flying-money-certificate',
+      serial: requestId.slice(-8).toUpperCase(),
+      name,
+      issuedAt: new Date().toISOString(),
+      paid: price.toString(),
+      chainId,
+      certificateId,
+      payee,
+      requestId,
+      proverb: p,
+    })
+  })
+
   // ───────── free endpoints ─────────
   const pricesJson = () => Object.fromEntries(Object.entries(PRICES).map(([k, v]) => [k, v.toString()]))
   const offer = () => offerJson(server.offer(0n))
@@ -352,6 +381,7 @@ function openapi() {
         ['lon', 'number'],
       ]),
       '/v1/proverb': paidOp('A public-domain proverb — 0.005 USDC', []),
+      '/v1/certificate': paidOp('A personal 飛錢 certificate for the payment — 0.01 USDC', [['name', 'string']]),
       '/fm/prices': { get: { summary: 'Price table (free)', responses: { '200': { description: 'OK' } } } },
       '/fm/redeemable/{id}': {
         get: {

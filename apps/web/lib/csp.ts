@@ -6,11 +6,12 @@
 export const strictCspPath = (pathname: string) => /^\/(wallet|shop|app)(\/|$)/.test(pathname)
 
 export function strictCsp(nonce: string, opts: { dev: boolean }): string {
+  // 'wasm-unsafe-eval' lets WebAssembly compile (the sound carrier's decoder), never JavaScript eval
   // dev: React needs eval for error stacks, and the local chain/HMR run over plain http/ws
   const dev = opts.dev
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ''}`,
     // inline style attributes are used for layout and animation; styles can't run code
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
