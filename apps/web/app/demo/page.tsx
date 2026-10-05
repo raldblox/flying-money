@@ -27,6 +27,24 @@ export default function DemoPage() {
         transactions.
       </p>
       <DemoClient chains={demoChains} defaultChain={chain.key} />
+      <section className="mt-14 grid gap-4 sm:grid-cols-2" aria-label="More demos">
+        <a href="/demo/slip" className="sheet block p-5 hover:border-seal">
+          <p className="smallcaps text-xs text-seal">Demo · any device</p>
+          <p className="mt-1 font-display text-2xl font-semibold">The slip that pays</p>
+          <p className="mt-2 text-sm text-ink-2">
+            Get a signed slip from our agent, carry it to another device by QR, sound, share, link or file, and spend it
+            there for a 飛錢 certificate.
+          </p>
+        </a>
+        <a href="/demo/counter" className="sheet block p-5 hover:border-seal">
+          <p className="smallcaps text-xs text-seal">Demo · no internet</p>
+          <p className="mt-1 font-display text-2xl font-semibold">The offline counter</p>
+          <p className="mt-2 text-sm text-ink-2">
+            Your phone in airplane mode pays a till. The till checks the slip on the spot, guaranteed, and collects when
+            it’s back online.
+          </p>
+        </a>
+      </section>
     </div>
   )
 }
