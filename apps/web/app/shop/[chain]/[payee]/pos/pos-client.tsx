@@ -7,11 +7,12 @@ import { type Hex, parseUnits } from 'viem'
 import { useAccount, useBalance, useChainId, usePublicClient, useWalletClient } from 'wagmi'
 import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
+import { CarryReceive, CarrySend } from '@/components/carry/carry'
 import { useOnline } from '@/components/offline-ready'
-import { QrCode } from '@/components/qr'
-import { QrScanner } from '@/components/qr-scanner'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
+import { listenForCarried } from '@/lib/carry/channel'
+import { carriedPrice, slipForOrder } from '@/lib/carry/till'
 import { parseAmount, short, usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, parsePriceList, type Till, TillBusyError, type TillSettings } from '@/lib/till'
 
@@ -191,11 +192,23 @@ function Sell({ till }: { till: Till }) {
     if (!order || busy) return
     setBusy(true)
     try {
-      setResult(await till.counter.accept(text, order.price, order.id))
+      setResult(await till.counter.accept(slipForOrder(text, order.id), order.price, order.id))
     } finally {
       setBusy(false)
     }
   }
+
+  // a slip opened as a link or share in another tab on this device lands on the waiting order
+  const scannedRef = useRef(scanned)
+  scannedRef.current = scanned
+  useEffect(() => {
+    if (!order || result) return
+    return listenForCarried('till', (payload) => {
+      if (!/^fm[12]/.test(payload)) return false
+      void scannedRef.current(payload)
+      return true
+    })
+  }, [order, result])
 
   if (!order)
     return (
@@ -270,29 +283,24 @@ function Sell({ till }: { till: Till }) {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <section className="sheet p-6 text-center" aria-labelledby="price-t">
-        <p className="smallcaps text-sm text-ink-2">Step 1 · the customer scans this</p>
+        <p className="smallcaps text-sm text-ink-2">Step 1 · send the price to the customer</p>
         <h2 id="price-t" className="mt-1 font-display text-4xl font-semibold lining-nums">
           {order.label} · {usdc(order.price)} USDC
         </h2>
-        <div className="mx-auto mt-4 max-w-72">
-          <QrCode value={order.qr} label={`Price code for ${usdc(order.price)} USDC`} />
-        </div>
-        <details className="mt-3 text-left text-sm">
-          <summary className="cursor-pointer text-ink-2">Copy the price code (for a second window)</summary>
-          <textarea
-            readOnly
-            value={order.qr}
-            aria-label="Price code"
-            className="mt-2 h-24 w-full rounded border border-line bg-paper-2 p-2 font-mono text-xs"
-            onFocus={(e) => e.currentTarget.select()}
+        <div className="mt-4 text-left">
+          <CarrySend
+            payload={carriedPrice(order.qr)}
+            title={`Price code for ${usdc(order.price)} USDC`}
+            carriers={['qr', 'sound', 'text', 'link', 'share']}
+            fileName="flying-money-price.txt"
           />
-        </details>
+        </div>
         <button type="button" className={`${buttonClass('secondary')} mt-4`} onClick={() => setOrder(null)}>
           Cancel order
         </button>
       </section>
       <section className="sheet p-6" aria-labelledby="scan-t" aria-live="polite">
-        <p className="smallcaps text-sm text-ink-2">Step 2 · scan the customer’s payment code</p>
+        <p className="smallcaps text-sm text-ink-2">Step 2 · receive the customer’s payment slip</p>
         <h2 id="scan-t" className="sr-only">
           Scan the customer’s code
         </h2>
@@ -308,10 +316,10 @@ function Sell({ till }: { till: Till }) {
           />
         ) : (
           <div className="mt-3">
-            <QrScanner
+            <CarryReceive
               prompt="Point the camera at the QR on the customer’s phone."
-              pasteLabel="Or paste the customer’s code"
-              onResult={(t) => void scanned(t)}
+              carriers={['camera', 'sound', 'paste', 'file']}
+              onText={(t) => void scanned(t)}
             />
             {busy && <p className="mt-2 text-sm text-ink-2">Checking…</p>}
           </div>

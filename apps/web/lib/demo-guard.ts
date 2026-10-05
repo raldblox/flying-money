@@ -74,17 +74,24 @@ export const SLIP_DAILY_CAP = 2_000_000n
 const SLIP_PER_VISITOR_SECONDS = 60
 
 /**
- * Admits one slip: same origin, one slip per visitor a minute, and the slip demo's own daily cap. The funding
+ * Admits one slip (or one counter-demo wallet): same origin, one per visitor a minute, and the slip demos' own daily
+ * cap, shared by both. The funding
  * transaction itself is serialised per network by the caller (one funder, one nonce sequence).
  */
 export async function admitSlip(
   req: Request,
   deps: DemoGuardDeps,
   face: bigint,
+  kind: 'slip' | 'counter' = 'slip',
 ): Promise<{ ok: true } | { ok: false; status: 403 | 429; error: string }> {
-  if (!sameOrigin(req)) return { ok: false, status: 403, error: 'Ask for a slip from the demo page.' }
-  const seen = await deps.limits.hit('slip-visitor', visitor(req), 1, SLIP_PER_VISITOR_SECONDS)
-  if (!seen.ok) return { ok: false, status: 429, error: 'One slip per visitor a minute. Try again shortly.' }
+  if (!sameOrigin(req)) return { ok: false, status: 403, error: 'Start it from the demo page.' }
+  const seen = await deps.limits.hit(`${kind}-visitor`, visitor(req), 1, SLIP_PER_VISITOR_SECONDS)
+  if (!seen.ok)
+    return {
+      ok: false,
+      status: 429,
+      error: kind === 'slip' ? 'One slip per visitor a minute. Try again shortly.' : 'One wallet per visitor a minute.',
+    }
   const day = new Date().toISOString().slice(0, 10)
   const budget = await deps.limits.spend('slip-usdc', day, face, SLIP_DAILY_CAP, 86_400)
   if (!budget.ok) return { ok: false, status: 429, error: 'Today’s slips are used up. They reset at midnight UTC.' }

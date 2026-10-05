@@ -1,5 +1,7 @@
 import { allChains } from '@flying-money/chains'
 import type { Metadata } from 'next'
+import { InstallApp } from '@/components/install-app'
+import { OfflineReady } from '@/components/offline-ready'
 import { toPickerNetworks } from '@/lib/networks'
 import { SITE } from '@/lib/site'
 import { SlipDemo } from './slip-demo'
@@ -15,6 +17,10 @@ export default function SlipDemoPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-14">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Demo · {SITE.testnetMode}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <OfflineReady />
+        <InstallApp />
+      </div>
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
         The slip that <em className="text-seal">pays</em>.
       </h1>

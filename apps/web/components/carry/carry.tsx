@@ -91,8 +91,11 @@ export function CarrySend({
   title,
   carriers = ['qr', 'sound', 'share', 'link', 'file', 'text'],
   fileName = 'flying-money.txt',
+  href,
 }: {
   payload: string
+  /** a link to send as is (a wallet hand-over), instead of opening the payload through /carry */
+  href?: string
   /** what this is, for labels and the share sheet ("Payment slip for 0.01 USDC") */
   title: string
   carriers?: SendCarrier[]
@@ -105,7 +108,7 @@ export function CarrySend({
   useEffect(() => setOrigin(window.location.origin), [])
   // biome-ignore lint/correctness/useExhaustiveDependencies: clear the last message when the carrier or payload changes
   useEffect(() => setStatus(null), [carrier, payload])
-  const link = origin ? carryLink(origin, payload) : ''
+  const link = href ?? (origin ? carryLink(origin, payload) : '')
   const canShare = typeof navigator !== 'undefined' && 'share' in navigator
 
   return (

@@ -1,8 +1,9 @@
-// Flying Money offline shell for the till (/shop) and the customer wallet (/wallet) (§12.5).
+// Flying Money offline shell (§12.5): the till (/shop), the wallet (/wallet), slips (/slip, /carry) and the offline
+// counter demo, so paying and receiving work with no connection.
 // Pages: network first, cached copy when offline. Build assets (/_next/static, immutable): cache first.
 // Never cached: /api/* (live demo, well-known), non-GET requests, and anything cross-origin (RPC calls).
-const CACHE = 'fm-shell-v2'
-const SHELL = ['/wallet', '/shop']
+const CACHE = 'fm-shell-v3'
+const SHELL = ['/wallet', '/shop', '/slip', '/carry', '/demo/counter', '/demo/slip']
 
 // Cache each shell page AND the build assets it references, so it works offline even if never opened before.
 async function precache() {
@@ -30,7 +31,10 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-const offlinePage = (url) => url.pathname.startsWith('/shop') || url.pathname.startsWith('/wallet')
+const OFFLINE_PREFIXES = ['/shop', '/wallet', '/slip', '/carry', '/demo/counter', '/demo/slip']
+const offlinePage = (url) => OFFLINE_PREFIXES.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`))
+// the closest cached page for a path that was never cached itself
+const fallbackFor = (url) => OFFLINE_PREFIXES.find((p) => url.pathname.startsWith(p)) ?? '/wallet'
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
@@ -69,7 +73,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() =>
           caches
             .match(req, { ignoreSearch: req.mode !== 'navigate' })
-            .then((hit) => hit || caches.match(url.pathname.startsWith('/shop') ? '/shop' : '/wallet'))
+            .then((hit) => hit || caches.match(fallbackFor(url)))
             .then((hit) => hit || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain' } })),
         ),
     )

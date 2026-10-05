@@ -11,17 +11,18 @@ import {
   PendingUnresolvedError,
   prepareCounterPayment,
 } from '@flying-money/client/counter'
-import { decodeOffer, type Hex, type Offer } from '@flying-money/core'
+import { decodeNote, type Hex, type Offer } from '@flying-money/core'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { CarryReceive, CarrySend } from '@/components/carry/carry'
 import { GrantSummary } from '@/components/grant-summary'
 import { NetworkPicker } from '@/components/network-picker'
 import { useOnline } from '@/components/offline-ready'
-import { QrCode } from '@/components/qr'
-import { QrScanner } from '@/components/qr-scanner'
 import { buttonClass } from '@/components/section'
 import { TestNote } from '@/components/test-note'
+import { listenForCarried, PENDING_OFFER } from '@/lib/carry/channel'
+import { decodeCarried, encodeNoteCompact } from '@/lib/carry/codec'
 import { loadCertificate } from '@/lib/chain'
 import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
 import { toPickerNetworks } from '@/lib/networks'
@@ -68,6 +69,12 @@ export function Wallet() {
   const online = useOnline()
 
   const refresh = useCallback(async () => setEntries(await listEntries()), [])
+  // a price code that arrived (scanned, heard, opened from a link or share): pick the budget, then review
+  const payOffer = useCallback((offer: Offer, list: Entry[]) => {
+    const fits = list.filter((e) => certificateMatches(toCounterCert(e), offer))
+    if (fits.length === 1) setView({ k: 'review', offer, entry: fits[0]! })
+    else setView({ k: 'choose', offer })
+  }, [])
 
   useEffect(() => {
     let release: (() => void) | undefined
@@ -78,7 +85,19 @@ export function Wallet() {
         release = r
         const h = parseHandOver(window.location.hash)
         if (h) setView({ k: 'handover', h })
-        await refresh()
+        const list = await listEntries()
+        setEntries(list)
+        // a price code opened by /carry while this wallet wasn't open
+        const pending = sessionStorage.getItem(PENDING_OFFER)
+        if (pending && !h) {
+          sessionStorage.removeItem(PENDING_OFFER)
+          try {
+            const c = decodeCarried(pending)
+            if (c.kind === 'offer') payOffer(c.offer, list)
+          } catch {
+            // not a price code any more: ignore it
+          }
+        }
         setReady((await hasPin()) ? 'ok' : 'no-pin')
       })
       .catch(() => {
@@ -88,7 +107,22 @@ export function Wallet() {
       gone = true
       release?.()
     }
-  }, [refresh])
+  }, [payOffer])
+
+  // a price code opened as a link or share in another tab lands here, if this wallet is open and ready
+  useEffect(() => {
+    if (ready !== 'ok') return
+    return listenForCarried('wallet', (payload) => {
+      try {
+        const c = decodeCarried(payload)
+        if (c.kind !== 'offer') return false
+        payOffer(c.offer, entries)
+        return true
+      } catch {
+        return false
+      }
+    })
+  }, [ready, entries, payOffer])
 
   // When online, show what the shop has already collected on-chain (§12.5 balance labels).
   useEffect(() => {
@@ -140,13 +174,7 @@ export function Wallet() {
       )}
       {view.k === 'scan' && (
         <Panel title="Scan the price code at the till" onBack={() => setView({ k: 'home' })}>
-          <ScanPrice
-            onOffer={(offer) => {
-              const fits = entries.filter((e) => certificateMatches(toCounterCert(e), offer))
-              if (fits.length === 1) setView({ k: 'review', offer, entry: fits[0]! })
-              else setView({ k: 'choose', offer })
-            }}
-          />
+          <ScanPrice onOffer={(offer) => payOffer(offer, entries)} />
         </Panel>
       )}
       {view.k === 'choose' && (
@@ -568,16 +596,16 @@ function ScanPrice({ onOffer }: { onOffer: (o: Offer) => void }) {
   const [err, setErr] = useState<string | null>(null)
   return (
     <>
-      <QrScanner
+      <CarryReceive
         prompt="Point the camera at the price code on the till."
-        pasteLabel="Or paste the price code"
-        onResult={(t) => {
+        onText={(t) => {
           try {
-            const o = decodeOffer(t.trim())
-            if (o.accepts.length !== 1 || !o.memoHint) throw new Error('not a till price code')
-            onOffer(o)
+            const c = decodeCarried(t)
+            if (c.kind !== 'offer' || c.offer.accepts.length !== 1 || !c.offer.memoHint)
+              throw new Error('not a till price code')
+            onOffer(c.offer)
           } catch {
-            setErr('That is not a Flying Money price code. Scan the code the till shows for this order.')
+            setErr('That is not a Flying Money price code. Get the code the till shows for this order.')
           }
         }}
       />
@@ -679,6 +707,15 @@ function Review({ offer, entry, onSealed }: { offer: Offer; entry: Entry; onSeal
   )
 }
 
+/** The slip as the till takes it: compact without the memo (the till knows its own order), else as signed. */
+function tillSlip(noteQr: string): string {
+  try {
+    return encodeNoteCompact(decodeNote(noteQr), { withMemo: false }) ?? noteQr
+  } catch {
+    return noteQr
+  }
+}
+
 function ShowNote({
   entry,
   noteQr,
@@ -732,19 +769,14 @@ function ShowNote({
           {usdc(price)} USDC · {entry.label}
         </h1>
         <TestNote className="mt-2 text-left" />
-        <div className="mx-auto mt-4 max-w-[min(90vw,26rem)]">
-          <QrCode value={noteQr} label={`Your payment slip for ${usdc(price)} USDC`} />
-        </div>
-        <details className="mt-2 text-left text-sm">
-          <summary className="cursor-pointer">Copy the code instead</summary>
-          <textarea
-            readOnly
-            value={noteQr}
-            aria-label="Payment slip code"
-            onFocus={(e) => e.currentTarget.select()}
-            className="mt-2 h-24 w-full rounded border border-[#cdbfa6] p-2 font-mono text-xs"
+        <div className="mt-4 text-left">
+          <CarrySend
+            payload={tillSlip(noteQr)}
+            title={`Payment slip for ${usdc(price)} USDC`}
+            carriers={['qr', 'sound', 'text', 'link', 'share']}
+            fileName="flying-money-slip.txt"
           />
-        </details>
+        </div>
         <p className="mt-4 text-sm">Did the shop accept it?</p>
         <div className="mt-3 grid gap-3">
           <button

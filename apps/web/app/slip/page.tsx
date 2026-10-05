@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { InstallApp } from '@/components/install-app'
+import { OfflineReady } from '@/components/offline-ready'
 import { SlipClient } from './slip-client'
 
 export const metadata: Metadata = {
@@ -12,6 +14,10 @@ export default function SlipPage() {
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:px-6 sm:py-14">
       <p className="smallcaps text-sm text-seal">A payment slip</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <OfflineReady />
+        <InstallApp />
+      </div>
       <SlipClient />
     </div>
   )

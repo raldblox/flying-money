@@ -24,7 +24,8 @@ export const metadata: Metadata = {
     'Prepaid, capped budgets for AI agents and people. Set aside USDC for one seller; the spender pays per use, the seller checks each payment on the spot and collects in one transaction.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
-  icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' } },
+  icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' }, apple: '/brand/apple-touch-icon.png' },
+  appleWebApp: { capable: true, title: 'Flying Money', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {

@@ -1,13 +1,11 @@
 // The slip demo: our agent funds a tiny budget for the demo seller (the Oracle), signs one slip for it, and hands the
 // slip to the visitor. The visitor carries it to any device, by any carrier, and spends it there. Test networks only;
 // real transactions. The slip's key is made for this one slip and forgotten after signing.
-import { flyingMoneyAbi } from '@flying-money/abi'
-import { keyFromEnv } from '@flying-money/agent'
-import { getChain, isChainKey, rpcUrl } from '@flying-money/chains'
+import { getChain, isChainKey } from '@flying-money/chains'
 import { encodeHeader, type Hex, newRequestId, signNote } from '@flying-money/core'
-import { createPublicClient, createWalletClient, erc20Abi, http, maxUint256, parseEventLogs } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { encodeNoteCompact } from '@/lib/carry/codec'
+import { FundError, fundDemoBudget } from '@/lib/demo-fund'
 import { admitSlip, demoGuardFromEnv } from '@/lib/demo-guard'
 import { SITE } from '@/lib/site'
 
@@ -19,7 +17,6 @@ export const maxDuration = 60
 const SLIP_PRICE = 10_000n // 0.01 USDC
 /** Longer than the Oracle's minimum remaining lifetime (36 h), so the seller accepts it and collects in time. */
 const LIFETIME_S = 3n * 86_400n
-const LOCK_MS = 60_000
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { chain?: unknown }
@@ -34,71 +31,18 @@ export async function POST(req: Request) {
   const admission = await admitSlip(req, guard, SLIP_PRICE)
   if (!admission.ok) return Response.json({ error: admission.error }, { status: admission.status })
 
-  // one funder, one nonce sequence per network: fund one slip at a time
-  let token: string | null = null
-  for (let i = 0; i < 20 && !token; i++) {
-    token = await guard.lock.acquire(`slip:${chainKey}`, LOCK_MS)
-    if (!token) await new Promise((r) => setTimeout(r, 1000))
-  }
-  if (!token) return Response.json({ error: 'Lots of slips right now. Try again in a moment.' }, { status: 429 })
-
-  const funder = keyFromEnv('DEMO_SLIP_FUNDER_KEY')
-  const payee = process.env.PAYEE_ADDRESS as Hex
-  const transport = http(rpcUrl(chainKey, process.env))
-  const pub = createPublicClient({ chain: chain.chain, transport })
-  const wallet = createWalletClient({ account: funder, chain: chain.chain, transport })
   const spender = privateKeyToAccount(generatePrivateKey())
   try {
-    const held = await pub.readContract({
-      address: chain.usdc,
-      abi: erc20Abi,
-      functionName: 'balanceOf',
-      args: [funder.address],
+    const funded = await fundDemoBudget({
+      chainKey,
+      face: SLIP_PRICE,
+      payee: process.env.PAYEE_ADDRESS as Hex,
+      spender: spender.address,
+      lifetimeS: LIFETIME_S,
+      guard,
     })
-    if (held < SLIP_PRICE)
-      return Response.json(
-        { error: `The slip wallet on ${chain.chain.name} is out of test money. Try another network.` },
-        { status: 503 },
-      )
-    const allowed = await pub.readContract({
-      address: chain.usdc,
-      abi: erc20Abi,
-      functionName: 'allowance',
-      args: [funder.address, chain.flyingMoney],
-    })
-    const approvedNow = allowed < SLIP_PRICE
-    if (approvedNow) {
-      const a = await wallet.writeContract({
-        address: chain.usdc,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [chain.flyingMoney, maxUint256],
-      })
-      await pub.waitForTransactionReceipt({ hash: a })
-    }
-    const expiresAt = BigInt(Math.floor(Date.now() / 1000)) + LIFETIME_S
-    const issue = () =>
-      wallet.writeContract({
-        address: chain.flyingMoney!,
-        abi: flyingMoneyAbi,
-        functionName: 'issue',
-        args: [payee, spender.address, SLIP_PRICE, expiresAt],
-      })
-    // right after a first approval, a load-balanced RPC may estimate gas on a node that hasn't seen it yet: retry
-    let tx: Hex | undefined
-    for (let attempt = 0; !tx; attempt++) {
-      try {
-        tx = await issue()
-      } catch (e) {
-        if (!approvedNow || attempt >= 4) throw e
-        await new Promise((r) => setTimeout(r, 2000))
-      }
-    }
-    const receipt = await pub.waitForTransactionReceipt({ hash: tx })
-    const [ev] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
-    if (!ev) throw new Error('the budget was not created')
     const note = await signNote(spender, chain.chain.id, chain.flyingMoney, {
-      certificateId: ev.args.id,
+      certificateId: funded.id,
       cumulative: SLIP_PRICE,
       memo: newRequestId(),
     })
@@ -107,17 +51,16 @@ export async function POST(req: Request) {
         slip: encodeNoteCompact(note) ?? encodeHeader(note),
         chain: chainKey,
         chainName: chain.chain.name,
-        certificateId: ev.args.id,
-        issueTx: `${chain.explorer}/tx/${tx}`,
+        certificateId: funded.id,
+        issueTx: `${chain.explorer}/tx/${funded.tx}`,
         price: SLIP_PRICE.toString(),
-        expiresAt: expiresAt.toString(),
+        expiresAt: funded.expiresAt.toString(),
         seller: `${SITE.demoSeller.replace(/\/$/, '')}/v1/certificate`,
       },
       { headers: { 'cache-control': 'no-store' } },
     )
   } catch (e) {
-    return Response.json({ error: `Couldn’t fund a slip: ${(e as Error).message.split('\n')[0]}` }, { status: 502 })
-  } finally {
-    await guard.lock.release(`slip:${chainKey}`, token).catch(() => {})
+    const f = e instanceof FundError ? e : new FundError((e as Error).message, 502)
+    return Response.json({ error: f.message }, { status: f.status })
   }
 }

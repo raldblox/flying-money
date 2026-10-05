@@ -19,7 +19,7 @@ export function useOnline() {
 }
 
 /** Must match CACHE in public/sw.js. */
-const SHELL_CACHE = 'fm-shell-v2'
+const SHELL_CACHE = 'fm-shell-v3'
 
 /**
  * On the very first visit this page loaded before the service worker controlled it, so its own page and scripts are

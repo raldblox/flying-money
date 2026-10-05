@@ -143,21 +143,9 @@ export async function dropDraft(address: Hex) {
 }
 
 // ── Hand-over links (§12.5 funder flow): the key travels only in the URL fragment ────────────────
-export interface HandOver {
-  v: 1
-  chain: ChainKey
-  id: Hex
-  key: Hex
-  name?: string
-}
-const b64url = (s: string) =>
-  btoa(unescape(encodeURIComponent(s)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-const unb64url = (s: string) => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))))
+export { type HandOver, handOverFragment } from './handover'
 
-export const handOverFragment = (h: HandOver) => `add=${b64url(JSON.stringify(h))}`
+import { type HandOver, unb64url } from './handover'
 
 export function parseHandOver(fragment: string): HandOver | null {
   const m = /(?:^|[#&])add=([A-Za-z0-9_-]+)/.exec(fragment)

@@ -1,5 +1,11 @@
 import type { ChainKey } from '@flying-money/chains'
-import { type Counter, createCounter, memoryStore, type StoreSnapshot } from '@flying-money/server/browser'
+import {
+  type Counter,
+  type CounterConfig,
+  createCounter,
+  memoryStore,
+  type StoreSnapshot,
+} from '@flying-money/server/browser'
 import type { Hex } from 'viem'
 import './e2e'
 import { idbKV, type KV } from './idb'
@@ -36,7 +42,13 @@ export interface Till {
  * Opens the till for one shop. Its seller state is a memoryStore saved to IndexedDB on every write (D21).
  * Only one tab may hold it (Web Locks), because two in-memory copies would stop being authoritative (§6.8).
  */
-export async function openTill(chain: ChainKey, payee: Hex, name?: string): Promise<Till> {
+export async function openTill(
+  chain: ChainKey,
+  payee: Hex,
+  name?: string,
+  /** reads a budget on-chain; the demo till passes one that can pretend to be offline */
+  opts: { readCertificate?: CounterConfig['readCertificate'] } = {},
+): Promise<Till> {
   const id = `fm-till:${chain}:${payee.toLowerCase()}`
   const release = await holdLock(id)
   const kv = idbKV(id)
@@ -56,6 +68,7 @@ export async function openTill(chain: ChainKey, payee: Hex, name?: string): Prom
     kv: { get: kv.get, set: kv.set, keys: kv.keys },
     firstVisitLimit: BigInt(settings.firstVisitLimit),
     offlineFloat: BigInt(settings.offlineFloat),
+    ...(opts.readCertificate ? { readCertificate: opts.readCertificate } : {}),
   })
   return {
     counter,

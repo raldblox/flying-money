@@ -2,7 +2,16 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { offerToOpenPage, PENDING_OFFER } from '@/lib/carry/channel'
-import { decodeCarried, payloadOf } from '@/lib/carry/codec'
+import { decodeCarried, decodeNoteCompact, NOTE_PREFIX, payloadOf } from '@/lib/carry/codec'
+
+function canDecodeAlone(p: string) {
+  try {
+    decodeNoteCompact(p)
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function CarryRouter() {
   const [msg, setMsg] = useState('Opening…')
@@ -19,19 +28,26 @@ export function CarryRouter() {
       setError('This link doesn’t carry a Flying Money slip or price code.')
       return
     }
-    let kind: 'note' | 'offer'
-    try {
-      kind = decodeCarried(found).kind
-    } catch (e) {
-      setError((e as Error).message)
-      return
-    }
+    // a till's slip leaves out the order it already knows: only that till can read it, so just hand it over
+    const tillOnly = found.startsWith(NOTE_PREFIX) && !canDecodeAlone(found)
+    let kind: 'note' | 'offer' = 'note'
+    if (!tillOnly)
+      try {
+        kind = decodeCarried(found).kind
+      } catch (e) {
+        setError((e as Error).message)
+        return
+      }
     void offerToOpenPage(found).then((by) => {
       if (by) {
         setMsg(`Sent to your open ${by}. You can close this tab.`)
         return
       }
-      if (kind === 'note') window.location.replace(`/slip#${found}`)
+      if (tillOnly)
+        setError(
+          'This slip is for a till’s current order. Open it on the device running that till, with the till open.',
+        )
+      else if (kind === 'note') window.location.replace(`/slip#${found}`)
       else {
         sessionStorage.setItem(PENDING_OFFER, found)
         window.location.replace('/wallet')

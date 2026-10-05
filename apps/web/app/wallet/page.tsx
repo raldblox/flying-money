@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { InstallApp } from '@/components/install-app'
 import { OfflineReady } from '@/components/offline-ready'
 import { Wallet } from './wallet-client'
 
@@ -17,6 +18,7 @@ export default function WalletPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="smallcaps text-sm text-seal">Wallet · on this device</p>
         <OfflineReady />
+        <InstallApp />
       </div>
       <Wallet />
     </div>
