@@ -29,19 +29,26 @@ If you don't have it, ask your owner for their wallet *address* (never anything 
 
 ## 1. Add the Flying Money MCP server
 
-Use the steps for the app you are running in.
+It is a standard MCP server over stdio. Whatever app you run in, it needs exactly this:
 
-**Claude Code** (or any agent that can run commands): run
+- **command:** \`npx\`, **arguments:** \`-y @flying-money/mcp\`
+- **environment:** ${Object.entries(env)
+    .map(([k, v]) => `\`${k}=${v}\``)
+    .join(', ')}
 
-\`\`\`bash
-claude mcp add flying-money ${envFlags} -- npx -y @flying-money/mcp
-\`\`\`
+Put that in your app's MCP settings, then ask your owner to restart the session so the tools load. If you can't edit
+your settings yourself, show your owner the exact block and where it goes.
 
-then ask your owner to restart the session so the tools load.
-
-**Claude Desktop**, **Cursor**, or **Any other MCP client** that reads a JSON config: add this server to its MCP
-settings (Claude Desktop: \`claude_desktop_config.json\`; Cursor: \`~/.cursor/mcp.json\`). If you can't edit files, show
-this block to your owner, say where it goes, and ask them to restart the app:
+| App | Where it goes |
+|---|---|
+| Claude Code | run \`claude mcp add flying-money ${envFlags} -- npx -y @flying-money/mcp\` |
+| Claude Desktop | \`claude_desktop_config.json\` → \`mcpServers\` (JSON below) |
+| Cursor | \`~/.cursor/mcp.json\` → \`mcpServers\` (JSON below) |
+| Windsurf | \`~/.codeium/windsurf/mcp_config.json\` → \`mcpServers\` (JSON below) |
+| Gemini CLI | \`~/.gemini/settings.json\` → \`mcpServers\` (JSON below) |
+| VS Code (Copilot) | \`.vscode/mcp.json\` → \`servers\`, same fields plus \`"type": "stdio"\` |
+| Codex CLI | \`~/.codex/config.toml\` → a \`[mcp_servers.flying-money]\` table with the same command, args and env |
+| Any other MCP client | its MCP config, with the command, arguments and environment above |
 
 \`\`\`json
 ${json}
@@ -49,6 +56,10 @@ ${json}
 
 For clients that only speak HTTP, run \`npx -y @flying-money/mcp --http 8788\` and connect to
 \`http://127.0.0.1:8788/mcp\` (this machine only).
+
+**No MCP at all?** You can still pay: Flying Money sellers answer HTTP 402 with an offer, and the TypeScript client
+pays it for you (${site}/docs/client). Sellers that speak x402 V2 advertise the \`flying-money\` scheme in
+\`PAYMENT-REQUIRED\` (${repo}/blob/main/docs/design/x402-flying-money-scheme.md).
 
 On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\`. Never print,
 copy, or send that file. It holds no money; it can only spend budgets your owner funds.
@@ -65,7 +76,7 @@ cd ~/.flying-money/src && pnpm install --frozen-lockfile && pnpm --filter "@flyi
 
 Then use the same settings as above, but with \`node\` and the built file instead of \`npx -y @flying-money/mcp\`:
 command \`node\`, argument \`<HOME>/.flying-money/src/packages/mcp/dist/bin.js\` (the full path; \`~\` is not expanded
-in JSON configs). For Claude Code:
+in JSON configs). For example, in Claude Code:
 
 \`\`\`bash
 claude mcp add flying-money ${envFlags} -- node <HOME>/.flying-money/src/packages/mcp/dist/bin.js
