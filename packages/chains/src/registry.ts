@@ -7,8 +7,11 @@ import {
   arcTestnet,
   base,
   baseSepolia,
+  mainnet as ethereum,
   monad,
   monadTestnet,
+  sepolia,
+  tempoModerato,
 } from 'viem/chains'
 
 /**
@@ -25,15 +28,22 @@ export type ChainKey =
   | 'arc-testnet'
   | 'base'
   | 'base-sepolia'
+  | 'ethereum'
+  | 'ethereum-sepolia'
+  | 'tempo-testnet'
   | 'anvil'
 
 export interface ChainConfig {
   key: ChainKey
   chain: Chain
   mainnet: boolean
-  /** Circle USDC, ERC-20 interface, 6 decimals. Zero address for `anvil` until MockUSDC is registered locally. */
+  /**
+   * The settlement stablecoin: Circle USDC, ERC-20 interface, 6 decimals. On Tempo testnet, which has no Circle USDC,
+   * it is OUSD (a TIP-20 USD stablecoin, also 6 decimals). Zero address for `anvil` until MockUSDC is registered.
+   */
   usdc: Hex
-  gasToken: 'ETH' | 'MON' | 'USDC'
+  /** What pays gas: a native token, or USD stablecoins on Tempo (which has no native token). */
+  gasToken: 'ETH' | 'MON' | 'USDC' | 'USD'
   explorer: string
   faucets: string[]
   /** 0 on deterministic-finality chains (Arc), 1 on Monad, 1 on Arbitrum/Base L2 soft-confirm. */
@@ -47,6 +57,8 @@ export interface ChainConfig {
   maxTotalOutstanding: bigint
   /** Keyless source verification endpoint (Blockscout API), when the chain has one (DECISIONS D16). */
   blockscoutApi?: string
+  /** A Sourcify-compatible verifier other than sourcify.dev (Tempo runs its own). */
+  sourcifyUrl?: string
   flyingMoney?: Hex
   deployedBlock?: bigint
   /** Public, chain-specific notes for /chains/[chain] (§21.2). Plain facts only; no claims beyond §3.5. */
@@ -172,6 +184,48 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...testnetCaps,
     notes: ['The Base test network: test USDC from the Circle faucet, test ETH for gas.'],
   },
+  ethereum: {
+    key: 'ethereum',
+    blockscoutApi: 'https://eth.blockscout.com/api/',
+    chain: ethereum,
+    mainnet: true,
+    usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    gasToken: 'ETH',
+    explorer: explorerOf(ethereum),
+    faucets: [],
+    confirmations: 2,
+    ...mainnetCaps,
+    notes: ['Ethereum mainnet; gas is paid in ETH and costs more than on layer 2s.'],
+  },
+  'ethereum-sepolia': {
+    key: 'ethereum-sepolia',
+    blockscoutApi: 'https://eth-sepolia.blockscout.com/api/',
+    chain: sepolia,
+    mainnet: false,
+    usdc: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+    gasToken: 'ETH',
+    explorer: explorerOf(sepolia),
+    faucets: [CIRCLE_FAUCET],
+    confirmations: 1,
+    ...testnetCaps,
+    notes: ['The Ethereum test network (Sepolia): test USDC from the Circle faucet, test ETH for gas.'],
+  },
+  'tempo-testnet': {
+    key: 'tempo-testnet',
+    sourcifyUrl: 'https://contracts.tempo.xyz',
+    chain: tempoModerato,
+    mainnet: false,
+    usdc: '0x20c0000000000000000000006a37da5c996874be',
+    gasToken: 'USD',
+    explorer: explorerOf(tempoModerato),
+    faucets: ['https://docs.tempo.xyz/quickstart/faucet'],
+    confirmations: 0,
+    ...testnetCaps,
+    notes: [
+      'The Tempo test network (Moderato). Tempo has no native gas token: fees are paid in USD stablecoins.',
+      'Budgets settle in OUSD, Tempo’s recommended USD stablecoin; the faucet gives test OUSD.',
+    ],
+  },
   anvil: {
     key: 'anvil',
     chain: anvil,
@@ -196,6 +250,9 @@ export const rpcEnvVar: Record<ChainKey, string> = {
   'arc-testnet': 'RPC_ARC_TESTNET',
   base: 'RPC_BASE',
   'base-sepolia': 'RPC_BASE_SEPOLIA',
+  ethereum: 'RPC_ETHEREUM',
+  'ethereum-sepolia': 'RPC_ETHEREUM_SEPOLIA',
+  'tempo-testnet': 'RPC_TEMPO_TESTNET',
   anvil: 'RPC_ANVIL',
 }
 
@@ -203,6 +260,9 @@ const specRpc: Partial<Record<ChainKey, string>> = {
   'monad-testnet': 'https://testnet-rpc.monad.xyz',
   arc: 'https://rpc.mainnet.arc.io',
   'arc-testnet': 'https://rpc.testnet.arc.io',
+  // viem's defaults for these are rate-limited third-party endpoints
+  ethereum: 'https://ethereum-rpc.publicnode.com',
+  'ethereum-sepolia': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
 
 export const chainKeys = Object.keys(baseRegistry) as ChainKey[]

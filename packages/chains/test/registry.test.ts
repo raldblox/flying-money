@@ -24,11 +24,14 @@ const SPEC = {
   'arc-testnet': [5042002, '0x3600000000000000000000000000000000000000', 'USDC', false],
   base: [8453, '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 'ETH', true],
   'base-sepolia': [84532, '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 'ETH', false],
+  ethereum: [1, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'ETH', true],
+  'ethereum-sepolia': [11155111, '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', 'ETH', false],
+  'tempo-testnet': [42431, '0x20c0000000000000000000006a37da5c996874be', 'USD', false],
   anvil: [31337, '0x0000000000000000000000000000000000000000', 'ETH', false],
 } as const
 
 describe('chain registry (§5.4)', () => {
-  it('has exactly the nine spec keys', () => {
+  it('has exactly the registered keys', () => {
     expect(chainKeys.sort()).toEqual(Object.keys(SPEC).sort())
   })
 

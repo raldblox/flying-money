@@ -121,7 +121,10 @@ function verifyDeployment(key: ChainKey, address: string): boolean {
       name: 'blockscout',
       args: [...base, '--verifier', 'blockscout', '--verifier-url', c.blockscoutApi],
     })
-  attempts.push({ name: 'sourcify', args: [...base, '--verifier', 'sourcify'] })
+  attempts.push({
+    name: 'sourcify',
+    args: [...base, '--verifier', 'sourcify', ...(c.sourcifyUrl ? ['--verifier-url', c.sourcifyUrl] : [])],
+  })
   let any = false
   for (const a of attempts) {
     console.log(`\n--- verifying ${address} on ${key} via ${a.name}`)
