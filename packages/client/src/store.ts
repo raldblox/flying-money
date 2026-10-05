@@ -1,10 +1,12 @@
-import type { CertKey, Hex } from '@flying-money/core'
+import type { CertKey, Hex, X402Requirements } from '@flying-money/core'
 
 export interface PendingRequest {
   url: string
   method: string
   headers: Record<string, string>
   body?: string
+  /** set when the seller speaks only x402: the chosen `accepts` entry; the slip then travels in PAYMENT-SIGNATURE */
+  x402?: X402Requirements
 }
 
 /** The single in-flight note for a certificate (§6.6). Saved durably BEFORE it is sent. */

@@ -1,4 +1,18 @@
-import { encodeHeader, NOTE_HEADER, OFFER_HEADER, offerJson, RECEIPT_HEADER } from '@flying-money/core'
+import {
+  encodeHeader,
+  type Hex,
+  NOTE_HEADER,
+  OFFER_HEADER,
+  offerJson,
+  RECEIPT_HEADER,
+  recoverNoteSigner,
+  X402_REQUIRED_HEADER,
+  X402_RESPONSE_HEADER,
+  X402_SIGNATURE_HEADER,
+  x402NoteFromPayload,
+  x402PaymentRequired,
+  x402SettlementResponse,
+} from '@flying-money/core'
 import type { Context, MiddlewareHandler } from 'hono'
 import { requestHash } from './request-hash.js'
 import {
@@ -12,7 +26,7 @@ import {
 
 export const REASON_HEADER = 'Flying-Money-Reason'
 /** Headers a browser client must be able to read (add to CORS `exposeHeaders`). */
-export const EXPOSE_HEADERS = [OFFER_HEADER, RECEIPT_HEADER, REASON_HEADER]
+export const EXPOSE_HEADERS = [OFFER_HEADER, RECEIPT_HEADER, REASON_HEADER, X402_REQUIRED_HEADER, X402_RESPONSE_HEADER]
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -25,6 +39,11 @@ export interface HonoFlyingMoneyConfig extends FlyingMoneyServerConfig {
   price: (c: Context) => bigint | Promise<bigint>
   /** Largest response body stored for replays of SERVED requests (bytes). Larger ones re-run the idempotent handler. */
   maxStoredResponseBytes?: number
+  /**
+   * Also speak x402 V2 (docs/design/x402-flying-money-scheme.md): advertise the offer in `PAYMENT-REQUIRED` and accept
+   * a slip in `PAYMENT-SIGNATURE`. The slip goes through exactly the same checks as `Flying-Money-Note`. Default off.
+   */
+  x402?: boolean
 }
 
 interface StoredResponse {
@@ -65,6 +84,32 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
       return { ok: true, responseRef: JSON.stringify(stored) }
     }
 
+    // x402 (opt-in): the slip may arrive in PAYMENT-SIGNATURE instead of Flying-Money-Note, never in both
+    const x402Sig = config.x402 ? c.req.header(X402_SIGNATURE_HEADER) : undefined
+    if (x402Sig !== undefined && c.req.header(NOTE_HEADER) !== undefined) {
+      c.res = new Response(JSON.stringify({ error: 'send one payment header, not two' }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      })
+      return c.res
+    }
+    let noteHeader = c.req.header(NOTE_HEADER)
+    let payer: Hex | null = null
+    if (x402Sig !== undefined) {
+      try {
+        const n = x402NoteFromPayload(x402Sig)
+        noteHeader = encodeHeader(n)
+        payer = recoverNoteSigner(n)
+      } catch {
+        noteHeader = 'fm1.invalid' // refused by the same path as any malformed slip
+      }
+    }
+    const x402Settled = (out: Response, r: HandleResult & { receipt: unknown; ctx: { chainId: number } }) => {
+      if (x402Sig !== undefined && payer)
+        out.headers.set(X402_RESPONSE_HEADER, x402SettlementResponse(r.receipt as never, r.ctx.chainId, payer))
+      return out
+    }
+
     const respond = async (r: HandleResult): Promise<Response> => {
       switch (r.kind) {
         case 'offer':
@@ -74,6 +119,9 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
               'content-type': 'application/json',
               [OFFER_HEADER]: encodeHeader(r.offer),
               [REASON_HEADER]: r.reason,
+              ...(config.x402
+                ? { [X402_REQUIRED_HEADER]: x402PaymentRequired(r.offer, { url: c.req.url }, r.reason) }
+                : {}),
             },
           })
         case 'error':
@@ -86,21 +134,24 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
             },
           })
         case 'served': {
-          if (!r.replay && fresh) return withReceipt(fresh, r)
+          if (!r.replay && fresh) return x402Settled(withReceipt(fresh, r), r)
           if (r.result.responseRef) {
             const s = JSON.parse(r.result.responseRef) as StoredResponse
             const headers: Record<string, string> = s.contentType ? { 'content-type': s.contentType } : {}
-            return withReceipt(new Response(s.body, { status: s.status, headers }), r)
+            return x402Settled(withReceipt(new Response(s.body, { status: s.status, headers }), r), r)
           }
           // large response not stored: re-run the idempotent handler without charging again
           c.set('flyingMoney', r.ctx)
           await next()
-          return withReceipt(c.res, r)
+          return x402Settled(withReceipt(c.res, r), r)
         }
         case 'failed': {
-          if (!r.replay && fresh) return withReceipt(fresh, r)
+          if (!r.replay && fresh) return x402Settled(withReceipt(fresh, r), r)
           const msg = JSON.stringify({ error: 'service failed; the price was credited to your certificate' })
-          return withReceipt(new Response(msg, { status: 502, headers: { 'content-type': 'application/json' } }), r)
+          return x402Settled(
+            withReceipt(new Response(msg, { status: 502, headers: { 'content-type': 'application/json' } }), r),
+            r,
+          )
         }
       }
     }
@@ -108,7 +159,7 @@ export function flyingMoney(config: HonoFlyingMoneyConfig): MiddlewareHandler & 
     // D32: bind the note's requestId to this exact request (method, path, sorted query, body)
     const body = new Uint8Array(await c.req.raw.clone().arrayBuffer())
     const hash = requestHash(c.req.method, new URL(c.req.url), body)
-    const r = await server.handle({ noteHeader: c.req.header(NOTE_HEADER), price, requestHash: hash }, execute)
+    const r = await server.handle({ noteHeader, price, requestHash: hash }, execute)
     // After next() has run, Hono only honours a response assigned to c.res (a returned one is ignored).
     const out = await respond(r)
     c.res = out

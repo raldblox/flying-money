@@ -40,6 +40,14 @@ What the middleware does for every paid request:
 
 **Your handler must be idempotent on `requestId`** (`c.get('flyingMoney').requestId`). For side effects, use `createIdempotency()`.
 
+### x402 (optional)
+
+Pass `x402: true` to also speak [x402](https://docs.x402.org) V2: every 402 then carries a `PAYMENT-REQUIRED` header
+advertising the [`flying-money` scheme](https://github.com/raldblox/flying-money/blob/main/docs/design/x402-flying-money-scheme.md),
+and a slip may arrive in `PAYMENT-SIGNATURE` instead of `Flying-Money-Note`. It goes through exactly the same checks.
+Responses add `PAYMENT-RESPONSE` with the receipt. A request carrying both payment headers is refused. Add
+`PAYMENT-SIGNATURE` to your CORS `allowHeaders` for browser clients.
+
 ## Stores
 
 The store is the seller's authoritative ledger. It must be durable.

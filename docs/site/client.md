@@ -36,6 +36,13 @@ interface FlyingMoneyClient {
 }
 ```
 
+### x402 sellers
+
+`fm.fetch` also pays sellers that speak only [x402](https://docs.x402.org) V2 and list the
+[`flying-money` scheme](https://github.com/raldblox/flying-money/blob/main/docs/design/x402-flying-money-scheme.md) in
+`PAYMENT-REQUIRED`: the slip travels in `PAYMENT-SIGNATURE` and the receipt comes back in `PAYMENT-RESPONSE`. The
+same rules hold: resends after a failure reuse the same slip. A 402 offering only other x402 schemes is returned as is.
+
 ## Stores
 
 - `fileStore(path)`: JSON file, written to a temp file, fsynced, then renamed over the old one. A crash leaves the old or the new state, never a torn file.

@@ -738,3 +738,170 @@ export function verifyInboxAccess(chainId: number, owner: Hex, issuedAt: bigint,
   const who = recoverDigestSigner(hashTypedData(inboxAccessTypedData(chainId, owner, issuedAt)), sig)
   return who !== null && who.toLowerCase() === owner.toLowerCase()
 }
+
+// ───────── x402 V2 transport (docs/design/x402-flying-money-scheme.md) ─────────
+// The same offer, signed slip and receipt, carried in x402 V2 headers so x402 tooling can discover and pay a
+// Flying Money seller. Only the envelope differs; the seller runs the same checks on the decoded slip.
+
+export const X402_REQUIRED_HEADER = 'PAYMENT-REQUIRED'
+export const X402_SIGNATURE_HEADER = 'PAYMENT-SIGNATURE'
+export const X402_RESPONSE_HEADER = 'PAYMENT-RESPONSE'
+export const X402_SCHEME = 'flying-money'
+/** SettlementResponse extension carrying the seller's fm1 receipt. */
+export const X402_RECEIPT_EXTENSION = 'flying-money-receipt'
+const X402_MAX_BYTES = 16 * 1024
+const X402_TIMEOUT_SECONDS = 300
+
+export interface X402Resource {
+  url: string
+  description?: string
+  mimeType?: string
+}
+export interface X402Requirements {
+  scheme: typeof X402_SCHEME
+  network: string
+  amount: string
+  asset: Hex
+  payTo: Hex
+  maxTimeoutSeconds: number
+  extra: { contract: Hex; minRemainingLifetime: number; suggestedFaceValue?: string; memoHint?: string; docs?: string }
+}
+
+export const x402Network = (chainId: number) => `eip155:${chainId}`
+
+function toB64(json: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(json))
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return btoa(bin)
+}
+function fromB64(header: string): Record<string, unknown> {
+  if (typeof header !== 'string' || header.length > X402_MAX_BYTES) throw new Error('x402: header too large')
+  if (!/^[A-Za-z0-9+/_-]*={0,2}$/.test(header)) throw new Error('x402: invalid base64')
+  const s = header.replace(/-/g, '+').replace(/_/g, '/')
+  const bin = atob(s + '='.repeat((4 - (s.length % 4)) % 4))
+  const parsed: unknown = JSON.parse(
+    new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))),
+  )
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('x402: not an object')
+  return parsed as Record<string, unknown>
+}
+const obj = (v: unknown, field: string): Record<string, unknown> => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(`x402: ${field} must be an object`)
+  return v as Record<string, unknown>
+}
+function chainOfNetwork(v: unknown): number {
+  const m = typeof v === 'string' ? /^eip155:([1-9][0-9]*)$/.exec(v) : null
+  if (!m) throw new Error('x402: network must be eip155:<chainId>')
+  return chainIdOf(m[1])
+}
+
+function requirementsFor(o: Offer, a: Accept): X402Requirements {
+  return {
+    scheme: X402_SCHEME,
+    network: x402Network(a.chainId),
+    amount: o.price.toString(),
+    asset: a.token,
+    payTo: a.payee,
+    maxTimeoutSeconds: X402_TIMEOUT_SECONDS,
+    extra: {
+      contract: a.contract,
+      minRemainingLifetime: o.minRemainingLifetime,
+      ...(o.suggestedFaceValue !== undefined ? { suggestedFaceValue: o.suggestedFaceValue.toString() } : {}),
+      ...(o.memoHint !== undefined ? { memoHint: o.memoHint } : {}),
+      ...(o.docs !== undefined ? { docs: o.docs } : {}),
+    },
+  }
+}
+
+/** The `PAYMENT-REQUIRED` header value: one x402 `accepts` entry per chain of the offer. */
+export function x402PaymentRequired(o: Offer, resource: X402Resource, error?: string): string {
+  return toB64({
+    x402Version: 2,
+    ...(error ? { error } : {}),
+    resource,
+    accepts: o.accepts.map((a) => requirementsFor(o, a)),
+  })
+}
+
+/** Strict parse of one `accepts` entry of our scheme, validated by the same rules as an fm1 offer. */
+function parseRequirements(v: unknown): { accept: Accept; rest: Offer } {
+  const r = obj(v, 'accepts entry')
+  exactKeys(r, ['scheme', 'network', 'amount', 'asset', 'payTo', 'maxTimeoutSeconds', 'extra'])
+  if (r.scheme !== X402_SCHEME) throw new Error('x402: not a flying-money entry')
+  const extra = obj(r.extra, 'extra')
+  exactKeys(extra, ['contract', 'minRemainingLifetime'], ['suggestedFaceValue', 'memoHint', 'docs'])
+  smallInt(r.maxTimeoutSeconds, 'maxTimeoutSeconds')
+  const chainId = chainOfNetwork(r.network)
+  const rest = parseOffer({
+    scheme: 'flying-money',
+    v: 1,
+    price: r.amount,
+    minRemainingLifetime: extra.minRemainingLifetime,
+    accepts: [{ chainId: String(chainId), contract: extra.contract, token: r.asset, payee: r.payTo }],
+    ...Object.fromEntries(
+      ['suggestedFaceValue', 'memoHint', 'docs'].filter((k) => k in extra).map((k) => [k, extra[k]]),
+    ),
+  })
+  return { accept: rest.accepts[0] as Accept, rest }
+}
+
+/** Reads a `PAYMENT-REQUIRED` header. Returns null when it offers no flying-money entry (other schemes are ignored). */
+export function x402OfferFromRequired(header: string): Offer | null {
+  const pr = fromB64(header)
+  if (pr.x402Version !== 2) throw new Error('x402: x402Version must be 2')
+  if (!Array.isArray(pr.accepts)) throw new Error('x402: accepts must be an array')
+  const ours = pr.accepts.filter((a) => obj(a, 'accepts entry').scheme === X402_SCHEME).map(parseRequirements)
+  const first = ours[0]?.rest
+  if (!first) return null
+  for (const e of ours)
+    if (
+      e.rest.price !== first.price ||
+      e.rest.minRemainingLifetime !== first.minRemainingLifetime ||
+      e.rest.suggestedFaceValue !== first.suggestedFaceValue ||
+      e.rest.memoHint !== first.memoHint ||
+      e.rest.docs !== first.docs
+    )
+      throw new Error('x402: flying-money entries must share one price and terms')
+  return { ...first, accepts: ours.map((e) => e.accept) }
+}
+
+/** The `PAYMENT-SIGNATURE` header value: the chosen entry and the signed slip, unchanged. */
+export function x402PaymentPayload(note: SignedNote, accepted: X402Requirements, resource?: X402Resource): string {
+  const { accept } = parseRequirements(accepted)
+  if (accept.chainId !== note.chainId || !sameAddress(accept.contract, note.contract))
+    throw new Error('x402: the chosen entry is for another chain or contract than the slip')
+  return toB64({ x402Version: 2, ...(resource ? { resource } : {}), accepted, payload: noteJson(note) })
+}
+
+/** Reads a `PAYMENT-SIGNATURE` header into the signed slip. The seller then verifies it exactly as an fm1 note. */
+export function x402NoteFromPayload(header: string): SignedNote {
+  const pp = fromB64(header)
+  exactKeys(pp, ['x402Version', 'accepted', 'payload'], ['resource', 'extensions'])
+  if (pp.x402Version !== 2) throw new Error('x402: x402Version must be 2')
+  const { accept } = parseRequirements(pp.accepted)
+  const note = decodeNote(wrap(obj(pp.payload, 'payload')))
+  if (accept.chainId !== note.chainId || !sameAddress(accept.contract, note.contract))
+    throw new Error('x402: the chosen entry is for another chain or contract than the slip')
+  return note
+}
+
+/** The `PAYMENT-RESPONSE` header value. No transaction per purchase: collection is batched later. */
+export function x402SettlementResponse(r: Receipt, chainId: number, payer: Hex): string {
+  return toB64({
+    success: r.status === 'SERVED',
+    ...(r.status === 'SERVED' ? {} : { errorReason: 'service_failed_credited' }),
+    payer,
+    transaction: '',
+    network: x402Network(chainId),
+    extensions: { [X402_RECEIPT_EXTENSION]: { info: { receipt: encodeHeader(r) }, schema: { type: 'object' } } },
+  })
+}
+
+/** The fm1 receipt inside a `PAYMENT-RESPONSE` header, or null if it carries none. */
+export function x402ReceiptFromResponse(header: string): Receipt | null {
+  const sr = fromB64(header)
+  const ext = sr.extensions as Record<string, { info?: { receipt?: unknown } }> | undefined
+  const rec = ext?.[X402_RECEIPT_EXTENSION]?.info?.receipt
+  return typeof rec === 'string' ? decodeReceipt(rec) : null
+}

@@ -34,7 +34,7 @@
 
 | Option | What it would take | Recommendation |
 |---|---|---|
-| **A. Native x402 scheme** "flying-money" advertised in x402 payment requirements, next to our own headers | A transport envelope only: the certificate, note and contract stay unchanged. It needs client and server libraries that negotiate the scheme; facilitators aren't needed (anyone can redeem). | **Go for a design note and a prototype behind a flag**, later. It changes no economic rights, but needs its own design review before code. |
+| **A. Native x402 scheme** "flying-money" advertised in x402 payment requirements, next to our own headers | A transport envelope only: the certificate, note and contract stay unchanged. It needs client and server libraries that negotiate the scheme; facilitators aren't needed (anyone can redeem). | **Prototyped (October 2026)**: see [the scheme](x402-flying-money-scheme.md). Opt-in on sellers (`x402: true`); clients pay x402-only sellers. It changes no economic rights. |
 | **B. MPP method** carried in `WWW-Authenticate: Payment` | A second transport mapping of the same offer and note. MPP clients would need our method. | **Not now.** It has a smaller EVM reach today. Revisit if an MPP client asks. |
 | **C. Gateway seller** (a budget pays a gateway that buys upstream with x402/MPP) | A new operated service holding liquidity. It needs quote binding, SSRF controls, idempotency, upstream failure handling and a legal review ("operating a service"). | **No-go for v1.6.** It adds custody-like and legal responsibility. |
 | **D. Adopt another channel contract** | A different contract and different rights (early close) | **No-go.** It changes the sealed protocol and removes the property that defines the product. |

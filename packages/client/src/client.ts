@@ -3,6 +3,7 @@ import {
   type Certificate,
   type CertKey,
   certKey,
+  decodeNote,
   decodeOffer,
   decodeReceipt,
   decodeRequestGrant,
@@ -29,6 +30,14 @@ import {
   signSpendRequest,
   spendRequestToParts,
   verifySpendRequest,
+  X402_REQUIRED_HEADER,
+  X402_RESPONSE_HEADER,
+  X402_SIGNATURE_HEADER,
+  type X402Requirements,
+  x402Network,
+  x402OfferFromRequired,
+  x402PaymentPayload,
+  x402ReceiptFromResponse,
   ZERO_ID,
 } from '@flying-money/core'
 import { createPublicClient, http, type LocalAccount, type PublicClient } from 'viem'
@@ -347,12 +356,20 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       }
   }
 
-  const buildRequest = (req: PendingRequest, noteHeader?: string): RequestInit & { url: string } => ({
-    url: req.url,
-    method: req.method,
-    headers: noteHeader ? { ...req.headers, [NOTE_HEADER]: noteHeader } : req.headers,
-    ...(req.body !== undefined ? { body: req.body } : {}),
-  })
+  // the stored slip is re-encoded deterministically, so a resend over x402 is byte-for-byte the same payment (C1)
+  const paymentHeaders = (req: PendingRequest, noteHeader: string): Record<string, string> =>
+    req.x402
+      ? { [X402_SIGNATURE_HEADER]: x402PaymentPayload(decodeNote(noteHeader), req.x402, { url: req.url }) }
+      : { [NOTE_HEADER]: noteHeader }
+  const buildRequest = (req: PendingRequest, noteHeader?: string): RequestInit & { url: string } => {
+    const { x402: _x, ...plain } = req
+    return {
+      url: plain.url,
+      method: plain.method,
+      headers: noteHeader ? { ...plain.headers, ...paymentHeaders(req, noteHeader) } : plain.headers,
+      ...(plain.body !== undefined ? { body: plain.body } : {}),
+    }
+  }
 
   /** Resend the SAME pending note until a final receipt (§6.6 steps 2, 5). Never re-signs. */
   async function sendPending(h: Held, pending: PendingRecord): Promise<Response> {
@@ -370,8 +387,10 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       }
       point('afterSend')
       const rh = res.headers.get(RECEIPT_HEADER)
-      if (rh) {
-        const receipt = decodeReceipt(rh)
+      const xr = rh ? null : res.headers.get(X402_RESPONSE_HEADER)
+      const theirs = rh ? decodeReceipt(rh) : xr ? x402ReceiptFromResponse(xr) : null
+      if (theirs) {
+        const receipt = theirs
         if (receipt.requestId.toLowerCase() !== pending.requestId.toLowerCase())
           throw new Error('receipt does not match the pending requestId')
         if (receipt.certificateId.toLowerCase() !== h.cert.id.toLowerCase())
@@ -524,9 +543,15 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     const first = await doFetch(u, plain)
     if (first.status !== 402) return first
     let offer: Offer
+    // a seller that speaks only x402 advertises the same offer in PAYMENT-REQUIRED
+    let viaX402: string | null = null
     try {
       const oh = first.headers.get(OFFER_HEADER)
-      offer = oh ? decodeOffer(oh) : parseOffer((await first.clone().json()) as Record<string, unknown>)
+      const xr = oh ? null : first.headers.get(X402_REQUIRED_HEADER)
+      const fromX402 = xr ? x402OfferFromRequired(xr) : null
+      if (xr && !fromX402) return first // x402, but no flying-money entry
+      if (fromX402) viaX402 = xr
+      offer = oh ? decodeOffer(oh) : (fromX402 ?? parseOffer((await first.clone().json()) as Record<string, unknown>))
     } catch {
       return first // a 402 that is not a flying-money offer
     }
@@ -540,6 +565,17 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
     if (offer.price > ceiling) throw new PriceTooHighError(offer, ceiling)
     const h = pick(offer)
     if (!h) throw new NoCertificateError(offer)
+    if (viaX402) {
+      const accepts = (JSON.parse(atob(viaX402)) as { accepts: X402Requirements[] }).accepts
+      const entry = accepts.find(
+        (a) =>
+          a.scheme === 'flying-money' &&
+          a.network === x402Network(h.chainId) &&
+          sameAddress(a.extra.contract, h.contract),
+      )
+      if (!entry) throw new NoCertificateError(offer)
+      req.x402 = entry
+    }
     return withLock(h.key, () => pay(h, offer.price, req))
   }
 

@@ -10,6 +10,7 @@ import {
   offerJson,
   RECEIPT_HEADER,
   SPEC_VERSION,
+  X402_SIGNATURE_HEADER,
 } from '@flying-money/core'
 import {
   type CertificateReader,
@@ -105,6 +106,8 @@ export function createOracle(config: OracleConfig) {
     ...(config.minRemainingLifetime !== undefined ? { minRemainingLifetime: config.minRemainingLifetime } : {}),
     price: (c) => PRICES[c.req.path] ?? 0n,
     requestStatus: async (rid) => jobs.status(rid),
+    // x402 V2 transport too: x402 tools can discover the offer, and pay with the flying-money scheme
+    x402: true,
   })
   const server = paid.server
 
@@ -137,7 +140,7 @@ export function createOracle(config: OracleConfig) {
     '*',
     cors({
       origin: config.corsOrigin ?? '*',
-      allowHeaders: ['content-type', NOTE_HEADER],
+      allowHeaders: ['content-type', NOTE_HEADER, X402_SIGNATURE_HEADER],
       exposeHeaders: EXPOSE_HEADERS,
     }),
   )
