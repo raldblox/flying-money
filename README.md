@@ -13,7 +13,7 @@ Flying Money lets an owner set aside USDC for one seller, one spender and one en
 1. **Watch a real run.** Open the [live demo](https://useflyingmoney.vercel.app/demo) and press **Run it for real**. A scripted agent pays the Silk Road Oracle API 20 times from a 0.30 test-USDC budget on the test network you pick (Arbitrum, Base, Ethereum or Tempo); every collection links to the explorer. Tick **Cut the network** or **Steal the agent key** first to watch payments continue during a seller RPC outage, and a thief get refused three ways.
 2. **Read the contract.** Verified source on every network: [Arbitrum Sepolia](https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Base Sepolia](https://base-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Ethereum Sepolia](https://eth-sepolia.blockscout.com/address/0x4c7cfbadadab3c394f10a9b00c6fbf2baa20c3e6?tab=contract), [Tempo testnet](https://explore.testnet.tempo.xyz/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2). No owner, no admin, no pause, no fee, no upgrade.
 3. **Try it as a person or shop.** Open [Get started](https://useflyingmoney.vercel.app/start). Giving a budget needs a browser wallet on one of those test networks with test USDC ([Circle faucet](https://faucet.circle.com); on Tempo, the [Tempo faucet](https://docs.tempo.xyz/quickstart/faucet)) and a little gas. Then, in two windows of one browser: open the hand-over link in the [wallet](https://useflyingmoney.vercel.app/wallet) (no crypto wallet needed), [open a till](https://useflyingmoney.vercel.app/shop) for the same shop address, and pay with **Copy the code** instead of a camera.
-4. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The npm package isn't published yet, so `/agent.md` builds the MCP server from this repository.
+4. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The MCP server is on npm: `npx -y @flying-money/mcp`.
 
 What is real and what isn't: the demo's buyer is scripted (not an autonomous AI), and its slips travel in-process to the seller; the transactions and test USDC are real. Testnet only, unaudited. Details: [security model and limits](docs/SECURITY.md).
 
@@ -57,7 +57,7 @@ const fm = createFlyingMoneyClient({
 const res = await fm.fetch('https://oracle.example/v1/tea-price?city=Luoyang')
 ```
 
-After building this checkout, make the key where the agent runs: `node packages/client/dist/cli.js keygen --out .env` (from the repo root). This local-build route does not depend on an npm publication. Never share or commit the generated file. See [the agent quickstart](docs/site/agents.md).
+Install with `npm install @flying-money/client viem`. Make the key where the agent runs: `npx @flying-money/client keygen --out .env`. Never share or commit the generated file. See [the agent quickstart](docs/site/agents.md).
 
 ## For APIs (sellers)
 

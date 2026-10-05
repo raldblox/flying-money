@@ -64,9 +64,9 @@ pays it for you (${site}/docs/client). Sellers that speak x402 V2 advertise the 
 On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\`. Never print,
 copy, or send that file. It holds no money; it can only spend budgets your owner funds.
 
-### If \`npx\` says the package is not found: build it from source
+### If \`npx\` can't fetch the package: build it from source
 
-The npm package may not be published yet. The source is public (${repo}). If you can run commands (needs git,
+If your machine can't reach the npm registry, or you'd rather build it yourself, the source is public (${repo}). If you can run commands (needs git,
 Node 22+ and pnpm, e.g. \`corepack enable\`):
 
 \`\`\`bash
@@ -82,8 +82,7 @@ in JSON configs). For example, in Claude Code:
 claude mcp add flying-money ${envFlags} -- node <HOME>/.flying-money/src/packages/mcp/dist/bin.js
 \`\`\`
 
-If you can't run commands, tell your owner: "The Flying Money MCP server isn't on npm yet; it has to be built from
-source on this computer first," and show them these steps.
+If you can't run commands, show your owner these steps and ask them to run them.
 
 ## 2. Check it works
 

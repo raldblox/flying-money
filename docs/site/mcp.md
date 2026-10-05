@@ -47,7 +47,7 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
 
-Until the package is published to npm, build it from the repository (`pnpm install && pnpm build`) and use `node /path/to/flying-money/packages/mcp/dist/bin.js` instead of `npx -y @flying-money/mcp`.
+Prefer to build from source? Run `pnpm install && pnpm build` in the repository and use `node /path/to/flying-money/packages/mcp/dist/bin.js` in place of `npx -y @flying-money/mcp`.
 
 ## Claude Desktop
 

@@ -21,8 +21,8 @@ describe('/agent.md', () => {
     expect(md).toContain('https://example.test/app/requests')
   })
 
-  it('falls back to building from the public source when npm has no package', () => {
-    expect(md).toMatch(/not found/i)
+  it('offers building from the public source when npm cannot be reached', () => {
+    expect(md).toMatch(/can't fetch the package/i)
     expect(md).toContain('git clone --depth 1 https://github.com/raldblox/flying-money ~/.flying-money/src')
     expect(md).toContain('packages/mcp/dist/bin.js')
   })
