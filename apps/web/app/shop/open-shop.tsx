@@ -4,10 +4,12 @@ import { useEffect, useId, useState } from 'react'
 import { isAddress } from 'viem'
 import { useAccount } from 'wagmi'
 import { WalletButton } from '@/components/app/wallet-button'
+import { NetworkPicker } from '@/components/network-picker'
 import { QrCode } from '@/components/qr'
 import { buttonClass } from '@/components/section'
 import { usePreferredChain } from '@/lib/chain-param'
 import { short } from '@/lib/fmt'
+import { toPickerNetworks } from '@/lib/networks'
 import { budgetLinkForShop, forgetTill, listTills, rememberTill, type SavedTill } from '@/lib/shop-links'
 
 const tillHref = (t: SavedTill) => `/shop/${t.chain}/${t.payee}/pos?name=${encodeURIComponent(t.name)}`
@@ -153,23 +155,7 @@ export function OpenShop() {
               </div>
               {/* the network only when there is a choice (§22.10 e) */}
               {chains.length > 1 && (
-                <div className="grid gap-1">
-                  <label htmlFor={`${ids}-c`} className="text-sm font-medium">
-                    Network
-                  </label>
-                  <select
-                    id={`${ids}-c`}
-                    value={chain.key}
-                    onChange={(e) => setChainKey(e.target.value as ChainKey)}
-                    className="min-h-11 rounded border border-line bg-paper px-3"
-                  >
-                    {chains.map((c) => (
-                      <option key={c.key} value={c.key}>
-                        {c.chain.name} {c.mainnet ? '(real money)' : '(test money)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <NetworkPicker networks={toPickerNetworks(chains)} value={chain.key} onChange={setChainKey} />
               )}
             </div>
           )}

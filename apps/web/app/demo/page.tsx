@@ -1,5 +1,6 @@
 import { allChains, getChain, isChainKey } from '@flying-money/chains'
 import type { Metadata } from 'next'
+import { toPickerNetworks } from '@/lib/networks'
 import { SITE } from '@/lib/site'
 import { DemoClient } from './demo-client'
 
@@ -13,9 +14,7 @@ export default function DemoPage() {
   const key = process.env.NEXT_PUBLIC_DEFAULT_CHAIN ?? 'arbitrum-sepolia'
   const chain = getChain(isChainKey(key) ? key : 'arbitrum-sepolia')
   // the runner only uses deployed testnets (§13.3); ?chain= picks among them (§21.2)
-  const demoChains = allChains()
-    .filter((c) => !c.mainnet && c.flyingMoney && c.key !== 'anvil')
-    .map((c) => ({ key: c.key, name: c.chain.name }))
+  const demoChains = toPickerNetworks(allChains().filter((c) => !c.mainnet && c.flyingMoney && c.key !== 'anvil'))
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Live demo · {SITE.testnetMode}</p>

@@ -4,9 +4,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { type ReactNode, useEffect, useState } from 'react'
 import { useAccount, useChainId, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
+import { NetworkPicker } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { TestNote } from '@/components/test-note'
 import { short } from '@/lib/fmt'
+import { toPickerNetworks } from '@/lib/networks'
 import { useInbox } from '@/lib/use-inbox'
 import { e2eMode } from '@/lib/wagmi'
 import { hasBrowserWallet, walletAppLinks } from '@/lib/wallet-apps'
@@ -78,24 +80,13 @@ function NetworkNote() {
   const { chain, chains, setChainKey } = useAccountCtx()
   return (
     <div className="mt-6 hidden rounded-md border border-line p-3 text-xs text-ink-2 lg:block">
-      <label className="smallcaps block text-[0.65rem]" htmlFor="account-network">
-        Network
-      </label>
       {chains.length > 1 ? (
-        <select
-          id="account-network"
-          value={chain.key}
-          onChange={(e) => setChainKey(e.target.value as ChainKey)}
-          className="mt-1 w-full rounded border border-line bg-paper px-2 py-1 text-sm text-ink"
-        >
-          {chains.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.chain.name}
-            </option>
-          ))}
-        </select>
+        <NetworkPicker networks={toPickerNetworks(chains)} value={chain.key} onChange={setChainKey} compact />
       ) : (
-        <p className="mt-1 text-sm text-ink">{chain.chain.name}</p>
+        <>
+          <p className="smallcaps text-[0.65rem]">Network</p>
+          <p className="mt-1 text-sm text-ink">{chain.chain.name}</p>
+        </>
       )}
       <p className="mt-2">Test money only. Not audited.</p>
     </div>

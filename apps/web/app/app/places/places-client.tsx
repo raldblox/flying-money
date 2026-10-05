@@ -2,6 +2,7 @@
 import { type ChainKey, chainKeys, getChain } from '@flying-money/chains'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { type Hex, isAddress } from 'viem'
+import { NetworkPicker } from '@/components/network-picker'
 import { QrScanner } from '@/components/qr-scanner'
 import { buttonClass } from '@/components/section'
 import {
@@ -15,6 +16,7 @@ import {
   verificationFor,
 } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
+import { toPickerNetworks } from '@/lib/networks'
 import { e2eMode } from '@/lib/wagmi'
 
 type Mode = 'scan' | 'domain' | 'paste'
@@ -207,22 +209,8 @@ function ChainSelect({
   onChange: (k: ChainKey) => void
 }) {
   return (
-    <div className="grid gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        Network
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value as ChainKey)}
-        className="min-h-11 rounded border border-line bg-paper px-3"
-      >
-        {list.map((c) => (
-          <option key={c.key} value={c.key}>
-            {c.chain.name}
-          </option>
-        ))}
-      </select>
+    <div id={id}>
+      {list.length > 1 ? <NetworkPicker networks={toPickerNetworks(list)} value={value} onChange={onChange} /> : null}
     </div>
   )
 }

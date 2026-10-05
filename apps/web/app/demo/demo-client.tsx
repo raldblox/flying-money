@@ -2,6 +2,7 @@
 import type { ChainKey } from '@flying-money/chains'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { DemoStage } from '@/components/demo/demo-stage'
+import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { usePreferredChain } from '@/lib/chain-param'
 import { type DemoEvent, illustrationScript, initialStory, reduceStory, type Story } from '@/lib/demo-story'
@@ -68,13 +69,7 @@ function usePacedStory() {
   return { story, push, reset, idle }
 }
 
-export function DemoClient({
-  chains,
-  defaultChain,
-}: {
-  chains: Array<{ key: ChainKey; name: string }>
-  defaultChain: ChainKey
-}) {
+export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; defaultChain: ChainKey }) {
   const [chainKey, setChainKey] = usePreferredChain(
     chains.map((c) => c.key),
     defaultChain,
@@ -209,6 +204,15 @@ export function DemoClient({
       />
       <div className="sheet grid gap-4 p-4 sm:p-5">
         <h2 className="font-display text-2xl font-semibold">Run it yourself</h2>
+        {chains.length > 1 && (
+          <NetworkPicker
+            networks={chains}
+            value={chainKey}
+            onChange={setChainKey}
+            label="Run it on"
+            disabled={phase === 'running'}
+          />
+        )}
         <div className="flex flex-wrap items-center gap-4">
           {/* a fixed width: the label changes during a run, the layout must not */}
           <button
@@ -219,29 +223,9 @@ export function DemoClient({
           >
             {phase === 'running' ? 'Running on the blockchain…' : phase === 'idle' ? 'Run it for real' : 'Run again'}
           </button>
-          <p className="text-sm text-ink-2">
-            {chains.length > 1 ? (
-              <label>
-                on{' '}
-                <select
-                  value={chainKey}
-                  disabled={phase === 'running'}
-                  onChange={(e) => setChainKey(e.target.value as ChainKey)}
-                  className="rounded border border-line bg-paper px-2 py-1 font-semibold text-ink"
-                >
-                  {chains.map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <>
-                on <strong className="text-ink">{chainName}</strong>
-              </>
-            )}{' '}
-            with test money: a real 0.30 USDC budget, 20 real paid calls, real transactions you can check.
+          <p className="w-full min-w-0 text-sm text-ink-2 sm:w-auto sm:flex-1">
+            On <strong className="text-ink">{chainName}</strong> with test money: a real 0.30 budget, 20 real paid
+            calls, real transactions you can check.
           </p>
           {/* always laid out, hidden when not useful, so the row never re-wraps mid-film */}
           <button

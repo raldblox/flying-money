@@ -16,6 +16,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { GrantSummary } from '@/components/grant-summary'
+import { NetworkPicker } from '@/components/network-picker'
 import { useOnline } from '@/components/offline-ready'
 import { QrCode } from '@/components/qr'
 import { QrScanner } from '@/components/qr-scanner'
@@ -23,6 +24,7 @@ import { buttonClass } from '@/components/section'
 import { TestNote } from '@/components/test-note'
 import { loadCertificate } from '@/lib/chain'
 import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
+import { toPickerNetworks } from '@/lib/networks'
 import { unsealKey, validPin } from '@/lib/pin-vault'
 import { holdLock } from '@/lib/till'
 import {
@@ -947,23 +949,9 @@ function AddCertificate({ onAdded }: { onAdded: () => Promise<void> }) {
           <div className="grid gap-3 rounded border border-line p-4">
             <p className="text-sm font-medium">Spending key address (paste it when you create the budget):</p>
             <p className="break-all font-mono text-sm">{drafts[0]}</p>
-            <div className="grid gap-1">
-              <label htmlFor={`${ids}-c`} className="text-sm font-medium">
-                Network
-              </label>
-              <select
-                id={`${ids}-c`}
-                value={chainKey}
-                onChange={(e) => setChainKey(e.target.value as ChainKey)}
-                className="min-h-11 rounded border border-line bg-paper px-3"
-              >
-                {chains.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.chain.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {chains.length > 1 && (
+              <NetworkPicker networks={toPickerNetworks(chains)} value={chainKey} onChange={setChainKey} />
+            )}
             <input
               aria-label="Budget id"
               value={certId}

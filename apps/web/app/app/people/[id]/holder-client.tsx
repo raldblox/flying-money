@@ -9,12 +9,14 @@ import { AssistantSetup } from '@/components/account/assistant-setup'
 import { FunderActions } from '@/components/app/funder-actions'
 import { type IssuePreset, IssueWizard, type Place } from '@/components/app/issue-wizard'
 import { WalletButton } from '@/components/app/wallet-button'
+import { NetworkPicker } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { StatusChip } from '@/components/status-chip'
 import { Tally } from '@/components/tally'
 import { loadCertificate } from '@/lib/chain'
 import { addCertificateToHolder, badgeOf, getHolder, type Holder, listPlaces, type PlaceContact } from '@/lib/contacts'
 import { relTime, short, usdc } from '@/lib/fmt'
+import { toPickerNetworks } from '@/lib/networks'
 import { deployedChains } from '@/lib/wagmi'
 
 type Row = { chain: ChainKey; cert: Certificate | null; durationIdx: number }
@@ -140,21 +142,15 @@ export function HolderControl({ id }: { id: string }) {
               Give {holder.name} a budget
             </h2>
             <div className="flex items-center gap-3">
-              <label htmlFor="give-chain" className="text-sm">
-                Network
-              </label>
-              <select
-                id="give-chain"
-                value={give.chain}
-                onChange={(e) => setGive({ ...give, chain: e.target.value as ChainKey })}
-                className="min-h-10 rounded border border-line bg-paper px-2"
-              >
-                {chains.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.chain.name}
-                  </option>
-                ))}
-              </select>
+              {chains.length > 1 && (
+                <NetworkPicker
+                  networks={toPickerNetworks(chains)}
+                  value={give.chain}
+                  onChange={(k) => setGive({ ...give, chain: k })}
+                  hideLabel
+                  compact
+                />
+              )}
               <button type="button" className="text-indigo underline" onClick={() => setGive(null)}>
                 Close
               </button>
