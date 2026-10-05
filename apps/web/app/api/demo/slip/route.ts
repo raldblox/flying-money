@@ -66,7 +66,8 @@ export async function POST(req: Request) {
       functionName: 'allowance',
       args: [funder.address, chain.flyingMoney],
     })
-    if (allowed < SLIP_PRICE) {
+    const approvedNow = allowed < SLIP_PRICE
+    if (approvedNow) {
       const a = await wallet.writeContract({
         address: chain.usdc,
         abi: erc20Abi,
@@ -76,12 +77,23 @@ export async function POST(req: Request) {
       await pub.waitForTransactionReceipt({ hash: a })
     }
     const expiresAt = BigInt(Math.floor(Date.now() / 1000)) + LIFETIME_S
-    const tx = await wallet.writeContract({
-      address: chain.flyingMoney,
-      abi: flyingMoneyAbi,
-      functionName: 'issue',
-      args: [payee, spender.address, SLIP_PRICE, expiresAt],
-    })
+    const issue = () =>
+      wallet.writeContract({
+        address: chain.flyingMoney!,
+        abi: flyingMoneyAbi,
+        functionName: 'issue',
+        args: [payee, spender.address, SLIP_PRICE, expiresAt],
+      })
+    // right after a first approval, a load-balanced RPC may estimate gas on a node that hasn't seen it yet: retry
+    let tx: Hex | undefined
+    for (let attempt = 0; !tx; attempt++) {
+      try {
+        tx = await issue()
+      } catch (e) {
+        if (!approvedNow || attempt >= 4) throw e
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+    }
     const receipt = await pub.waitForTransactionReceipt({ hash: tx })
     const [ev] = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'CertificateIssued' })
     if (!ev) throw new Error('the budget was not created')
