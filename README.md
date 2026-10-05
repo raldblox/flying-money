@@ -85,6 +85,8 @@ app.get('/v1/tea-price', (c) => c.json({ price: 42 }))
 
 Collect with the redeemer (`startRedeemer`): one `redeemMany` for up to 20 notes. See [sellers](docs/site/server.md).
 
+**x402 V2.** Add `x402: true` and the same middleware also speaks [x402](https://docs.x402.org): every 402 carries a standard `PAYMENT-REQUIRED` header with the [`flying-money` scheme](docs/design/x402-flying-money-scheme.md), and slips arriving in `PAYMENT-SIGNATURE` pass exactly the same checks. The buyer SDK and MCP server pay x402-only sellers too. It's live on the demo seller.
+
 ## Guarantees
 
 | Party | Guarantee | Conditions |
