@@ -6,5 +6,13 @@
   "base-sepolia": {
     "flyingMoney": "0xb9ae3158f9ca841d9da3c3725014d8352ca967f2",
     "deployedBlock": "47697989"
+  },
+  "ethereum-sepolia": {
+    "flyingMoney": "0x4c7cfbadadab3c394f10a9b00c6fbf2baa20c3e6",
+    "deployedBlock": "11845964"
+  },
+  "tempo-testnet": {
+    "flyingMoney": "0xb9ae3158f9ca841d9da3c3725014d8352ca967f2",
+    "deployedBlock": "38216861"
   }
 }

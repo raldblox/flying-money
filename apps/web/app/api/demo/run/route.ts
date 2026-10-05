@@ -1,8 +1,9 @@
 // Demo runner (§13.3): runs the live testnet demo server-side with the runner's keys and streams events as NDJSON.
 // Never fakes transactions: if the chain or the runner isn't available, it says so.
 import { keyFromEnv, type LiveEvent, runLiveDemo } from '@flying-money/agent'
-import { getChain, isChainKey } from '@flying-money/chains'
+import { getChain, isChainKey, rpcUrl } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
+import { createPublicClient, erc20Abi, http } from 'viem'
 import { admitDemoRun, demoGuardFromEnv } from '@/lib/demo-guard'
 
 export const runtime = 'nodejs'
@@ -29,6 +30,35 @@ export async function POST(req: Request) {
       { error: 'Demo paused: the demo runner is not configured on this deployment.' },
       { status: 503 },
     )
+
+  // Every deployed testnet is offered, but the demo wallet may not hold test money on each one yet: say so before
+  // taking the visitor's run slot, instead of failing halfway through a run.
+  const chain = getChain(chainKey)
+  try {
+    const funder = keyFromEnv('DEMO_FUNDER_KEY').address
+    const pub = createPublicClient({ chain: chain.chain, transport: http(rpcUrl(chainKey, process.env)) })
+    const held = await pub.readContract({
+      address: chain.usdc,
+      abi: erc20Abi,
+      functionName: 'balanceOf',
+      args: [funder],
+    })
+    if (held < FACE) {
+      const fallback = getChain(
+        isChainKey(process.env.NEXT_PUBLIC_DEFAULT_CHAIN ?? '')
+          ? (process.env.NEXT_PUBLIC_DEFAULT_CHAIN as never)
+          : 'arbitrum-sepolia',
+      )
+      return Response.json(
+        {
+          error: `The demo wallet on ${chain.chain.name} has no test money yet. ${chainKey === fallback.key ? 'Try again later.' : `Try ${fallback.chain.name}.`}`,
+        },
+        { status: 503 },
+      )
+    }
+  } catch {
+    // a slow RPC here shouldn't block the run; the run itself reports real failures
+  }
 
   // F9 (D28): limits shared by every instance (Upstash), same-origin only, one run at a time, a daily USDC cap
   const guard = demoGuardFromEnv(process.env)
