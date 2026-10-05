@@ -20,6 +20,9 @@ import { createOracle, type WeatherNow } from './app.js'
  * within 36 h of expiry as due, and the seller only accepts certificates with at least that long left. A note served at
  * the last moment is then still redeemed by the next daily run (≤ 25 h later), before expiry.
  */
+/** Where an unpaid caller is sent to learn how to pay (the site's index for agents). */
+export const DEFAULT_DOCS_URL = 'https://useflyingmoney.vercel.app/llms.txt'
+
 export const HOBBY_SAFETY_SECONDS = 36 * 3600
 /** Pro runs the cron every 10 minutes (§21.6), so two hours of margin is plenty. */
 export const PRO_SAFETY_SECONDS = 2 * 3600
@@ -153,7 +156,8 @@ export function hostedOracleFromEnv(
     ...(env.REDEEMER_KEY ? { redeemerKey: env.REDEEMER_KEY as Hex } : {}),
     ...(env.CRON_SECRET ? { cronSecret: env.CRON_SECRET } : {}),
     ...(opts.readCertificate ? { readCertificate: opts.readCertificate } : {}),
-    ...(env.ORACLE_DOCS_URL ? { docsUrl: env.ORACLE_DOCS_URL } : {}),
+    // every 402 says where to learn how to pay it (an agent that has never heard of Flying Money starts here)
+    docsUrl: env.ORACLE_DOCS_URL?.trim() || DEFAULT_DOCS_URL,
     ...(env.CORS_ORIGIN ? { corsOrigin: env.CORS_ORIGIN.split(',') } : {}),
   })
 }

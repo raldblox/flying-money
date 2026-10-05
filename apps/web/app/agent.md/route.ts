@@ -11,6 +11,7 @@ export function GET() {
       SITE.url,
       deployedChains().map((c) => c.key),
       SITE.github,
+      SITE.demoSeller,
     ),
     { headers: { 'content-type': 'text/markdown; charset=utf-8' } },
   )

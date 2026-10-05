@@ -19,6 +19,14 @@ claude mcp add flying-money -e FM_OWNER=0xYourWallet -- npx -y @flying-money/mcp
 
 On first run the server makes its own spending key and keeps it in `~/.flying-money/agent-key` (readable only by you). It never prints or returns the key. A spending key holds no money: it can only spend budgets its owner funds, and only at the seller each one names. Call `fm_status` to see your spending address.
 
+Check the setup without restarting your MCP client: `--check` starts the server in-process, lists its tools, prints `fm_status` as JSON and exits.
+
+```bash
+FM_OWNER=0xYourWallet npx -y @flying-money/mcp --check
+```
+
+To try a real paid API, `fm_quote` the live demo seller: `https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang` (0.01 test USDC per call).
+
 Then, when a paid service needs a budget, `fm_request_budget` sends your owner a request (or gives you a link for them). The owner approves it in the app. Nobody copies keys or ids by hand.
 
 ## Tools
@@ -43,7 +51,7 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 | `AGENT_KEY` | Optional: bring your own spending key instead of the one the server makes |
 | `FM_KEY_FILE` | Where the made key is kept (default `agent-key` next to `FM_STORE`) |
 | `AGENT_CERTIFICATES` | Optional: budget ids already given to you, comma-separated |
-| `AGENT_CHAINS` | Registry keys, comma-separated (default `arbitrum-sepolia`) |
+| `AGENT_CHAINS` | Registry keys, comma-separated (default: every test network the contract is deployed on: `arbitrum-sepolia,base-sepolia,ethereum-sepolia,tempo-testnet`) |
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
 

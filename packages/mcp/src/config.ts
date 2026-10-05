@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { type ChainKey, isChainKey } from '@flying-money/chains'
+import { type ChainKey, chainKeys, getChain, isChainKey } from '@flying-money/chains'
 import { createFlyingMoneyClient, type FlyingMoneyClient, fileRequestStore, fileStore } from '@flying-money/client'
 import type { Hex } from '@flying-money/core'
 import { parseUnits } from 'viem'
@@ -32,7 +32,7 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *                        keeps it in FM_KEY_FILE (default: agent-key next to FM_STORE, mode 0600) (§22.10 b)
  *   FM_KEY_FILE          where the made key is kept
  *   AGENT_CERTIFICATES   comma-separated certificate ids issued to that key
- *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN or arbitrum-sepolia)
+ *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN, else every network with a deployment)
  *   FM_MAX_PRICE         per-request cap in USDC (default 0.05)
  *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json); requests go next to it
  *   FM_OWNER             owner address to ask for budgets (§21.4); optional
@@ -42,6 +42,11 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   RPC_<CHAIN>          optional RPC overrides
  *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  */
+/** Every public network the contract is deployed on: the default, so no network is favoured over another. */
+export function deployedChains(): ChainKey[] {
+  return chainKeys.filter((k) => k !== 'anvil' && Boolean(getChain(k).flyingMoney))
+}
+
 export function configFromEnv(env: Record<string, string | undefined> = process.env): McpEnvConfig {
   const given = env.AGENT_KEY?.trim()
   if (given && !/^0x[0-9a-fA-F]{64}$/.test(given)) throw new Error('AGENT_KEY is malformed (expected 0x + 64 hex)')
@@ -55,7 +60,9 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     throw new Error('AGENT_CERTIFICATES must list certificate ids (0x + 64 hex), comma-separated')
   if (certificates.length === 0 && !owner)
     throw new Error('set AGENT_CERTIFICATES (budgets to use), or FM_OWNER so the agent can ask its owner for one')
-  const chains = (env.AGENT_CHAINS ?? env.AGENT_CHAIN ?? 'arbitrum-sepolia').split(',').map((s) => s.trim())
+  const chains = (env.AGENT_CHAINS?.trim() || env.AGENT_CHAIN?.trim() || deployedChains().join(','))
+    .split(',')
+    .map((s) => s.trim())
   for (const c of chains) if (!isChainKey(c)) throw new Error(`unknown chain in AGENT_CHAINS: ${c}`)
   const maxPricePerRequest = parseUnits(env.FM_MAX_PRICE ?? '0.05', 6)
   const storePath = env.FM_STORE ?? join(homedir(), '.flying-money', 'outbox.json')

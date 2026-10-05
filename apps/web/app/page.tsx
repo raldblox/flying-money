@@ -27,7 +27,7 @@ const fm = createFlyingMoneyClient({
   certificates: [process.env.AGENT_CERTIFICATES],  // the budget your owner funded
   maxPricePerRequest: 50_000n,                     // 0.05 USDC
 })
-const res = await fm.fetch('https://oracle.example/v1/tea-price?city=Luoyang')`
+const res = await fm.fetch('https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang')`
 
 const CHARGE = `import { flyingMoney } from '@flying-money/server/hono'
 import { upstashStore } from '@flying-money/server'

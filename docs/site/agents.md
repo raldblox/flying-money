@@ -50,7 +50,7 @@ const fm = createFlyingMoneyClient({
   maxPricePerRequest: 50_000n, // 0.05 USDC; refuse anything pricier
 })
 
-const res = await fm.fetch('https://oracle.example/v1/tea-price?city=Luoyang')
+const res = await fm.fetch('https://flying-money-oracle.vercel.app/v1/tea-price?city=Luoyang')
 console.log(res.status, await res.json())
 console.log(fm.status()) // remaining budget per certificate
 ```

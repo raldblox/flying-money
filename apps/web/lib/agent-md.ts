@@ -6,8 +6,14 @@ export function agentInstruction(base: string, owner: string): string {
   return `Set up Flying Money payments for me. Read ${base.replace(/\/$/, '')}/agent.md and follow it. My wallet is ${owner}.`
 }
 
-export function agentMd(base: string, chainKeys: string[], repo = 'https://github.com/raldblox/flying-money'): string {
+export function agentMd(
+  base: string,
+  chainKeys: string[],
+  repo = 'https://github.com/raldblox/flying-money',
+  demoSeller = 'https://flying-money-oracle.vercel.app',
+): string {
   const site = base.replace(/\/$/, '')
+  const demo = `${demoSeller.replace(/\/$/, '')}/v1/tea-price?city=Luoyang`
   const chains = chainKeys.join(',')
   const env = { FM_OWNER: '<OWNER_WALLET>', ...(chains ? { AGENT_CHAINS: chains } : {}) }
   const envFlags = Object.entries(env)
@@ -61,8 +67,10 @@ For clients that only speak HTTP, run \`npx -y @flying-money/mcp --http 8788\` a
 pays it for you (${site}/docs/client). Sellers that speak x402 V2 advertise the \`flying-money\` scheme in
 \`PAYMENT-REQUIRED\` (${repo}/blob/main/docs/design/x402-flying-money-scheme.md).
 
-On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\`. Never print,
-copy, or send that file. It holds no money; it can only spend budgets your owner funds.
+On its first run the server makes your own spending key and keeps it in \`~/.flying-money/agent-key\` (your home
+folder). To keep it somewhere else, set \`FM_KEY_FILE\` to a file path (and \`FM_STORE\` for the payment log, default
+\`~/.flying-money/outbox.json\`). Never print, copy, or send that file. It holds no money; it can only spend budgets
+your owner funds.
 
 ### If \`npx\` can't fetch the package: build it from source
 
@@ -86,7 +94,18 @@ If you can't run commands, show your owner these steps and ask them to run them.
 
 ## 2. Check it works
 
-Call \`fm_status\`. It returns your **spending address** and your budgets (none yet). Call \`fm_explain\` for the rules.
+**Before any restart**, you can check the setup yourself: run the server once with \`--check\` and the same
+environment. It starts in-process, lists the tools, prints \`fm_status\` as JSON and exits.
+
+\`\`\`bash
+FM_OWNER=<OWNER_WALLET> npx -y @flying-money/mcp --check
+\`\`\`
+
+(PowerShell: \`$env:FM_OWNER='<OWNER_WALLET>'; npx -y @flying-money/mcp --check\`.) Use the same \`FM_KEY_FILE\` /
+\`FM_STORE\` as your MCP settings, if you set them, so the check uses the same key.
+
+**After the restart**, call \`fm_status\`. It returns your **spending address** and your budgets (none yet). Call
+\`fm_explain\` for the rules.
 
 ## 3. Tell your owner
 
@@ -94,6 +113,9 @@ Tell your owner, in one short message: you're set up, your spending address (fro
 them for a budget when a paid service needs one. They don't need to do anything else now.
 
 ## 4. When a paid service needs a budget
+
+To try it, there is a live demo seller: \`${demo}\` (0.01 test USDC per call, on every test network above).
+\`fm_quote\` it to see the offer.
 
 1. \`fm_quote\` the URL to see its price and seller.
 2. If \`fm_paid_fetch\` answers \`no_certificate\`, call \`fm_request_budget\` **once** for that service, with a

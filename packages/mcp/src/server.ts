@@ -57,7 +57,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   // public internet only unless the caller supplies its own fetch (audit F6)
   const doFetch = cfg.fetch ?? guardedFetch()
   const maxBody = cfg.maxBodyChars ?? 8000
-  const server = new McpServer({ name: 'flying-money', version: '0.1.0' })
+  const server = new McpServer({ name: 'flying-money', version: '0.1.1' })
 
   const certificates = () =>
     fm.status().map((c) => ({
