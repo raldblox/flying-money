@@ -231,6 +231,7 @@ export function CarryReceive({
   const [carrier, setCarrier] = useState<ReceiveCarrier>(carriers[0]!)
   const [status, setStatus] = useState<string | null>(null)
   const [listening, setListening] = useState(false)
+  const [level, setLevel] = useState(0)
   const [pasted, setPasted] = useState('')
   const stopRef = useRef<(() => void) | null>(null)
   const ids = useId()
@@ -257,9 +258,22 @@ export function CarryReceive({
       {carrier === 'camera' && <QrScanner prompt={prompt} onResult={(t) => onText(t, 'camera')} />}
       {carrier === 'sound' &&
         (listening ? (
-          <button type="button" className={buttonClass('secondary')} onClick={stopListening}>
-            Stop listening
-          </button>
+          <div className="grid gap-2">
+            <meter
+              min={0}
+              max={1}
+              value={level}
+              aria-label="What the microphone hears"
+              className="h-3 w-full accent-celadon"
+            />
+            <p className="text-xs text-ink-2">
+              The bar moves when the microphone hears something. If it stays still, allow the microphone; if music is
+              playing, pause it: chirps need a quiet room.
+            </p>
+            <button type="button" className={buttonClass('secondary')} onClick={stopListening}>
+              Stop listening
+            </button>
+          </div>
         ) : (
           <button
             type="button"
@@ -276,6 +290,7 @@ export function CarryReceive({
                     onText(t, 'sound')
                   },
                   (got, total) => setStatus(`Heard part ${got} of ${total}…`),
+                  (l) => setLevel(l),
                 )
               } catch (e) {
                 setListening(false)

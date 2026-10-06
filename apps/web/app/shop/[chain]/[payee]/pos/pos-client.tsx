@@ -8,10 +8,12 @@ import { useAccount, useBalance, useChainId, usePublicClient, useWalletClient } 
 import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
+import { FaceToFace } from '@/components/carry/face-to-face'
 import { useOnline } from '@/components/offline-ready'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
 import { listenForCarried } from '@/lib/carry/channel'
+import { encodeReceipt } from '@/lib/carry/receipt'
 import { carriedPrice, slipForOrder } from '@/lib/carry/till'
 import { parseAmount, short, usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, parsePriceList, type Till, TillBusyError, type TillSettings } from '@/lib/till'
@@ -177,6 +179,7 @@ function Sell({ till }: { till: Till }) {
   const [order, setOrder] = useState<Order | null>(null)
   const [result, setResult] = useState<CounterResult | null>(null)
   const [busy, setBusy] = useState(false)
+  const [faceToFace, setFaceToFace] = useState(true)
   const amountId = useId()
 
   const valid = /^\d+(\.\d{1,6})?$/.test(amount) && parseUnits(amount, 6) > 0n
@@ -189,7 +192,8 @@ function Sell({ till }: { till: Till }) {
   }
 
   async function scanned(text: string) {
-    if (!order || busy) return
+    // face to face, the camera may catch other codes on the way: only slips (or links to them) are payments
+    if (!order || busy || !/^(https?:|fm[12])/.test(text)) return
     setBusy(true)
     try {
       setResult(await till.counter.accept(slipForOrder(text, order.id), order.price, order.id))
@@ -280,6 +284,70 @@ function Sell({ till }: { till: Till }) {
       </div>
     )
 
+  // the till's answer for the phone, read face to face: which payment, accepted or not, and what was bought
+  const receipt =
+    result && result.status !== 'REJECTED' && result.requestId && result.certificateId
+      ? encodeReceipt({
+          memo: result.requestId,
+          certificate: result.certificateId,
+          price: order.price,
+          status: result.status,
+          item: order.label,
+        })
+      : null
+  const nextCustomer = () => {
+    setOrder(null)
+    setResult(null)
+    setAmount('')
+  }
+
+  if (faceToFace)
+    return (
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="sheet p-6 text-center" aria-labelledby="price-t">
+          <p className="smallcaps text-sm text-ink-2">
+            {receipt ? 'The receipt, for the customer’s phone' : 'Customer: hold your phone up to this screen'}
+          </p>
+          <h2 id="price-t" className="mt-1 font-display text-4xl font-semibold lining-nums">
+            {order.label} · {usdc(order.price)} USDC
+          </h2>
+          <FaceToFace
+            className="mt-4"
+            show={receipt ?? carriedPrice(order.qr)}
+            showLabel={receipt ? 'Receipt for the customer' : `Price code for ${usdc(order.price)} USDC`}
+            onText={(t) => {
+              if (!result) void scanned(t)
+            }}
+          />
+        </section>
+        <section className="sheet p-6" aria-live="polite">
+          {result ? (
+            <ResultCard result={result} onAgain={() => setResult(null)} onNext={nextCustomer} />
+          ) : (
+            <>
+              <p className="font-display text-2xl font-semibold">
+                {busy ? 'Checking…' : 'Waiting for the customer’s slip'}
+              </p>
+              <p className="mt-2 text-ink-2">
+                Screen to screen: this till reads the price to the phone, the phone’s slip back, and shows the receipt
+                for the phone. No buttons, no internet needed.
+              </p>
+            </>
+          )}
+          <div className="mt-6 flex flex-wrap gap-4">
+            <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(false)}>
+              Other ways: one-way QR, sound, link, paste
+            </button>
+            {!result && (
+              <button type="button" className="text-sm text-indigo underline" onClick={() => setOrder(null)}>
+                Cancel order
+              </button>
+            )}
+          </div>
+        </section>
+      </div>
+    )
+
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <section className="sheet p-6 text-center" aria-labelledby="price-t">
@@ -295,9 +363,14 @@ function Sell({ till }: { till: Till }) {
             fileName="flying-money-price.txt"
           />
         </div>
-        <button type="button" className={`${buttonClass('secondary')} mt-4`} onClick={() => setOrder(null)}>
-          Cancel order
-        </button>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <button type="button" className={buttonClass('secondary')} onClick={() => setOrder(null)}>
+            Cancel order
+          </button>
+          <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(true)}>
+            Back to face to face
+          </button>
+        </div>
       </section>
       <section className="sheet p-6" aria-labelledby="scan-t" aria-live="polite">
         <p className="smallcaps text-sm text-ink-2">Step 2 · receive the customer’s payment slip</p>

@@ -5,11 +5,13 @@ import type { CounterResult } from '@flying-money/server/browser'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPublicClient, http } from 'viem'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
+import { FaceToFace } from '@/components/carry/face-to-face'
 import { Keepsake, type KeepsakeData } from '@/components/carry/keepsake'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { listenForCarried } from '@/lib/carry/channel'
 import { PROVERBS } from '@/lib/carry/proverbs'
+import { encodeReceipt } from '@/lib/carry/receipt'
 import { carriedPrice, slipForOrder } from '@/lib/carry/till'
 import { short } from '@/lib/fmt'
 import { newOrderId, openTill, type Till } from '@/lib/till'
@@ -94,8 +96,18 @@ export function DemoCounter({ chains, payee }: { chains: PickerNetwork[]; payee:
       })
       const body = (await res.json()) as Funded & { error?: string }
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
-      // the till checks the budget now, while online: that is what lets it accept it later with no connection
-      await till.counter.server.certificate(getChain(chain).chain.id, body.certificateId, true)
+      // the till checks the budget now, while online: that is what lets it accept it later with no connection. Right
+      // after the transaction an RPC node may not have it yet, so keep asking for a while.
+      const chainId = getChain(chain).chain.id
+      let seen = null
+      for (let i = 0; i < 20 && !seen; i++) {
+        seen = await till.counter.server.certificate(chainId, body.certificateId, true).catch(() => null)
+        if (!seen) await new Promise((r) => setTimeout(r, 1000))
+      }
+      if (!seen)
+        throw new Error(
+          'The budget was made, but this till couldn’t read it from the network yet. Try again in a minute, before going offline.',
+        )
       setFunded(body)
     } catch (e) {
       setError((e as Error).message)
@@ -195,23 +207,45 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
   const [name, setName] = useState('')
   const [result, setResult] = useState<CounterResult | null>(null)
   const [keepsake, setKeepsake] = useState<KeepsakeData | null>(null)
+  const [receipt, setReceipt] = useState<string | null>(null)
+  const [faceToFace, setFaceToFace] = useState(true)
+  const busy = useRef(false)
   const ids = useId()
 
   const take = useCallback(
     async (text: string) => {
-      if (!order) return
-      const r = await till.counter.accept(slipForOrder(text, order.id), PRICE, order.id)
-      setResult(r)
-      if (r.status !== 'REJECTED' && r.requestId && r.certificateId)
-        setKeepsake({
-          serial: r.requestId.slice(-8).toUpperCase(),
-          name: name.trim(),
-          issuedAt: new Date().toISOString(),
-          paid: PRICE.toString(),
-          chainId: getChain(chain).chain.id,
-          certificateId: r.certificateId,
-          proverb: PROVERBS[Number.parseInt(r.requestId.slice(-4), 16) % PROVERBS.length]!,
-        })
+      if (!order || busy.current || !/^(https?:|fm[12])/.test(text)) return
+      busy.current = true
+      try {
+        const r = await till.counter.accept(slipForOrder(text, order.id), PRICE, order.id)
+        setResult(r)
+        if (r.status !== 'REJECTED' && r.requestId && r.certificateId) {
+          const proverb = Number.parseInt(r.requestId.slice(-4), 16) % PROVERBS.length
+          const k: KeepsakeData = {
+            serial: r.requestId.slice(-8).toUpperCase(),
+            name: name.trim(),
+            issuedAt: new Date().toISOString(),
+            paid: PRICE.toString(),
+            chainId: getChain(chain).chain.id,
+            certificateId: r.certificateId,
+            proverb: PROVERBS[proverb]!,
+          }
+          setKeepsake(k)
+          // the product goes back to the phone with the receipt: the phone draws the certificate itself
+          setReceipt(
+            encodeReceipt({
+              memo: r.requestId,
+              certificate: r.certificateId,
+              price: PRICE,
+              status: r.status,
+              item: 'A 飛錢 certificate',
+              keepsake: { serial: k.serial, name: k.name, issuedAt: k.issuedAt, proverb, chainId: k.chainId },
+            }),
+          )
+        }
+      } finally {
+        busy.current = false
+      }
     },
     [order, till, name, chain],
   )
@@ -227,6 +261,20 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
     })
   }, [order, result])
 
+  const next = () => {
+    setOrder(null)
+    setResult(null)
+    setKeepsake(null)
+    setReceipt(null)
+  }
+  const accepted = result !== null && result.status !== 'REJECTED'
+  const verdict = (r: CounterResult) =>
+    r.status === 'GUARANTEED'
+      ? '✓ Accepted and guaranteed: checked on the spot, no internet needed.'
+      : r.status === 'UNVERIFIED'
+        ? 'Accepted at the shop’s own risk (this till had never checked that budget).'
+        : `Refused: ${r.reason}.`
+
   return (
     <section className="sheet grid gap-4 p-5" aria-labelledby={`${ids}-3`}>
       <h2 id={`${ids}-3`} className="font-display text-2xl font-semibold">
@@ -238,8 +286,7 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
           onSubmit={(e) => {
             e.preventDefault()
             const id = newOrderId()
-            setResult(null)
-            setKeepsake(null)
+            next()
             setOrder({ id, qr: till.counter.priceQr(PRICE, id) })
           }}
         >
@@ -257,19 +304,64 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
             Sell one · 0.01 USDC
           </button>
         </form>
+      ) : faceToFace ? (
+        <div className="grid gap-4">
+          <p className="text-sm text-ink-2">
+            {accepted
+              ? 'Paid. The receipt, with the certificate inside, is on screen: keep the phone where it is for a moment and the certificate appears on the phone.'
+              : 'On the phone: tap Pay, hold it up to this screen face to face, and approve with the PIN. The rest happens by itself.'}
+          </p>
+          <FaceToFace
+            show={receipt ?? carriedPrice(order.qr)}
+            showLabel={receipt ? 'Receipt for the phone' : 'Price code for 0.01 USDC'}
+            onText={(t) => {
+              if (!result || result.status === 'REJECTED') void take(t)
+            }}
+          />
+          {result && (
+            <p className={`font-display text-xl font-semibold ${accepted ? '' : 'text-seal'}`} role="status">
+              {verdict(result)}
+            </p>
+          )}
+          {keepsake && (
+            <details>
+              <summary className="cursor-pointer text-sm text-ink-2">See the certificate here too</summary>
+              <div className="mt-3">
+                <Keepsake
+                  data={keepsake}
+                  network={getChain(chain).chain.name}
+                  statusUrl={`${window.location.origin}/c/${chain}/${keepsake.certificateId}`}
+                />
+              </div>
+            </details>
+          )}
+          <div className="flex flex-wrap items-center gap-4">
+            {accepted && (
+              <button type="button" className={buttonClass('primary')} onClick={next}>
+                Next customer
+              </button>
+            )}
+            <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(false)}>
+              Other ways: one-way QR, sound, link, text
+            </button>
+            {!accepted && (
+              <button type="button" className="text-sm text-indigo underline" onClick={next}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
       ) : keepsake && result ? (
         <div className="grid gap-4">
           <p className="font-display text-xl font-semibold" role="status">
-            {result.status === 'GUARANTEED'
-              ? '✓ Accepted and guaranteed: checked on the spot, no internet needed.'
-              : 'Accepted at the shop’s own risk (this till had never checked that budget).'}
+            {verdict(result)}
           </p>
           <Keepsake
             data={keepsake}
             network={getChain(chain).chain.name}
             statusUrl={`${window.location.origin}/c/${chain}/${keepsake.certificateId}`}
           />
-          <button type="button" className={`${buttonClass('secondary')} sm:w-fit`} onClick={() => setOrder(null)}>
+          <button type="button" className={`${buttonClass('secondary')} sm:w-fit`} onClick={next}>
             Sell another
           </button>
         </div>
@@ -295,9 +387,14 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
                 Refused: {result.reason}.
               </p>
             )}
-            <button type="button" className="text-sm text-indigo underline sm:w-fit" onClick={() => setOrder(null)}>
-              Cancel
-            </button>
+            <div className="flex flex-wrap gap-4">
+              <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(true)}>
+                Back to face to face
+              </button>
+              <button type="button" className="text-sm text-indigo underline" onClick={next}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -313,6 +410,8 @@ function Collect({ till, chain, offline }: { till: Till; chain: ChainKey; offlin
     setBusy(true)
     setMsg(null)
     try {
+      // payments taken at the shop's own risk (a budget this till hadn't checked) are checked now, then collected too
+      await till.counter.reconcile().catch(() => {})
       const pending = await till.store.pendingRedemptions(getChain(chain).chain.id)
       if (pending.length === 0) return setMsg({ text: 'Nothing to collect yet. Sell something first.' })
       const res = await fetch('/api/demo/counter/collect', {

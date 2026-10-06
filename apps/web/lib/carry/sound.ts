@@ -83,6 +83,8 @@ export async function playText(
 export async function listenForText(
   onText: (text: string) => void,
   onProgress?: (got: number, total: number) => void,
+  /** loudness of what the microphone hears, 0 to 1, a few times a second: shows the listener is working */
+  onLevel?: (level: number) => void,
 ): Promise<() => void> {
   const g = await lib()
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -99,6 +101,11 @@ export async function listenForText(
   const proc = ctx.createScriptProcessor(1024, 1, 1)
   proc.onaudioprocess = (e) => {
     const frame = new Float32Array(e.inputBuffer.getChannelData(0))
+    if (onLevel) {
+      let sum = 0
+      for (const x of frame) sum += x * x
+      onLevel(Math.min(1, Math.sqrt(sum / frame.length) * 8))
+    }
     const r = g.decode(inst, new Int8Array(frame.buffer))
     if (!r || r.byteLength === 0) return
     const got = collect(new TextDecoder().decode(new Uint8Array(r.buffer, r.byteOffset, r.byteLength)))

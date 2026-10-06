@@ -1,5 +1,5 @@
 'use client'
-import { type ChainKey, chainKeys, getChain } from '@flying-money/chains'
+import { type ChainKey, chainKeys, getChain, getChainById } from '@flying-money/chains'
 import {
   abandonCounterPayment,
   type CounterState,
@@ -16,6 +16,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
+import { FaceToFace } from '@/components/carry/face-to-face'
+import { Keepsake } from '@/components/carry/keepsake'
 import { GrantSummary } from '@/components/grant-summary'
 import { NetworkPicker } from '@/components/network-picker'
 import { useOnline } from '@/components/offline-ready'
@@ -23,6 +25,8 @@ import { buttonClass } from '@/components/section'
 import { TestNote } from '@/components/test-note'
 import { listenForCarried, PENDING_OFFER } from '@/lib/carry/channel'
 import { decodeCarried, encodeNoteCompact } from '@/lib/carry/codec'
+import { PROVERBS } from '@/lib/carry/proverbs'
+import { decodeReceipt, receiptFor, type TillReceipt } from '@/lib/carry/receipt'
 import { loadCertificate } from '@/lib/chain'
 import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
 import { toPickerNetworks } from '@/lib/networks'
@@ -594,21 +598,38 @@ function Backup({
 // ── Pay ──────────────────────────────────────────────────────────────────────
 function ScanPrice({ onOffer }: { onOffer: (o: Offer) => void }) {
   const [err, setErr] = useState<string | null>(null)
+  const [other, setOther] = useState(false)
+  const read = (t: string, quiet: boolean) => {
+    try {
+      const c = decodeCarried(t)
+      if (c.kind !== 'offer' || c.offer.accepts.length !== 1 || !c.offer.memoHint)
+        throw new Error('not a till price code')
+      onOffer(c.offer)
+    } catch {
+      // face to face, the camera may catch other codes on the way: only a deliberate scan reports them
+      if (!quiet) setErr('That is not a Flying Money price code. Get the code the till shows for this order.')
+    }
+  }
   return (
     <>
-      <CarryReceive
-        prompt="Point the camera at the price code on the till."
-        onText={(t) => {
-          try {
-            const c = decodeCarried(t)
-            if (c.kind !== 'offer' || c.offer.accepts.length !== 1 || !c.offer.memoHint)
-              throw new Error('not a till price code')
-            onOffer(c.offer)
-          } catch {
-            setErr('That is not a Flying Money price code. Get the code the till shows for this order.')
-          }
-        }}
-      />
+      {!other ? (
+        <>
+          <p className="mb-3 text-sm text-ink-2">
+            Hold your phone up to the till, screen to screen. It reads the price by itself.
+          </p>
+          <FaceToFace
+            show={null}
+            showLabel="Waiting for the price"
+            waiting={<span>Waiting for the till’s price…</span>}
+            onText={(t) => read(t, true)}
+          />
+        </>
+      ) : (
+        <CarryReceive prompt="Point the camera at the price code on the till." onText={(t) => read(t, false)} />
+      )}
+      <button type="button" className="mt-4 text-sm text-indigo underline" onClick={() => setOther((o) => !o)}>
+        {other ? 'Back to face to face' : 'Other ways: back camera, sound, a file, paste'}
+      </button>
       {err && (
         <p role="alert" className="mt-2 text-sm text-seal">
           {err}
@@ -727,7 +748,7 @@ function ShowNote({
   price: bigint
   onClose: () => Promise<void>
 }) {
-  // keep the screen awake while the cashier scans (brightness can't be set from a web page)
+  // keep the screen awake while the till reads it (brightness can't be set from a web page)
   useEffect(() => {
     let lock: { release: () => Promise<void> } | undefined
     ;(navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<typeof lock> } }).wakeLock
@@ -739,8 +760,10 @@ function ShowNote({
     return () => void lock?.release().catch(() => {})
   }, [])
   const c = toCounterCert(entry)
+  const note = decodeNote(noteQr)
   const [confirmNo, setConfirmNo] = useState(false)
-  // Fixed light colours on purpose (both themes): the brightest screen gives cashiers' scanners the best read.
+  const [paid, setPaid] = useState<TillReceipt | null>(null)
+  // Fixed light colours on purpose (both themes): the brightest screen gives the till's camera the best read.
   // a real modal: focus moves to it, Escape closes it (the payment stays open and can be shown again) (§22.5 h)
   const headRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -751,6 +774,58 @@ function ShowNote({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // the till's receipt, read face to face, settles the question "did the shop accept it?" by itself
+  const onReceipt = async (t: string) => {
+    if (paid) return
+    const r = decodeReceipt(t)
+    if (!r || !receiptFor(r, note.memo, note.certificateId)) return
+    await confirmCounterPayment(walletStore(), c)
+    navigator.vibrate?.(80)
+    setPaid(r)
+  }
+
+  if (paid) {
+    const chain = getChainById(note.chainId)
+    const k = paid.keepsake
+    return (
+      <section
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
+        aria-labelledby="paid-t"
+      >
+        <div className="mx-auto grid max-w-md gap-4">
+          <p className="smallcaps mt-2 text-sm text-[#8a2a24]">
+            {paid.status === 'GUARANTEED' ? 'Paid · checked by the till' : 'Paid · the till took it at its own risk'}
+          </p>
+          <h1 id="paid-t" className="font-display text-3xl font-semibold lining-nums">
+            ✓ {usdc(price)} USDC · {entry.label}
+          </h1>
+          {paid.item && <p>{paid.item}</p>}
+          {k && (
+            <Keepsake
+              data={{
+                serial: k.serial,
+                name: k.name,
+                issuedAt: k.issuedAt,
+                paid: paid.price.toString(),
+                chainId: k.chainId,
+                certificateId: note.certificateId,
+                proverb: PROVERBS[k.proverb % PROVERBS.length]!,
+              }}
+              network={chain?.chain.name ?? `chain ${note.chainId}`}
+              statusUrl={`${window.location.origin}/c/${chain?.key ?? note.chainId}/${note.certificateId}`}
+            />
+          )}
+          <button type="button" className={buttonClass('primary')} onClick={() => void onClose()}>
+            Done
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section
       role="dialog"
@@ -759,7 +834,7 @@ function ShowNote({
       aria-labelledby="note-t"
     >
       <div className="mx-auto max-w-md">
-        <p className="smallcaps mt-2 text-sm text-[#8a2a24]">Show this to the cashier</p>
+        <p className="smallcaps mt-2 text-sm text-[#8a2a24]">Hold this up to the till</p>
         <h1
           id="note-t"
           ref={headRef}
@@ -768,53 +843,63 @@ function ShowNote({
         >
           {usdc(price)} USDC · {entry.label}
         </h1>
-        <TestNote className="mt-2 text-left" />
-        <div className="mt-4 text-left">
-          <CarrySend
-            payload={tillSlip(noteQr)}
-            title={`Payment slip for ${usdc(price)} USDC`}
-            carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
-            fileName="flying-money-slip.txt"
+        <div className="mt-4">
+          <FaceToFace
+            show={tillSlip(noteQr)}
+            showLabel={`Your payment slip for ${usdc(price)} USDC`}
+            onText={(t) => void onReceipt(t)}
           />
         </div>
-        <p className="mt-4 text-sm">Did the shop accept it?</p>
-        <div className="mt-3 grid gap-3">
-          <button
-            type="button"
-            className={buttonClass('primary')}
-            onClick={async () => {
-              await confirmCounterPayment(walletStore(), c)
-              await onClose()
-            }}
-          >
-            Yes, accepted
-          </button>
-          {!confirmNo ? (
-            <button type="button" className="min-h-11 underline" onClick={() => setConfirmNo(true)}>
-              No, it wasn’t accepted
+        <TestNote className="mt-3 text-left" />
+        <details className="mt-4 text-left text-sm">
+          <summary className="cursor-pointer">Other ways, or answer by hand</summary>
+          <div className="mt-3">
+            <CarrySend
+              payload={tillSlip(noteQr)}
+              title={`Payment slip for ${usdc(price)} USDC`}
+              carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
+              fileName="flying-money-slip.txt"
+            />
+          </div>
+          <p className="mt-4">Did the shop accept it?</p>
+          <div className="mt-3 grid gap-3">
+            <button
+              type="button"
+              className={buttonClass('primary')}
+              onClick={async () => {
+                await confirmCounterPayment(walletStore(), c)
+                await onClose()
+              }}
+            >
+              Yes, accepted
             </button>
-          ) : (
-            <div className="rounded border border-[#cdbfa6] p-3 text-sm">
-              <p>
-                Only choose this if the till showed “Rejected” or you are not buying. If the shop did accept it, your
-                next payment will be refused until you show this code again.
-              </p>
-              <button
-                type="button"
-                className={`${buttonClass('secondary')} mt-3`}
-                onClick={async () => {
-                  await abandonCounterPayment(walletStore(), c)
-                  await onClose()
-                }}
-              >
-                Cancel this payment
+            {!confirmNo ? (
+              <button type="button" className="min-h-11 underline" onClick={() => setConfirmNo(true)}>
+                No, it wasn’t accepted
               </button>
-            </div>
-          )}
-          <button type="button" className="min-h-11 text-sm underline" onClick={() => void onClose()}>
-            Close (keep it open for later)
-          </button>
-        </div>
+            ) : (
+              <div className="rounded border border-[#cdbfa6] p-3 text-sm">
+                <p>
+                  Only choose this if the till showed “Rejected” or you are not buying. If the shop did accept it, your
+                  next payment will be refused until you show this code again.
+                </p>
+                <button
+                  type="button"
+                  className={`${buttonClass('secondary')} mt-3`}
+                  onClick={async () => {
+                    await abandonCounterPayment(walletStore(), c)
+                    await onClose()
+                  }}
+                >
+                  Cancel this payment
+                </button>
+              </div>
+            )}
+          </div>
+        </details>
+        <button type="button" className="mt-4 min-h-11 text-sm underline" onClick={() => void onClose()}>
+          Close (keep it open for later)
+        </button>
       </div>
     </section>
   )
