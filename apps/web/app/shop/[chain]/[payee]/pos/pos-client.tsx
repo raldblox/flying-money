@@ -8,7 +8,7 @@ import { useAccount, useBalance, useChainId, usePublicClient, useWalletClient } 
 import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
-import { FaceToFace } from '@/components/carry/face-to-face'
+import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { useOnline } from '@/components/offline-ready'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
@@ -179,7 +179,7 @@ function Sell({ till }: { till: Till }) {
   const [order, setOrder] = useState<Order | null>(null)
   const [result, setResult] = useState<CounterResult | null>(null)
   const [busy, setBusy] = useState(false)
-  const [faceToFace, setFaceToFace] = useState(true)
+  const [mode, setMode] = useCarryMode()
   const amountId = useId()
 
   const valid = /^\d+(\.\d{1,6})?$/.test(amount) && parseUnits(amount, 6) > 0n
@@ -301,101 +301,45 @@ function Sell({ till }: { till: Till }) {
     setAmount('')
   }
 
-  if (faceToFace)
-    return (
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section className="sheet p-6 text-center" aria-labelledby="price-t">
-          <p className="smallcaps text-sm text-ink-2">
-            {receipt ? 'The receipt, for the customer’s phone' : 'Customer: hold your phone up to this screen'}
-          </p>
-          <h2 id="price-t" className="mt-1 font-display text-4xl font-semibold lining-nums">
-            {order.label} · {usdc(order.price)} USDC
-          </h2>
-          <FaceToFace
-            className="mt-4"
-            show={receipt ?? carriedPrice(order.qr)}
-            showLabel={receipt ? 'Receipt for the customer' : `Price code for ${usdc(order.price)} USDC`}
+  return (
+    <div className="grid gap-8 lg:grid-cols-2">
+      <section className="sheet p-6" aria-labelledby="price-t">
+        <p className="smallcaps text-sm text-ink-2">
+          {receipt ? 'The receipt, going back to the customer’s phone' : 'The price, for the customer’s phone'}
+        </p>
+        <h2 id="price-t" className="mt-1 font-display text-4xl font-semibold lining-nums">
+          {order.label} · {usdc(order.price)} USDC
+        </h2>
+        <div className="mt-4 grid gap-4">
+          <ModePicker mode={mode} onChange={setMode} />
+          <CarryLink
+            mode={mode}
+            send={receipt ?? carriedPrice(order.qr)}
+            sendLabel={receipt ? 'Receipt for the customer' : `Price code for ${usdc(order.price)} USDC`}
             onText={(t) => {
               if (!result) void scanned(t)
             }}
           />
-        </section>
-        <section className="sheet p-6" aria-live="polite">
-          {result ? (
-            <ResultCard result={result} onAgain={() => setResult(null)} onNext={nextCustomer} />
-          ) : (
-            <>
-              <p className="font-display text-2xl font-semibold">
-                {busy ? 'Checking…' : 'Waiting for the customer’s slip'}
-              </p>
-              <p className="mt-2 text-ink-2">
-                Screen to screen: this till reads the price to the phone, the phone’s slip back, and shows the receipt
-                for the phone. No buttons, no internet needed.
-              </p>
-            </>
-          )}
-          <div className="mt-6 flex flex-wrap gap-4">
-            <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(false)}>
-              Other ways: one-way QR, sound, link, paste
-            </button>
-            {!result && (
-              <button type="button" className="text-sm text-indigo underline" onClick={() => setOrder(null)}>
-                Cancel order
-              </button>
-            )}
-          </div>
-        </section>
-      </div>
-    )
-
-  return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <section className="sheet p-6 text-center" aria-labelledby="price-t">
-        <p className="smallcaps text-sm text-ink-2">Step 1 · send the price to the customer</p>
-        <h2 id="price-t" className="mt-1 font-display text-4xl font-semibold lining-nums">
-          {order.label} · {usdc(order.price)} USDC
-        </h2>
-        <div className="mt-4 text-left">
-          <CarrySend
-            payload={carriedPrice(order.qr)}
-            title={`Price code for ${usdc(order.price)} USDC`}
-            carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
-            fileName="flying-money-price.txt"
-          />
-        </div>
-        <div className="mt-4 flex flex-wrap justify-center gap-3">
-          <button type="button" className={buttonClass('secondary')} onClick={() => setOrder(null)}>
-            Cancel order
-          </button>
-          <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(true)}>
-            Back to face to face
-          </button>
         </div>
       </section>
-      <section className="sheet p-6" aria-labelledby="scan-t" aria-live="polite">
-        <p className="smallcaps text-sm text-ink-2">Step 2 · receive the customer’s payment slip</p>
-        <h2 id="scan-t" className="sr-only">
-          Scan the customer’s code
-        </h2>
+      <section className="sheet p-6" aria-live="polite">
         {result ? (
-          <ResultCard
-            result={result}
-            onAgain={() => setResult(null)}
-            onNext={() => {
-              setOrder(null)
-              setResult(null)
-              setAmount('')
-            }}
-          />
+          <ResultCard result={result} onAgain={() => setResult(null)} onNext={nextCustomer} />
         ) : (
-          <div className="mt-3">
-            <CarryReceive
-              prompt="Point the camera at the QR on the customer’s phone."
-              carriers={['camera', 'sound', 'paste', 'file']}
-              onText={(t) => void scanned(t)}
-            />
-            {busy && <p className="mt-2 text-sm text-ink-2">Checking…</p>}
-          </div>
+          <>
+            <p className="font-display text-2xl font-semibold">
+              {busy ? 'Checking…' : 'Waiting for the customer’s slip'}
+            </p>
+            <p className="mt-2 text-ink-2">
+              The price goes to the customer’s phone, the phone’s slip comes back, and the receipt goes back to the
+              phone, all by the way chosen on the left (the same on both devices). No internet needed.
+            </p>
+          </>
+        )}
+        {!result && (
+          <button type="button" className="mt-6 text-sm text-indigo underline" onClick={() => setOrder(null)}>
+            Cancel order
+          </button>
         )}
       </section>
     </div>

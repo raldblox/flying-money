@@ -16,7 +16,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { isHex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
-import { FaceToFace } from '@/components/carry/face-to-face'
+import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { Keepsake } from '@/components/carry/keepsake'
 import { GrantSummary } from '@/components/grant-summary'
 import { NetworkPicker } from '@/components/network-picker'
@@ -609,44 +609,36 @@ function Backup({
 // ── Pay ──────────────────────────────────────────────────────────────────────
 function ScanPrice({ onOffer }: { onOffer: (o: Offer) => void }) {
   const [err, setErr] = useState<string | null>(null)
-  const [other, setOther] = useState(false)
-  const read = (t: string, quiet: boolean) => {
+  const [mode, setMode] = useCarryMode()
+  const read = (t: string) => {
     try {
       const c = decodeCarried(t)
       if (c.kind !== 'offer' || c.offer.accepts.length !== 1 || !c.offer.memoHint)
         throw new Error('not a till price code')
+      setErr(null)
       onOffer(c.offer)
     } catch {
-      // face to face, the camera may catch other codes on the way: only a deliberate scan reports them
-      if (!quiet) setErr('That is not a Flying Money price code. Get the code the till shows for this order.')
+      // a camera or microphone may catch other things on the way: only something typed or opened is reported
+      if (mode === 'manual')
+        setErr('That is not a Flying Money price code. Get the code the till shows for this order.')
     }
   }
   return (
-    <>
-      {!other ? (
-        <>
-          <p className="mb-3 text-sm text-ink-2">
-            Hold your phone up to the till, screen to screen. It reads the price by itself.
-          </p>
-          <FaceToFace
-            show={null}
-            showLabel="Waiting for the price"
-            waiting={<span>Waiting for the till’s price…</span>}
-            onText={(t) => read(t, true)}
-          />
-        </>
-      ) : (
-        <CarryReceive prompt="Point the camera at the price code on the till." onText={(t) => read(t, false)} />
-      )}
-      <button type="button" className="mt-4 text-sm text-indigo underline" onClick={() => setOther((o) => !o)}>
-        {other ? 'Back to face to face' : 'Other ways: back camera, sound, a file, paste'}
-      </button>
+    <div className="grid gap-4">
+      <ModePicker mode={mode} onChange={setMode} />
+      <CarryLink
+        mode={mode}
+        send={null}
+        sendLabel="Waiting for the price"
+        waiting={<span>Waiting for the till’s price…</span>}
+        onText={read}
+      />
       {err && (
-        <p role="alert" className="mt-2 text-sm text-seal">
+        <p role="alert" className="text-sm text-seal">
           {err}
         </p>
       )}
-    </>
+    </div>
   )
 }
 
@@ -774,6 +766,7 @@ function ShowNote({
   const note = decodeNote(noteQr)
   const [confirmNo, setConfirmNo] = useState(false)
   const [paid, setPaid] = useState<TillReceipt | null>(null)
+  const [mode, setMode] = useCarryMode()
   // Fixed light colours on purpose (both themes): the brightest screen gives the till's camera the best read.
   // a real modal: focus moves to it, Escape closes it (the payment stays open and can be shown again) (§22.5 h)
   const headRef = useRef<HTMLHeadingElement>(null)
@@ -878,24 +871,18 @@ function ShowNote({
         >
           {usdc(price)} USDC · {entry.label}
         </h1>
-        <div className="mt-4">
-          <FaceToFace
-            show={tillSlip(noteQr)}
-            showLabel={`Your payment slip for ${usdc(price)} USDC`}
+        <div className="mt-4 grid gap-4 text-left">
+          <ModePicker mode={mode} onChange={setMode} />
+          <CarryLink
+            mode={mode}
+            send={tillSlip(noteQr)}
+            sendLabel={`Your payment slip for ${usdc(price)} USDC`}
             onText={(t) => void onReceipt(t)}
           />
         </div>
         <TestNote className="mt-3 text-left" />
         <details className="mt-4 text-left text-sm">
-          <summary className="cursor-pointer">Other ways, or answer by hand</summary>
-          <div className="mt-3">
-            <CarrySend
-              payload={tillSlip(noteQr)}
-              title={`Payment slip for ${usdc(price)} USDC`}
-              carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
-              fileName="flying-money-slip.txt"
-            />
-          </div>
+          <summary className="cursor-pointer">No receipt came back? Answer by hand</summary>
           <p className="mt-4">Did the shop accept it?</p>
           <div className="mt-3 grid gap-3">
             <button

@@ -85,6 +85,8 @@ export async function listenForText(
   onProgress?: (got: number, total: number) => void,
   /** loudness of what the microphone hears, 0 to 1, a few times a second: shows the listener is working */
   onLevel?: (level: number) => void,
+  /** true while this device is playing: its own chirps are not heard (half-duplex, like a walkie-talkie) */
+  paused?: () => boolean,
 ): Promise<() => void> {
   const g = await lib()
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -100,6 +102,7 @@ export async function listenForText(
   // own module file and the library inside it
   const proc = ctx.createScriptProcessor(1024, 1, 1)
   proc.onaudioprocess = (e) => {
+    if (paused?.()) return
     const frame = new Float32Array(e.inputBuffer.getChannelData(0))
     if (onLevel) {
       let sum = 0

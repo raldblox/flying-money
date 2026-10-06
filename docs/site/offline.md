@@ -42,6 +42,18 @@ code about 80, a till's receipt about 260; small carriers send them as numbered 
 | **HTTP 402 / x402, MCP** | Yes | APIs and AI agents |
 | Bluetooth LE, NFC, MQTT, ROS 2, LoRa | Next | Robots, vending machines, sensors, drones: the formats fit, each needs only its adapter |
 
+At a till, the phone and the till pick the same carrier (the choice is remembered on each device), and each has its
+own flow: face to face and QR read codes with the camera, sound and ultrasound play and listen in turns until the
+other side answers, and the by-hand carriers send and receive a link, a file or text.
+
+### Permissions
+
+- **Camera** (face to face, QR): to read the other screen's code. Frames are read on the device, never uploaded.
+- **Microphone** (sound, ultrasound): to hear the other device's chirps. Nothing is recorded or sent.
+- The site explains each one and waits for a tap before the browser asks. **It never asks for local-network
+  access:** browsers can't announce or find sellers on a network; discovery runs in Node (the MCP server, the SDK,
+  or a seller on a computer).
+
 ## Shops with Wi-Fi: the local network
 
 A seller on a shop's Wi-Fi can **announce itself**, the way a printer does, with no internet and no registry. Anything

@@ -5,7 +5,7 @@ import type { CounterResult } from '@flying-money/server/browser'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPublicClient, http } from 'viem'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
-import { FaceToFace } from '@/components/carry/face-to-face'
+import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { Keepsake, type KeepsakeData } from '@/components/carry/keepsake'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
@@ -209,7 +209,7 @@ function Sell({ till, chain, onSold }: { till: Till; chain: ChainKey; onSold: ()
   const [result, setResult] = useState<CounterResult | null>(null)
   const [keepsake, setKeepsake] = useState<KeepsakeData | null>(null)
   const [receipt, setReceipt] = useState<string | null>(null)
-  const [faceToFace, setFaceToFace] = useState(true)
+  const [mode, setMode] = useCarryMode()
   const busy = useRef(false)
   const ids = useId()
 
@@ -314,16 +314,18 @@ function Sell({ till, chain, onSold }: { till: Till; chain: ChainKey; onSold: ()
             Sell one · 0.01 USDC
           </button>
         </form>
-      ) : faceToFace ? (
+      ) : (
         <div className="grid gap-4">
+          <ModePicker mode={mode} onChange={setMode} />
           <p className="text-sm text-ink-2">
             {accepted
-              ? 'Paid. The receipt, with the certificate inside, is on screen: keep the phone where it is for a moment and the certificate appears on the phone.'
-              : 'On the phone: tap Pay, hold it up to this screen face to face, and approve with the PIN. The rest happens by itself.'}
+              ? 'Paid. The receipt, with the certificate inside, is going back to the phone: keep the phone where it is for a moment and the certificate appears there.'
+              : 'On the phone: tap Pay, choose the same way, and approve with the PIN. The rest happens by itself.'}
           </p>
-          <FaceToFace
-            show={receipt ?? carriedPrice(order.qr)}
-            showLabel={receipt ? 'Receipt for the phone' : 'Price code for 0.01 USDC'}
+          <CarryLink
+            mode={mode}
+            send={receipt ?? carriedPrice(order.qr)}
+            sendLabel={receipt ? 'Receipt for the phone' : 'Price code for 0.01 USDC'}
             onText={(t) => {
               if (!result || result.status === 'REJECTED') void take(t)
             }}
@@ -346,65 +348,15 @@ function Sell({ till, chain, onSold }: { till: Till; chain: ChainKey; onSold: ()
             </details>
           )}
           <div className="flex flex-wrap items-center gap-4">
-            {accepted && (
+            {accepted ? (
               <button type="button" className={buttonClass('primary')} onClick={next}>
                 Next customer
               </button>
-            )}
-            <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(false)}>
-              Other ways: one-way QR, sound, link, text
-            </button>
-            {!accepted && (
+            ) : (
               <button type="button" className="text-sm text-indigo underline" onClick={next}>
                 Cancel
               </button>
             )}
-          </div>
-        </div>
-      ) : keepsake && result ? (
-        <div className="grid gap-4">
-          <p className="font-display text-xl font-semibold" role="status">
-            {verdict(result)}
-          </p>
-          <Keepsake
-            data={keepsake}
-            network={getChain(chain).chain.name}
-            statusUrl={`${window.location.origin}/c/${chain}/${keepsake.certificateId}`}
-          />
-          <button type="button" className={`${buttonClass('secondary')} sm:w-fit`} onClick={next}>
-            Sell another
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="grid gap-2">
-            <p className="smallcaps text-sm text-ink-2">Send the price to the phone</p>
-            <CarrySend
-              payload={carriedPrice(order.qr)}
-              title="Price code for 0.01 USDC"
-              carriers={['qr', 'sound', 'ultrasound', 'link', 'text']}
-            />
-          </div>
-          <div className="grid gap-2">
-            <p className="smallcaps text-sm text-ink-2">Then receive the phone’s slip</p>
-            <CarryReceive
-              prompt="Point the camera at the slip on the phone."
-              carriers={['camera', 'sound', 'paste']}
-              onText={(t) => void take(t)}
-            />
-            {result?.status === 'REJECTED' && (
-              <p role="alert" className="text-sm text-seal">
-                Refused: {result.reason}.
-              </p>
-            )}
-            <div className="flex flex-wrap gap-4">
-              <button type="button" className="text-sm text-indigo underline" onClick={() => setFaceToFace(true)}>
-                Back to face to face
-              </button>
-              <button type="button" className="text-sm text-indigo underline" onClick={next}>
-                Cancel
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -1,13 +1,15 @@
 'use client'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type Access, AskAccess, accessState } from '@/components/carry/ask-access'
 import { QrCode } from '@/components/qr'
-import { buttonClass } from '@/components/section'
 import { startQrStream } from '@/lib/carry/qr-stream'
 
 /**
- * Face to face: hold the two devices screen to screen. Each shows a QR code and reads the other's with the camera on
- * the same side as its screen (a phone's front camera, a laptop's webcam), at the same time. No network, no pairing,
- * no turns: whatever one side shows next, the other reads.
+ * Camera carriers. Face to face (`facing="user"`): hold the two devices screen to screen; each shows a QR code and
+ * reads the other's with the camera on its screen side (a phone's front camera, a laptop's webcam), at the same time.
+ * QR (`facing="environment"`): the phone's back camera reads the other screen when pointed at it, and the phone's
+ * own code shows when it's turned around. Either way, no network, no pairing, no buttons: whatever one side shows
+ * next, the other reads.
  */
 export function FaceToFace({
   show,
@@ -31,7 +33,8 @@ export function FaceToFace({
   const stopRef = useRef<(() => void) | null>(null)
   const onTextRef = useRef(onText)
   onTextRef.current = onText
-  const [state, setState] = useState<'starting' | 'reading' | 'blocked'>('starting')
+  const [state, setState] = useState<'checking' | 'ask' | 'starting' | 'reading'>('checking')
+  const [access, setAccess] = useState<Access>('prompt')
   const [blink, setBlink] = useState(0)
 
   const start = useCallback(async () => {
@@ -47,13 +50,24 @@ export function FaceToFace({
       })
       setState('reading')
     } catch {
-      setState('blocked')
+      setAccess(await accessState('camera'))
+      setState('ask')
     }
   }, [facing])
 
+  // explain before the browser asks: start by itself only when the camera is already allowed for this site
   useEffect(() => {
-    void start()
-    return () => stopRef.current?.()
+    let gone = false
+    void accessState('camera').then((a) => {
+      if (gone) return
+      setAccess(a)
+      if (a === 'granted') void start()
+      else setState('ask')
+    })
+    return () => {
+      gone = true
+      stopRef.current?.()
+    }
   }, [start])
 
   // what a camera would read can also arrive as an event: tests drive both sides this way, and so can a page that
@@ -76,7 +90,9 @@ export function FaceToFace({
           <div className="grid aspect-square place-items-center p-6 text-center text-[#5d554a]">{waiting}</div>
         )}
       </div>
-      <div className="flex items-center justify-center gap-3">
+      {state === 'ask' && <AskAccess kind="camera" state={access} onAllow={() => void start()} />}
+      {/* one video element for the whole life of the component: the camera attaches to it before it's shown */}
+      <div className={`flex items-center justify-center gap-3 ${state === 'ask' ? 'hidden' : ''}`}>
         <div className="relative size-16 shrink-0 overflow-hidden rounded-full border-2 border-seal/70 bg-paper-2">
           <video
             ref={video}
@@ -91,16 +107,11 @@ export function FaceToFace({
         </div>
         <p className="text-sm text-ink-2" role="status">
           {state === 'reading'
-            ? 'Reading the other screen. Hold the devices face to face.'
-            : state === 'starting'
-              ? 'Starting the camera…'
-              : 'The camera is off or blocked.'}
+            ? facing === 'user'
+              ? 'Reading the other screen. Hold the devices face to face.'
+              : 'Point the back camera at the other screen to read it; turn this screen to it to show yours.'
+            : 'Starting the camera…'}
         </p>
-        {state === 'blocked' && (
-          <button type="button" className={buttonClass('secondary')} onClick={() => void start()}>
-            Turn on camera
-          </button>
-        )}
       </div>
     </div>
   )
