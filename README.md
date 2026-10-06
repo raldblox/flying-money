@@ -33,14 +33,16 @@ In the code a budget is a *certificate* and a slip is a *note*. The same budgets
 ```bash
 git submodule update --init --recursive
 pnpm install
-pnpm build
-pnpm --filter @flying-money/web exec next dev --webpack --port 3000   # the site, account app, demo, till, wallet
+pnpm dev                                                               # the site + the demo seller, packages rebuilt as you edit
+pnpm dev:https                                                         # the same over HTTPS, for camera and microphone on a phone
 pnpm verify                                                            # the full gate: lint, build, types, tests, secret scan
 pnpm contracts:test                                                    # Foundry unit + invariant tests
 pnpm --filter @flying-money/agent demo:local                           # agent ↔ Oracle on a local anvil
 ```
 
 Requires Node 22+, pnpm 10 and (for contracts) Foundry. Keys only ever come from `.env` (git-ignored); see `.env.example`.
+
+`pnpm dev` prints the addresses: the site on `localhost:3000` (and on your Wi-Fi address, for a phone), and the demo seller on `localhost:8787`, announced on the local network so an agent can find it with `fm_discover`. The local seller keeps its own records, never the hosted one's. Ctrl+C stops everything.
 
 ## For agents (buyers)
 

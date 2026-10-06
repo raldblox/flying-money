@@ -10,6 +10,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "tsx tools/dev/dev.ts",
+    "dev:https": "tsx tools/dev/dev.ts --https",
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",

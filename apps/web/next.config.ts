@@ -9,6 +9,8 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv)
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // `pnpm dev` passes this machine's Wi-Fi address, so a phone on the same network can load the dev site
+  ...(process.env.FM_DEV_ORIGINS ? { allowedDevOrigins: process.env.FM_DEV_ORIGINS.split(',') } : {}),
   // Workspace packages ship ESM from dist/; the demo runner uses Node APIs, so keep these server-external.
   serverExternalPackages: ['@flying-money/agent', '@flying-money/oracle', '@flying-money/server', 'ioredis'],
   // the sound carrier's decoder (ggwave) mentions Node's fs and path, used only under Node: empty in the browser

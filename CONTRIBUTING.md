@@ -21,9 +21,11 @@ Requires Node 22+, pnpm 10 (`corepack enable`) and, for the contracts, [Foundry]
 git clone https://github.com/raldblox/flying-money && cd flying-money
 git submodule update --init --recursive   # contract dependencies
 pnpm install
-pnpm build
-pnpm --filter @flying-money/web exec next dev --webpack --port 3000
+pnpm dev        # the site, the demo seller, and the packages rebuilt as you edit (Ctrl+C stops all)
 ```
+
+`pnpm dev:https` serves the site over HTTPS with a self-signed certificate, which a phone needs for the camera and
+microphone (QR and sound). Flags: `--no-oracle`, `--no-watch`, `--port <n>` (`pnpm dev -- --no-oracle`).
 
 Copy `.env.example` to `.env` only if you need RPC overrides, a seller store or the demo runner. Nothing needs a key to
 build or test; local end-to-end tests use a private anvil chain.

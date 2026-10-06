@@ -16,6 +16,7 @@ design record. Treat them as labels; the public docs above describe the same beh
 
 ## Commands (cross-platform; run from the repo root)
 - `pnpm install`
+- `pnpm dev`: the site and the demo seller, packages rebuilt as you edit (`pnpm dev:https` for a phone's camera/mic)
 - **`pnpm verify`**: the gate before any change is merged (lint, clean build, typecheck incl. doc samples, all tests incl.
   forge invariants, secret scan, public-surface checks). `pnpm verify --e2e` adds the Playwright suite.
 - `pnpm build` / `pnpm typecheck` / `pnpm lint` / `pnpm test` (turbo, all packages)
