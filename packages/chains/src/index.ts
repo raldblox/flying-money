@@ -42,6 +42,15 @@ export function getChainById(chainId: number): ChainConfig | undefined {
   return key ? getChain(key) : undefined
 }
 
+/**
+ * The contract and settlement token on a chain, for carrying slips in their compact form (core's `CarryContext`):
+ * compact slips and price codes leave both out and look them up here by chain id.
+ */
+export function carryContext(chainId: number): { contract: Hex; token: Hex } | undefined {
+  const c = getChainById(chainId)
+  return c?.flyingMoney ? { contract: c.flyingMoney, token: c.usdc } : undefined
+}
+
 export function allChains(): ChainConfig[] {
   return chainKeys.map(getChain)
 }

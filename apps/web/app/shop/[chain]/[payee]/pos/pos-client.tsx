@@ -291,7 +291,7 @@ function Sell({ till }: { till: Till }) {
           <CarrySend
             payload={carriedPrice(order.qr)}
             title={`Price code for ${usdc(order.price)} USDC`}
-            carriers={['qr', 'sound', 'text', 'link', 'share']}
+            carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
             fileName="flying-money-price.txt"
           />
         </div>

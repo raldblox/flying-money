@@ -4,7 +4,7 @@ import factory from 'ggwave'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { expect, it } from 'vitest'
 import { decodeCarried, encodeNoteCompact } from '@/lib/carry/codec'
-import { CHUNK, chunkCollector, toChunks } from '@/lib/carry/sound'
+import { chunkCollector, FRAME, toChunks } from '@/lib/carry/sound'
 
 type GG = {
   getDefaultParameters(): Record<string, number>
@@ -26,8 +26,7 @@ it('a slip survives the sound carrier: chunked chirps, decoded, reassembled, sti
   })
   const text = encodeNoteCompact(n)!
   const chunks = toChunks(text)
-  expect(chunks.length).toBe(Math.ceil(text.length / CHUNK))
-  for (const c of chunks) expect(c.length).toBeLessThanOrEqual(140)
+  for (const c of chunks) expect(c.length).toBeLessThanOrEqual(FRAME)
 
   const g = (await factory()) as GG
   g.disableLog()
@@ -44,4 +43,14 @@ it('a slip survives the sound carrier: chunked chirps, decoded, reassembled, sti
   const back = decodeCarried(whole!)
   expect(back.kind).toBe('note')
   if (back.kind === 'note') expect(recoverNoteSigner(back.note)?.toLowerCase()).toBe(agent.address.toLowerCase())
+})
+
+it('the ultrasound band carries the same frames', async () => {
+  const g = (await factory()) as GG
+  g.disableLog()
+  const inst = g.init(g.getDefaultParameters())
+  for (const frame of toChunks(`fm2o.${'Q'.repeat(60)}`)) {
+    const r = g.decode(inst, g.encode(inst, frame, g.ProtocolId.GGWAVE_PROTOCOL_ULTRASOUND_FASTEST!, 25))!
+    expect(new TextDecoder().decode(new Uint8Array(r.buffer, r.byteOffset, r.byteLength).slice())).toBe(frame)
+  }
 })

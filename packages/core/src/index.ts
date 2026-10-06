@@ -905,3 +905,5 @@ export function x402ReceiptFromResponse(header: string): Receipt | null {
   const rec = ext?.[X402_RECEIPT_EXTENSION]?.info?.receipt
   return typeof rec === 'string' ? decodeReceipt(rec) : null
 }
+
+export * from './carry.js'

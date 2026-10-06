@@ -280,7 +280,7 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
             <CarrySend
               payload={carriedPrice(order.qr)}
               title="Price code for 0.01 USDC"
-              carriers={['qr', 'sound', 'link', 'text']}
+              carriers={['qr', 'sound', 'ultrasound', 'link', 'text']}
             />
           </div>
           <div className="grid gap-2">

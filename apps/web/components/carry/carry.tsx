@@ -9,7 +9,7 @@ import { carryLink } from '@/lib/carry/codec'
  * Carriers: the ways a payment slip or price code moves between devices. All of them carry the same few hundred
  * bytes of signed data; none needs the internet except sharing to an app that does.
  */
-export type SendCarrier = 'qr' | 'sound' | 'share' | 'link' | 'file' | 'text'
+export type SendCarrier = 'qr' | 'sound' | 'ultrasound' | 'share' | 'link' | 'file' | 'text'
 export type ReceiveCarrier = 'camera' | 'sound' | 'file' | 'paste'
 
 const SEND: Record<SendCarrier, { name: string; hint: string }> = {
@@ -17,6 +17,10 @@ const SEND: Record<SendCarrier, { name: string; hint: string }> = {
   sound: {
     name: 'Sound',
     hint: 'Plays as short chirps; the other device listens. Works offline. Choose Listen there first.',
+  },
+  ultrasound: {
+    name: 'Ultrasound',
+    hint: 'The same chirps, above what most people hear: for machines in a room. Choose Listen on the other device first.',
   },
   share: {
     name: 'Share',
@@ -28,7 +32,7 @@ const SEND: Record<SendCarrier, { name: string; hint: string }> = {
 }
 const RECEIVE: Record<ReceiveCarrier, { name: string; hint: string }> = {
   camera: { name: 'Camera', hint: 'Scan the QR code on the other screen.' },
-  sound: { name: 'Listen', hint: 'Hold the devices close, then press Play on the other one.' },
+  sound: { name: 'Listen', hint: 'Hold the devices close, then press Play on the other one (sound or ultrasound).' },
   file: { name: 'File', hint: 'Open a saved Flying Money file.' },
   paste: { name: 'Paste', hint: 'Paste a copied code or link.' },
 }
@@ -89,7 +93,7 @@ function saveFile(name: string, text: string) {
 export function CarrySend({
   payload,
   title,
-  carriers = ['qr', 'sound', 'share', 'link', 'file', 'text'],
+  carriers = ['qr', 'sound', 'ultrasound', 'share', 'link', 'file', 'text'],
   fileName = 'flying-money.txt',
   href,
 }: {
@@ -120,7 +124,7 @@ export function CarrySend({
           <QrCode value={link} label={`${title}, as a QR code`} />
         </div>
       )}
-      {carrier === 'sound' && (
+      {(carrier === 'sound' || carrier === 'ultrasound') && (
         <button
           type="button"
           className={buttonClass('primary')}
@@ -129,7 +133,11 @@ export function CarrySend({
             setBusy(true)
             try {
               const { playText } = await import('@/lib/carry/sound')
-              await playText(payload, (i, n) => setStatus(`Playing part ${i} of ${n}…`))
+              await playText(
+                payload,
+                (i, n) => setStatus(`Playing part ${i} of ${n}…`),
+                carrier === 'ultrasound' ? 'ultrasound' : 'audible',
+              )
               setStatus('Sent. If the other device didn’t hear it, play it again, a little closer or louder.')
             } catch (e) {
               setStatus(`Couldn’t play sound here: ${(e as Error).message}`)

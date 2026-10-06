@@ -19,9 +19,9 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' }
 const han = Noto_Serif_TC({ weight: ['600'], variable: '--font-noto-tc', preload: false })
 
 export const metadata: Metadata = {
-  title: { default: 'Flying Money: funded budgets for people and assistants', template: '%s · Flying Money' },
+  title: { default: 'Flying Money: payments that work without the internet', template: '%s · Flying Money' },
   description:
-    'Prepaid, capped budgets for AI agents and people. Set aside USDC for one seller; the spender pays per use, the seller checks each payment on the spot and collects in one transaction.',
+    'Give an agent, a phone or a robot a budget for one seller. It pays with signed slips that travel by QR code, sound or a link; the seller checks each one on the spot, even offline, and collects in one transaction.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
   icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' }, apple: '/brand/apple-touch-icon.png' },

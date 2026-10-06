@@ -4,6 +4,8 @@
  * characters a second, so a payload goes as numbered chunks ("1/2:…"); the listener waits for all of them.
  * The library (≈160 KB with its WebAssembly) loads only when someone picks sound.
  */
+import { frameCollector, toFrames } from '@flying-money/core'
+
 type GG = {
   getDefaultParameters(): { sampleRateInp: number; sampleRateOut: number }
   init(p: unknown): number
@@ -25,38 +27,27 @@ function lib(): Promise<GG> {
   return loaded
 }
 
-export const CHUNK = 134 // 140 minus room for the "i/n:" prefix
-const FASTEST = 'GGWAVE_PROTOCOL_AUDIBLE_FASTEST'
+/** ggwave carries up to 140 characters a chirp: each chirp is one frame (core's toFrames, "i/n:part"). */
+export const FRAME = 140
+export const toChunks = (text: string) => toFrames(text, FRAME)
+export const chunkCollector = frameCollector
 
-export function toChunks(text: string): string[] {
-  const n = Math.max(1, Math.ceil(text.length / CHUNK))
-  return Array.from({ length: n }, (_, i) => `${i + 1}/${n}:${text.slice(i * CHUNK, (i + 1) * CHUNK)}`)
-}
-
-/** Collects chunks in any order and returns the whole text once every part has arrived. */
-export function chunkCollector() {
-  let total = 0
-  const parts = new Map<number, string>()
-  return (chunk: string): { got: number; total: number; text?: string } | null => {
-    const m = /^(\d{1,2})\/(\d{1,2}):([\s\S]*)$/.exec(chunk)
-    if (!m) return null
-    const i = Number(m[1])
-    const n = Number(m[2])
-    if (n < 1 || i < 1 || i > n) return null
-    if (n !== total) {
-      total = n
-      parts.clear()
-    }
-    parts.set(i, m[3]!)
-    if (parts.size < total) return { got: parts.size, total }
-    const text = Array.from({ length: total }, (_, k) => parts.get(k + 1)).join('')
-    parts.clear()
-    return { got: total, total, text }
-  }
+/**
+ * Audible chirps for people in the room; ultrasound (above about 15 kHz, hard to hear for most adults) for machines.
+ * The listener hears either: ggwave recognises the protocol by itself.
+ */
+export type SoundBand = 'audible' | 'ultrasound'
+const PROTOCOL: Record<SoundBand, string> = {
+  audible: 'GGWAVE_PROTOCOL_AUDIBLE_FASTEST',
+  ultrasound: 'GGWAVE_PROTOCOL_ULTRASOUND_FASTEST',
 }
 
 /** Plays the text as chirps. Resolves when the last chunk has played. */
-export async function playText(text: string, onChunk?: (i: number, n: number) => void): Promise<void> {
+export async function playText(
+  text: string,
+  onChunk?: (i: number, n: number) => void,
+  band: SoundBand = 'audible',
+): Promise<void> {
   const g = await lib()
   const ctx = new AudioContext()
   try {
@@ -66,7 +57,7 @@ export async function playText(text: string, onChunk?: (i: number, n: number) =>
     const chunks = toChunks(text)
     for (const [i, c] of chunks.entries()) {
       onChunk?.(i + 1, chunks.length)
-      const w = g.encode(inst, c, g.ProtocolId[FASTEST]!, 25)
+      const w = g.encode(inst, c, g.ProtocolId[PROTOCOL[band]]!, 25)
       const samples = new Float32Array(w.buffer, w.byteOffset, w.byteLength / 4)
       const buf = ctx.createBuffer(1, samples.length, ctx.sampleRate)
       buf.copyToChannel(new Float32Array(samples), 0)

@@ -72,3 +72,58 @@ Per certificate, the buyer durably stores `accepted`, `consumed` and at most one
 ## At a counter
 
 The same objects travel as QR codes: the till shows a price QR (an offer with `memoHint` = order id), and the customer's phone shows a payment-slip QR (the signed note) with `memo = keccak256(orderId)`. Tills report **GUARANTEED** (shown as "Accepted: covered by a checked budget"; certificate verified on-chain by this till, note passes the seller algorithm), **UNVERIFIED** (shown as "Accepted at your own risk: not checked yet"; offline, never-seen certificate, capped by a first-visit limit) or **REJECTED**. See [People & shops](/docs/shops).
+
+## Carriers
+
+A slip doesn't care how it travels. Every carrier ends in the same seller checks above, so a new carrier is only an
+adapter that moves a few hundred bytes. `@flying-money/core` implements everything in this section
+(`encodeNoteCompact`, `decodeNoteCompact`, `encodeOfferCompact`, `decodeOfferCompact`, `toFrames`, `frameCollector`).
+
+### Compact forms
+
+For carriers with little room, a slip and a price code have compact text forms. They decode to exactly the same
+signed objects as the `fm1.` forms; the contract address and the token are not carried, because both sides look them
+up by chain id in the registry (`carryContext` in `@flying-money/chains`).
+
+| Form | Bytes (before base64url) |
+|---|---|
+| `fm2n.` slip | `flags(1)` `chainId(4)` `certificateId(32)` `cumulative(8)` `[memo(32)]` `sig(64)` |
+| `fm2o.` price code | `flags(1)` `chainId(4)` `payee(20)` `price(8)` `minRemainingLifetime(4)` `hintLen(1)` `hint(utf8, ≤ 64)` |
+
+- Integers are big-endian. `sig` is the EIP-2098 compact form of the same signature.
+- Slip `flags` bit 0 says the memo is present. A till's slip may leave it out: the till derives it from its own order
+  (`memo = keccak256(orderId)`), and no one else can read that slip.
+- A sender uses the compact form only when it carries the object exactly (the registry's contract, an amount below
+  2⁶⁴, a single accepted network); otherwise it sends the `fm1.` form. Receivers accept both.
+- A slip is about 190 characters with its memo and about 150 without; a price code about 80.
+
+### Frames
+
+Carriers that take less at a time (a sound chirp, a Bluetooth write, a LoRa packet, a ROS 2 or MQTT message with a
+size limit) send numbered frames: `<i>/<n>:<part>`, with 1 ≤ i ≤ n ≤ 99. Receivers collect frames in any order,
+ignore repeats, and join the parts in order of `i` once all `n` have arrived. A receiver never acts on a partial
+payload.
+
+### Links
+
+A link carries a payload after `#` (`https://<site>/carry#fm2n.…`), so it is never sent to a server. Links, shares
+and NFC URL records open the payload in Flying Money on any device.
+
+### Carrier mapping
+
+| Carrier | Status | How the payload travels |
+|---|---|---|
+| HTTP | Live | `Flying-Money-Offer` / `Flying-Money-Note` headers (`fm1.`), or x402 V2 (`PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE`) |
+| MCP | Live | The MCP server pays HTTP sellers with slips by itself |
+| QR code | Live | A link, or the bare compact form |
+| Sound and ultrasound | Live | ggwave chirps, one frame each (at most 140 characters) |
+| Share sheet, link, file, text | Live | A link (`/carry#…`), or the bare form |
+| Local network discovery | Next | Sellers advertise on mDNS / DNS-SD (`_agent._tcp`, per the IETF agent-discovery draft); paying is HTTP |
+| Bluetooth LE | Next | Frames written to one GATT characteristic; the reply (price code or receipt) as notifications |
+| NFC | Next | An NDEF URL record holding the link |
+| MQTT | Next | `fm/<payee>/offer`, `fm/<payee>/slip`, `fm/<payee>/receipt`; one frame per message where the broker limits size |
+| ROS 2 | Next | A payer node and a seller node exchanging the compact forms; spending keys stay inside the node |
+| LoRa and mesh radio | Next | Frames, one per packet |
+
+On every carrier, a slip can be replayed by whoever holds it, but only to the seller it names, and only once: the
+seller's records (S1–S4) refuse a second use. Treat a slip like a ticket for that one seller.

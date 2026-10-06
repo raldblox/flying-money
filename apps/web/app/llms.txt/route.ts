@@ -11,7 +11,7 @@ export function GET() {
     .join(', ')
   const body = `# Flying Money
 
-> Prepaid, capped budgets for AI agents and people ("hand over a budget, not your wallet"). A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally and redeems the latest note on-chain in one transaction. Same contract source on every supported EVM chain. No token.
+> Payments that work without the internet ("give a budget, not your wallet"). A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally, with no network needed for a budget it has checked once, and redeems the latest note on-chain in one transaction. A note is about 150 bytes in its compact form (\`fm2n.\`), so it travels by any carrier: an HTTP header, a QR code, sound, a link or a file. Same contract source on every supported EVM chain. No token.
 
 Deployed now: ${chains || 'none yet'}. Unaudited; test networks only.
 

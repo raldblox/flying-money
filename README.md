@@ -1,27 +1,29 @@
 # 飛錢 Flying Money
 
-**Give a budget. Not your wallet.** Prepaid, capped USDC budgets for AI agents and the people you pay for.
+**Payments that work without the internet.** *Give a budget. Not your wallet.*
 
-Flying Money lets an owner set aside USDC for one seller, one spender and one end date. The spender (an AI agent or a phone) pays with signed slips carrying the running total. After verifying funding, the seller checks slips against its local payment records and collects accrued spending on-chain before expiry, without a blockchain transaction for every purchase. The spender can't authorize more than the budget, the money can only reach the named seller, and the owner can reclaim the remainder on-chain after expiry. No project token, no protocol fees (network gas still applies), no admin keys. MIT.
+Flying Money lets an owner set USDC aside for one seller, until an end date. The payer (an AI agent, a phone, soon a robot) holds only its own key, which holds no money, and pays with a signed slip of about 150 bytes carrying the running total. The slip travels by anything that can carry it: a QR code, a sound, a link, a file, HTTP 402 (and x402), or MCP. The seller checks it on the spot, with no internet needed, and for a budget it has checked once while online the payment is guaranteed, because the money is locked for that seller and can't be pulled back before the end date. Back online, the seller collects everything in one transaction; after the end date, the owner takes back what's left. No project token, no protocol fees (network gas still applies), no admin keys. MIT.
 
-[Live demo](https://useflyingmoney.vercel.app/demo) · [Get started](https://useflyingmoney.vercel.app/start) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Demo video (3 min)](https://youtu.be/nXiIVI49u2g)
+[Offline counter demo](https://useflyingmoney.vercel.app/demo/counter) · [Slip demo](https://useflyingmoney.vercel.app/demo/slip) · [Agent demo](https://useflyingmoney.vercel.app/demo) · [Get started](https://useflyingmoney.vercel.app/start) · [Docs](https://useflyingmoney.vercel.app/docs) · [Deployments](https://useflyingmoney.vercel.app/chains) · [Demo video (3 min)](https://youtu.be/nXiIVI49u2g)
 
 > **Status:** unaudited, invariant-tested, test networks only. Live on the Arbitrum, Base, Ethereum and Tempo test networks.
 
 ## Try it in 5 minutes (no install)
 
-1. **Watch a real run.** Open the [live demo](https://useflyingmoney.vercel.app/demo) and press **Run it for real**. A scripted agent pays the Silk Road Oracle API 20 times from a 0.30 test-USDC budget on the test network you pick (Arbitrum, Base, Ethereum or Tempo); every collection links to the explorer. Tick **Cut the network** or **Steal the agent key** first to watch payments continue during a seller RPC outage, and a thief get refused three ways.
-2. **Read the contract.** Verified source on every network: [Arbitrum Sepolia](https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Base Sepolia](https://base-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Ethereum Sepolia](https://eth-sepolia.blockscout.com/address/0x4c7cfbadadab3c394f10a9b00c6fbf2baa20c3e6?tab=contract), [Tempo testnet](https://explore.testnet.tempo.xyz/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2). No owner, no admin, no pause, no fee, no upgrade.
-3. **Try it as a person or shop.** Open [Get started](https://useflyingmoney.vercel.app/start). Giving a budget needs a browser wallet on one of those test networks with test USDC ([Circle faucet](https://faucet.circle.com); on Tempo, the [Tempo faucet](https://docs.tempo.xyz/quickstart/faucet)) and a little gas. Then, in two windows of one browser: open the hand-over link in the [wallet](https://useflyingmoney.vercel.app/wallet) (no crypto wallet needed), [open a till](https://useflyingmoney.vercel.app/shop) for the same shop address, and pay with **Copy the code** instead of a camera.
-4. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The MCP server is on npm: `npx -y @flying-money/mcp`.
+1. **Pay with no internet.** Open the [offline counter](https://useflyingmoney.vercel.app/demo/counter) on a laptop (the till) and give your phone a small test budget by QR code. Put the phone in airplane mode and pay: the slip travels by QR code or sound, the till accepts it as guaranteed with no connection, and collects on-chain in one transaction once it's back online.
+2. **Carry a slip between devices.** The [slip demo](https://useflyingmoney.vercel.app/demo/slip): our agent funds a 0.01 test budget and signs one slip; carry it to another device by QR, sound, share, link or file and spend it there for a 飛錢 certificate. Spend it twice and it's refused.
+3. **Watch an agent pay an API.** Open the [live demo](https://useflyingmoney.vercel.app/demo) and press **Run it for real**. A scripted agent pays the Silk Road Oracle API 20 times from a 0.30 test-USDC budget on the test network you pick (Arbitrum, Base, Ethereum or Tempo); every collection links to the explorer. Tick **Cut the network** or **Steal the agent key** first to watch payments continue during a seller RPC outage, and a thief get refused three ways.
+4. **Read the contract.** Verified source on every network: [Arbitrum Sepolia](https://arbitrum-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Base Sepolia](https://base-sepolia.blockscout.com/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2?tab=contract), [Ethereum Sepolia](https://eth-sepolia.blockscout.com/address/0x4c7cfbadadab3c394f10a9b00c6fbf2baa20c3e6?tab=contract), [Tempo testnet](https://explore.testnet.tempo.xyz/address/0xb9ae3158f9cA841d9Da3C3725014D8352ca967F2). No owner, no admin, no pause, no fee, no upgrade.
+5. **Try it as a person or shop.** Open [Get started](https://useflyingmoney.vercel.app/start). Giving a budget needs a browser wallet on one of those test networks with test USDC ([Circle faucet](https://faucet.circle.com); on Tempo, the [Tempo faucet](https://docs.tempo.xyz/quickstart/faucet)) and a little gas. Then, in two windows of one browser: open the hand-over link in the [wallet](https://useflyingmoney.vercel.app/wallet) (no crypto wallet needed), [open a till](https://useflyingmoney.vercel.app/shop) for the same shop address, and pay with **Copy the code** instead of a camera.
+6. **Connect an assistant.** [Connect an assistant](https://useflyingmoney.vercel.app/app/connect) gives one message for Claude, Cursor or any MCP client; the assistant follows [/agent.md](https://useflyingmoney.vercel.app/agent.md), asks you for a budget, and you approve it in Requests. The MCP server is on npm: `npx -y @flying-money/mcp`.
 
 What is real and what isn't: the demo's buyer is scripted (not an autonomous AI), and its slips travel in-process to the seller; the transactions and test USDC are real. Testnet only, unaudited. Details: [security model and limits](docs/SECURITY.md).
 
 ## The idea in 30 seconds
 
 1. **Fund.** Lock 5 USDC for **one seller**, spendable only by **one agent key**, until a date.
-2. **Pay.** Every request carries a signed payment slip over the running total.
-3. **Serve.** The seller checks the slip against previously verified funding and its own payment records. A purchase does not need its own blockchain transaction.
+2. **Pay.** Every purchase is a signed slip over the running total, about 150 bytes, carried by any channel: QR, sound, link, file, HTTP 402.
+3. **Check.** The seller checks the slip against funding it verified earlier and its own payment records, on the spot, with no internet needed. A purchase does not need its own blockchain transaction.
 4. **Collect.** Before the end date, the seller collects the increase in the signed running total since its last collection. After the end date, the owner can take back the rest with one transaction.
 
 In the code a budget is a *certificate* and a slip is a *note*. The same budgets work for people: a café tab, an allowance, a gift. The holder pays by showing a QR code at the counter. Offline acceptance requires previously verified funding and authoritative local payment records; collection still requires blockchain connectivity before expiry.
@@ -123,9 +125,9 @@ Gas (measured on an EVM test network): `redeem` 85,758; `redeemMany` of 10 notes
 
 In 804, merchants in Tang-dynasty China, short of copper coin, stopped carrying strings of cash. They deposited coin with an official office and carried a certificate instead, paid out when its tallies matched. People called it 飛錢, *flying money*. The value travelled; the coins stayed put.
 
-Twelve centuries later, AI agents are the new merchants and APIs are the new cities. They need the same three properties: **prefunded, scoped, verifiable**. [Read the story](docs/site/story.md) (sources: [Wikipedia](https://en.wikipedia.org/wiki/Flying_cash), [Britannica](https://www.britannica.com/topic/feiqian)).
+Twelve centuries later, agents, phones and machines are the new merchants. They need the same three properties: **prefunded, scoped, verifiable**, and a proof that can travel without the network: today that proof is a slip of about 150 bytes. [Read the story](docs/site/story.md) (sources: [Wikipedia](https://en.wikipedia.org/wiki/Flying_cash), [Britannica](https://www.britannica.com/topic/feiqian)).
 
-## Why no offline cash
+## What offline means here
 
 We started out building offline cash between strangers. Our own adversarial review proved software alone can't stop someone paying two offline strangers with the same money, so we removed it. A shop's till does keep accepting budgets it has already checked while offline, and says **Accepted at your own risk: not checked yet** for new ones. We only ship what the math guarantees.
 

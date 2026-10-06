@@ -773,7 +773,7 @@ function ShowNote({
           <CarrySend
             payload={tillSlip(noteQr)}
             title={`Payment slip for ${usdc(price)} USDC`}
-            carriers={['qr', 'sound', 'text', 'link', 'share']}
+            carriers={['qr', 'sound', 'ultrasound', 'text', 'link', 'share']}
             fileName="flying-money-slip.txt"
           />
         </div>
