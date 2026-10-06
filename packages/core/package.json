@@ -1,6 +1,6 @@
 {
   "name": "@flying-money/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Flying Money core: budget and payment-slip types, EIP-712 signing and verification, the fm1 wire format.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@flying-money/server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Seller SDK for Flying Money: accept signed payment slips, idempotent storage (memory, Redis, Upstash), batched collection.",
   "license": "MIT",
   "repository": {
@@ -46,10 +46,11 @@
   "dependencies": {
     "@flying-money/chains": "workspace:*",
     "@flying-money/core": "workspace:*",
-    "viem": "^2.56.8",
     "@upstash/redis": "^1.39.0",
+    "bonjour-service": "1.4.4",
+    "hono": "^4.12.0",
     "ioredis": "^5.8.2",
-    "hono": "^4.12.0"
+    "viem": "^2.56.8"
   },
   "devDependencies": {
     "ioredis-mock": "^8.13.1"

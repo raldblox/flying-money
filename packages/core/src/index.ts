@@ -907,3 +907,4 @@ export function x402ReceiptFromResponse(header: string): Receipt | null {
 }
 
 export * from './carry.js'
+export * from './discovery.js'

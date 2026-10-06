@@ -1,6 +1,6 @@
 {
   "name": "@flying-money/client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Buyer SDK for Flying Money: pay HTTP 402 APIs from a capped USDC budget, with a crash-safe outbox.",
   "license": "MIT",
   "repository": {
@@ -29,6 +29,10 @@
     "./counter": {
       "types": "./dist/counter-entry.d.ts",
       "import": "./dist/counter-entry.js"
+    },
+    "./discover": {
+      "types": "./dist/discover.d.ts",
+      "import": "./dist/discover.js"
     }
   },
   "files": [
@@ -42,12 +46,13 @@
   "dependencies": {
     "@flying-money/chains": "workspace:*",
     "@flying-money/core": "workspace:*",
+    "bonjour-service": "1.4.4",
     "viem": "^2.56.8"
   },
   "devDependencies": {
+    "@flying-money/abi": "workspace:*",
     "@flying-money/server": "workspace:*",
-    "hono": "^4.12.0",
-    "@flying-money/abi": "workspace:*"
+    "hono": "^4.12.0"
   },
   "bin": {
     "flying-money": "./dist/cli.js"

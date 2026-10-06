@@ -1,6 +1,6 @@
 {
   "name": "@flying-money/chains",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Chain registry for Flying Money: chain IDs, RPCs, USDC addresses, explorers, deployments and caps.",
   "license": "MIT",
   "repository": {

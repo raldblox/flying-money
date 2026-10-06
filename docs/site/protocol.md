@@ -118,7 +118,7 @@ and NFC URL records open the payload in Flying Money on any device.
 | QR code | Live | A link, or the bare compact form |
 | Sound and ultrasound | Live | ggwave chirps, one frame each (at most 140 characters) |
 | Share sheet, link, file, text | Live | A link (`/carry#…`), or the bare form |
-| Local network discovery | Next | Sellers advertise on mDNS / DNS-SD (`_agent._tcp`, per the IETF agent-discovery draft); paying is HTTP |
+| Local network | Live | Sellers announce on mDNS / DNS-SD as `_flying-money._tcp` (TXT: `v`, `path`, `wk`, `payee`, `chains`; the IETF agent-discovery draft's two stages: a small descriptor, then the well-known file); agents find them with `fm_discover` or `discoverSellers`, and pay over HTTP |
 | Bluetooth LE | Next | Frames written to one GATT characteristic; the reply (price code or receipt) as notifications |
 | NFC | Next | An NDEF URL record holding the link |
 | MQTT | Next | `fm/<payee>/offer`, `fm/<payee>/slip`, `fm/<payee>/receipt`; one frame per message where the broker limits size |

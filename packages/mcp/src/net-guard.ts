@@ -79,6 +79,24 @@ function v6Blocked(ip: string): boolean {
   return false
 }
 
+/**
+ * A device on the local network or this machine: 10/8, 172.16/12, 192.168/16, 127/8, ::1 and fc00::/7. Never
+ * link-local (169.254/16, fe80::/10), where cloud metadata services live. Reachable only with FM_ALLOW_LAN=1.
+ */
+export function isLanAddress(ip: string): boolean {
+  const v = isIP(ip)
+  if (v === 4) {
+    const [a, b] = ip.split('.').map(Number) as [number, number]
+    return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+  }
+  if (v === 6) {
+    const g = v6Groups(ip)
+    if (g.slice(0, 7).every((x) => x === 0) && g[7] === 1) return true
+    return (g[0]! & 0xfe00) === 0xfc00
+  }
+  return false
+}
+
 /** True for any address a paid fetch must never reach. */
 export function isBlockedAddress(ip: string): boolean {
   const v = isIP(ip)
@@ -92,7 +110,18 @@ export type Lookup = (host: string, options: object, cb: LookupCb) => void
 
 const systemLookup: Lookup = (host, options, cb) => dnsLookup(host, { ...options, all: true }, cb)
 
-export function guardedFetch(opts: { allowHosts?: string[]; base?: typeof fetch; lookup?: Lookup } = {}): typeof fetch {
+/** A guarded fetch that can also be told about one more reachable host:port (a seller found on the local network). */
+export type GuardedFetch = typeof fetch & { allowHost(hostPort: string): void }
+
+export function guardedFetch(
+  opts: {
+    allowHosts?: string[]
+    /** FM_ALLOW_LAN=1: also reach this machine and the local network (never link-local) */
+    allowLan?: boolean
+    base?: typeof fetch
+    lookup?: Lookup
+  } = {},
+): GuardedFetch {
   const base = opts.base ?? fetch
   const allow = new Set((opts.allowHosts ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean))
   const resolve = opts.lookup ?? systemLookup
@@ -102,7 +131,7 @@ export function guardedFetch(opts: { allowHosts?: string[]; base?: typeof fetch;
       lookup: ((host: string, options: { all?: boolean }, cb: (...a: unknown[]) => void) => {
         resolve(host, options, (err, addrs) => {
           if (err) return cb(err)
-          const bad = addrs.find((a) => isBlockedAddress(a.address))
+          const bad = addrs.find((a) => isBlockedAddress(a.address) && !(opts.allowLan && isLanAddress(a.address)))
           if (bad || addrs.length === 0) return cb(new BlockedHostError(host, bad?.address))
           if (options.all) cb(null, addrs)
           else cb(null, addrs[0]!.address, addrs[0]!.family)
@@ -110,7 +139,7 @@ export function guardedFetch(opts: { allowHosts?: string[]; base?: typeof fetch;
       }) as never,
     },
   })
-  return (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const guarded = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
     if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('only http(s) URLs can be fetched')
     const port = url.port || (url.protocol === 'https:' ? '443' : '80')
@@ -119,10 +148,12 @@ export function guardedFetch(opts: { allowHosts?: string[]; base?: typeof fetch;
     if (allow.has(`${hostname.toLowerCase()}:${port}`) || allow.has(`${url.hostname.toLowerCase()}:${port}`))
       return base(input, noRedirect)
     // a literal address never goes through DNS, so check it here
-    if (isIP(hostname) && isBlockedAddress(hostname)) throw new BlockedHostError(url.hostname)
+    if (isIP(hostname) && isBlockedAddress(hostname) && !(opts.allowLan && isLanAddress(hostname)))
+      throw new BlockedHostError(url.hostname)
     // loopback names can be answered without the lookup hook, so refuse them by name
     const name = hostname.toLowerCase().replace(/\.$/, '')
-    if (name === 'localhost' || name.endsWith('.localhost')) throw new BlockedHostError(url.hostname)
+    if ((name === 'localhost' || name.endsWith('.localhost')) && !opts.allowLan)
+      throw new BlockedHostError(url.hostname)
     try {
       return await base(input, { ...noRedirect, dispatcher: agent } as RequestInit)
     } catch (e) {
@@ -134,7 +165,11 @@ export function guardedFetch(opts: { allowHosts?: string[]; base?: typeof fetch;
       }
       throw e
     }
-  }) as typeof fetch
+  }) as GuardedFetch
+  guarded.allowHost = (hostPort: string) => {
+    allow.add(hostPort.trim().toLowerCase())
+  }
+  return guarded
 }
 
 /** FM_ALLOW_HOSTS="localhost:8787,127.0.0.1:8787" → ['localhost:8787', '127.0.0.1:8787'] */

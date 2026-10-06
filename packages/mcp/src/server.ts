@@ -7,11 +7,12 @@ import {
   PendingUnresolvedError,
   PriceTooHighError,
 } from '@flying-money/client'
+import { discoverSellers, type FoundSeller } from '@flying-money/client/discover'
 import { decodeOffer, type Hex, OFFER_HEADER, type Offer, parseOffer } from '@flying-money/core'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { formatUnits, parseUnits } from 'viem'
 import { z } from 'zod'
-import { guardedFetch } from './net-guard.js'
+import { type GuardedFetch, guardedFetch } from './net-guard.js'
 
 export interface FlyingMoneyMcpConfig {
   /** A configured buyer client (its spending key never leaves it; no tool reads or returns it). */
@@ -27,6 +28,8 @@ export interface FlyingMoneyMcpConfig {
   /** The address budgets are issued to, shown so the agent can tell its owner (never the key). */
   spendingAddress?: string
   fetch?: typeof fetch
+  /** Lists sellers announcing themselves on the local network (default: mDNS, `discoverSellers`). */
+  discover?: (seconds: number) => Promise<FoundSeller[]>
 }
 
 /** USDC base units → "0.05" (display only). */
@@ -63,6 +66,7 @@ export const INSTRUCTIONS = [
   '- Your owner funds a budget from their own wallet: an amount set aside for ONE seller, spendable only by your key, until an end date. You can’t go over it, top it up or send it anywhere else. That is why it is safe to give you.',
   '- When a paid service needs a budget, ask once (fm_request_budget) and explain in plain words what approving means: the amount is set aside for that one seller; it can’t be cancelled before the end date (that is what lets the seller trust it); whatever you don’t spend goes back to them after the end date; you will stay inside it. Suggest an amount that fits the task, not the most you could use.',
   '- Check prices with fm_quote before paying, and never pay in a loop. Failed requests are not charged.',
+  '- No internet? fm_discover lists sellers announcing themselves on the local network; you can pay those too.',
   '- Test networks and test money only; the contract is not audited.',
 ].join('\n')
 
@@ -175,6 +179,40 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         })
       } catch (e) {
         return text(`Could not quote: ${(e as Error).message}`, true)
+      }
+    },
+  )
+
+  server.registerTool(
+    'fm_discover',
+    {
+      title: 'Flying Money: find sellers nearby',
+      description:
+        'Lists Flying Money sellers announcing themselves on the local network (mDNS, `_flying-money._tcp`), with no internet needed: a model on a laptop finding a paid tool on the same Wi-Fi. Each result is a claim, not a proof: fm_quote a URL before paying. Found sellers become reachable for this session.',
+      inputSchema: {
+        seconds: z.number().min(1).max(10).optional().describe('How long to listen (default 3)'),
+      },
+    },
+    async ({ seconds }) => {
+      try {
+        const found = await (cfg.discover ?? ((s: number) => discoverSellers({ seconds: s })))(seconds ?? 3)
+        // a seller found on the local network may be paid in this session, even though it's a private address
+        for (const f of found) (doFetch as Partial<GuardedFetch>).allowHost?.(`${f.host}:${f.port}`)
+        return json({
+          sellers: found.map((f) => ({
+            name: f.name,
+            url: f.url,
+            prices: f.wellKnownUrl,
+            payee: f.payee,
+            networks: f.chainIds.map((id) => getChainById(id)?.key ?? String(id)),
+          })),
+          next:
+            found.length === 0
+              ? 'No sellers announced themselves on this network. They may be elsewhere, or not announcing.'
+              : 'fm_quote a URL under one of these before paying; pay only from a budget made for that seller.',
+        })
+      } catch (e) {
+        return text(`Could not look for sellers here: ${(e as Error).message}`, true)
       }
     },
   )

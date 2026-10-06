@@ -181,6 +181,10 @@ anything else now.
 To try it, there is a live demo seller: \`${demo}\` (0.01 test USDC per call, on every test network above).
 \`fm_quote\` it to see the offer.
 
+No internet, but a seller on the same network (a tool on the office Wi-Fi, a device in the room)? \`fm_discover\` lists
+sellers announcing themselves on the local network, and makes them payable for the session. For one-shot commands,
+set \`FM_ALLOW_LAN=1\`.
+
 1. \`fm_quote\` the URL to see its price and seller.
 2. If \`fm_paid_fetch\` answers \`no_certificate\`, call \`fm_request_budget\` **once** for that service, with a
    sensible amount, number of days and a one-line reason.

@@ -73,10 +73,11 @@ async function setup(faceValue = 50_000n, maxPricePerRequest = 50_000n) {
 }
 
 describe('@flying-money/mcp (§8.4)', () => {
-  it('exposes exactly six tools (§21.4.5), none of which can approve, issue, top up or reveal the key (R3)', async () => {
+  it('exposes exactly seven tools (§21.4.5), none of which can approve, issue, top up or reveal the key (R3)', async () => {
     const { client } = await setup()
     const names = (await client.listTools()).tools.map((t) => t.name).sort()
     expect(names).toEqual([
+      'fm_discover',
       'fm_explain',
       'fm_paid_fetch',
       'fm_quote',

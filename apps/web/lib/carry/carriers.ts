@@ -18,11 +18,14 @@ export const CARRIERS_NOW: CarrierInfo[] = [
   { name: 'Copy and paste', hint: 'Plain text, for anything else.' },
   { name: 'HTTP 402 · x402', hint: 'For APIs: the slip rides in a header with the request.' },
   { name: 'MCP', hint: 'For AI assistants: the MCP server pays with slips by itself.' },
+  {
+    name: 'Local network',
+    hint: 'Sellers announce themselves on the Wi-Fi (mDNS); agents find and pay them, no internet.',
+  },
 ]
 
 /** Coming next: the slip format and its frames already fit them; each needs only its own adapter. */
 export const CARRIERS_NEXT: CarrierInfo[] = [
-  { name: 'Local network', hint: 'Sellers announce themselves on the Wi-Fi (mDNS, `_agent._tcp`); agents find them.' },
   { name: 'Bluetooth LE', hint: 'Phones, robots and chargers, close range, no pairing for a payment.' },
   { name: 'NFC', hint: 'Tap to pay at a vending machine or a door.' },
   { name: 'MQTT', hint: 'Devices on a local broker publish an offer, a slip and a receipt.' },

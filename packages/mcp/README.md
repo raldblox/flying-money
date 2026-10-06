@@ -30,6 +30,7 @@ Then, when a paid service needs a budget, `fm_request_budget` sends your owner a
 |---|---|---|
 | `fm_status` | none | Your spending address and budgets: network, seller, amount, spent, remaining, end date (read-only) |
 | `fm_explain` | none | Plain-language rules: who you can pay, how much, until when |
+| `fm_discover` | `seconds?` | Sellers announcing themselves on the local network (mDNS), with no internet needed; found sellers become payable this session |
 | `fm_quote` | `url` | The price and accepted networks, without paying |
 | `fm_paid_fetch` | `url`, `method?`, `body?`, `max_price?` | The response and the payment. Refuses prices above `max_price` or the per-request cap |
 | `fm_request_budget` | service, amount, days, reason | Asks your owner for a budget; moves no money |
@@ -49,6 +50,7 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 | `AGENT_CHAINS` | Registry keys, comma-separated (default: every test network the contract is deployed on: `arbitrum-sepolia,base-sepolia,ethereum-sepolia,tempo-testnet`) |
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
+| `FM_ALLOW_LAN` | `1` to pay sellers on this machine and the local network (never link-local addresses). Off by default: only public services, or sellers found with `fm_discover` in the same session |
 
 Prefer to build from source? Run `pnpm install && pnpm build` in the repository and use `node /path/to/flying-money/packages/mcp/dist/bin.js` in place of `npx -y @flying-money/mcp`.
 
