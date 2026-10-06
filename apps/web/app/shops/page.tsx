@@ -34,7 +34,7 @@ const SECTIONS = [
     title: 'Pay by showing your phone.',
     items: [
       'Open the link and choose a PIN. Your budget lives on this phone.',
-      'At the counter: tap Pay, scan the price, check the amount, enter your PIN, show your code.',
+      'At the counter: tap Pay and hold your phone up to the till, screen to screen. It reads the price, you enter your PIN, and the till reads your payment. No internet needed on your phone.',
       'Add the wallet to your home screen and save a backup, so your phone doesn’t clear it.',
     ],
   },
@@ -43,7 +43,8 @@ const SECTIONS = [
     title: 'Regulars pay in seconds. You collect once a day.',
     items: [
       'Open a till in your browser. No card terminal, no monthly fee from us.',
-      'Each payment is checked on the till itself, so returning customers can still pay when your Wi‑Fi is down.',
+      'Each payment is checked on the till itself, so returning customers can still pay when your internet is down.',
+      'Run your seller on a computer on your own Wi‑Fi and it announces itself: phones, laptops and AI assistants in the shop find it and pay it with no internet at all.',
       'New customers while you’re offline are marked Unverified, and your risk is capped by a first-visit limit you set (5 USDC by default).',
       'Tap Collect to move the day’s payments to your account in one transfer.',
     ],
@@ -89,6 +90,15 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
         <div className="mt-6">
           <CounterScene />
         </div>
+        <p className="mt-6 max-w-3xl text-ink-2">
+          Works without the internet: face to face at the till, over the shop’s own Wi‑Fi, or by QR code or sound.{' '}
+          <a href="/docs/offline" className="font-medium text-indigo underline">
+            Offline and local payments →
+          </a>{' '}
+          <a href="/demo/counter" className="font-medium text-indigo underline">
+            Try the offline counter →
+          </a>
+        </p>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6" aria-labelledby="uses">

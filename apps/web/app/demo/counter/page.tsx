@@ -10,7 +10,7 @@ import { DemoCounter } from './demo-counter'
 export const metadata: Metadata = {
   title: 'The offline counter',
   description:
-    'Your phone pays a till with no internet: a slip by QR or sound, checked on the spot, guaranteed. The till collects when it’s back online.',
+    'Your phone pays a till with no internet, face to face: price, slip and receipt cross by themselves, checked on the spot, guaranteed. The till collects when it’s back online.',
 }
 export const dynamic = 'force-dynamic'
 
@@ -29,9 +29,9 @@ export default function CounterDemoPage() {
       </h1>
       <p className="mt-4 text-lg text-ink-2">
         This screen is a till. Your phone is the wallet. Give the phone a small budget for this till, switch it to
-        airplane mode, and pay anyway: the slip travels by QR or sound, the till checks it on the spot, and the money is
-        guaranteed, because it’s set aside for this till and can’t be pulled back. When the till is online again, it
-        collects everything in one transaction.
+        airplane mode, and pay anyway: hold it up to this screen and the codes cross by themselves, the till checks the
+        slip on the spot, and the money is guaranteed, because it’s set aside for this till and can’t be pulled back.
+        When the till is online again, it collects everything in one transaction.
       </p>
       {payee ? (
         <DemoCounter chains={chains} payee={payee} />

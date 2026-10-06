@@ -29,10 +29,11 @@ Key rules for agents:
 - [Quickstart for developers](${base}/docs/agents.md): pay a Flying Money API in a few lines
 - [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
 - [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
-- [MCP server](${base}/docs/mcp.md): tools fm_status, fm_explain, fm_quote, fm_paid_fetch, fm_request_budget, fm_request_status
+- [MCP server](${base}/docs/mcp.md): tools fm_status, fm_explain, fm_discover, fm_quote, fm_paid_fetch, fm_request_budget, fm_request_status
 - [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox
 - [Sellers](${base}/docs/server.md): accept notes with middleware; the redeemer
 - [People & shops](${base}/docs/shops.md): the QR counter flow
+- [Offline and local payments](${base}/docs/offline.md): carriers (face to face, the local network over mDNS, QR, sound, links), what the offline guarantee covers, and fm_discover
 - [Live demo](${base}/demo): an agent paying a Flying Money API, with real testnet transactions
 - [Everything in one file](${base}/llms-full.txt)
 

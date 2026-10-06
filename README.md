@@ -28,6 +28,17 @@ What is real and what isn't: the demo's buyer is scripted (not an autonomous AI)
 
 In the code a budget is a *certificate* and a slip is a *note*. The same budgets work for people: a café tab, an allowance, a gift. The holder pays by showing a QR code at the counter. Offline acceptance requires previously verified funding and authoritative local payment records; collection still requires blockchain connectivity before expiry.
 
+## Offline and local payments
+
+A slip is about 150 bytes, so it travels by anything that can carry it, and the seller checks it the same way every time:
+
+- **Face to face:** a phone held up to a till; each screen shows a code and reads the other's. Price, slip and receipt cross by themselves; the buyer enters a PIN. No internet on either side.
+- **The local network:** a seller announces itself on a shop's or office's own Wi-Fi (mDNS, `_flying-money._tcp`); agents, phones and devices on the same network find it and pay it, with no internet and no registry (`announceSeller` in `@flying-money/server`, `discoverSellers` in `@flying-money/client/discover`, `fm_discover` in the MCP server).
+- **QR code, sound and ultrasound, AirDrop / Quick Share, link, file, copy and paste**, and **HTTP 402 / x402 and MCP** for APIs and agents.
+- **Next:** Bluetooth LE, NFC, MQTT, ROS 2, LoRa. The compact slip format and its frames already fit them ([protocol: Carriers](docs/site/protocol.md#carriers)).
+
+What the guarantee covers offline, and what a network needs for local discovery: [Offline and local payments](docs/site/offline.md).
+
 ## Try it
 
 ```bash

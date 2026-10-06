@@ -93,7 +93,11 @@ const USES = [
     t: 'Claude with a budget',
     d: 'Your assistant asks for a budget; you approve it from your wallet.',
   },
-  { Icon: IconBowl, t: 'Counters with bad signal', d: 'A canteen or market stall takes payments in a dead zone.' },
+  {
+    Icon: IconBowl,
+    t: 'Counters with bad signal',
+    d: 'A canteen or market stall takes payments in a dead zone, face to face or over its own Wi-Fi.',
+  },
   {
     Icon: IconWorker,
     t: 'Robots and drones',
@@ -151,6 +155,24 @@ export default function Home() {
           A payment is a signed slip: the budget, the running total and a signature. It doesn’t care how it travels, and
           the seller checks it the same way every time.
         </p>
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <Sheet className="p-5">
+            <p className="smallcaps text-xs text-seal">At the counter</p>
+            <h3 className="mt-1 font-display text-2xl font-semibold">Face to face</h3>
+            <p className="mt-2 text-ink-2">
+              Hold the phone up to the till. Each screen shows a code and reads the other’s: the price goes one way, the
+              slip the other, the receipt comes back. The buyer only enters a PIN. No internet on either side.
+            </p>
+          </Sheet>
+          <Sheet className="p-5">
+            <p className="smallcaps text-xs text-seal">Shops with Wi-Fi</p>
+            <h3 className="mt-1 font-display text-2xl font-semibold">The local network</h3>
+            <p className="mt-2 text-ink-2">
+              A seller announces itself on the shop’s Wi-Fi, the way a printer does. Agents, phones and devices on the
+              same network find it and pay it, with no internet and no app store, server or registry in between.
+            </p>
+          </Sheet>
+        </div>
         <ul className="flex flex-wrap gap-2" aria-label="Carriers you can use today">
           {CARRIERS_NOW.map((c) => (
             <li
@@ -176,6 +198,9 @@ export default function Home() {
         <p className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           <a className="font-medium text-indigo underline" href="/demo/slip">
             Carry a real slip between two devices →
+          </a>
+          <a className="font-medium text-indigo underline" href="/docs/offline">
+            Offline and local payments →
           </a>
           <a className="font-medium text-indigo underline" href="/docs/protocol">
             The slip format →
