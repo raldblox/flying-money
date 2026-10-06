@@ -1,19 +1,32 @@
-// Flying Money offline shell (§12.5): the till (/shop), the wallet (/wallet), slips (/slip, /carry) and the offline
-// counter demo, so paying and receiving work with no connection.
-// Pages: network first, cached copy when offline. Build assets (/_next/static, immutable): cache first.
+// Flying Money offline shell (§12.5): the wallet, the till, slips (/slip, /carry) and both demos work with no
+// connection, with the brand, icons and fonts intact.
+// Pages: network first, cached copy when offline. Build assets (/_next/static, immutable) and images: cache first.
 // Never cached: /api/* (live demo, well-known), non-GET requests, and anything cross-origin (RPC calls).
-const CACHE = 'fm-shell-v3'
+const CACHE = 'fm-shell-v4'
 const SHELL = ['/wallet', '/shop', '/slip', '/carry', '/demo/counter', '/demo/slip']
+// the logo, the app icons and the manifest: without them an offline page or the installed app shows blank icons
+const STATIC = [
+  '/icon.svg',
+  '/manifest.webmanifest',
+  '/brand/mark.svg',
+  '/brand/mark-small.svg',
+  '/brand/app-icon.svg',
+  '/brand/icon-192.png',
+  '/brand/icon-512.png',
+  '/brand/icon-maskable-512.png',
+  '/brand/apple-touch-icon.png',
+]
 
 // Cache each shell page AND the build assets it references, so it works offline even if never opened before.
 async function precache() {
   const c = await caches.open(CACHE)
+  await Promise.all(STATIC.map((a) => c.add(new Request(a, { cache: 'reload' })).catch(() => {})))
   for (const path of SHELL) {
-    const res = await fetch(path, { cache: 'no-store' })
-    if (!res.ok) continue
+    const res = await fetch(path, { cache: 'no-store' }).catch(() => null)
+    if (!res?.ok) continue
     await c.put(path, res.clone())
     const html = await res.text()
-    const assets = [...new Set(html.match(/\/_next\/static\/[^"'\s)]+/g) ?? [])]
+    const assets = [...new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) ?? [])]
     await Promise.all(assets.map((a) => c.match(a).then((hit) => hit || c.add(a).catch(() => {}))))
   }
 }
@@ -35,6 +48,22 @@ const OFFLINE_PREFIXES = ['/shop', '/wallet', '/slip', '/carry', '/demo/counter'
 const offlinePage = (url) => OFFLINE_PREFIXES.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`))
 // the closest cached page for a path that was never cached itself
 const fallbackFor = (url) => OFFLINE_PREFIXES.find((p) => url.pathname.startsWith(p)) ?? '/wallet'
+const isStatic = (url, req) =>
+  url.pathname.startsWith('/_next/static/') ||
+  url.pathname.startsWith('/fonts/') ||
+  url.pathname.startsWith('/brand/') ||
+  url.pathname === '/icon.svg' ||
+  url.pathname === '/manifest.webmanifest' ||
+  req.destination === 'image' ||
+  req.destination === 'font'
+
+const remember = (req, res) => {
+  if (res.ok) {
+    const copy = res.clone()
+    caches.open(CACHE).then((c) => c.put(req, copy))
+  }
+  return res
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
@@ -42,19 +71,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url)
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return
 
-  if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/fonts/')) {
+  // build assets, images, icons and fonts: the cached copy first (they're versioned or rarely change), then refresh
+  if (isStatic(url, req)) {
     event.respondWith(
-      caches.match(req).then(
-        (hit) =>
-          hit ||
-          fetch(req).then((res) => {
-            if (res.ok) {
-              const copy = res.clone()
-              caches.open(CACHE).then((c) => c.put(req, copy))
-            }
-            return res
-          }),
-      ),
+      caches.match(req).then((hit) => {
+        const fresh = fetch(req)
+          .then((res) => remember(req, res))
+          .catch(() => hit)
+        return hit || fresh
+      }),
     )
     return
   }
@@ -63,13 +88,7 @@ self.addEventListener('fetch', (event) => {
   if (offlinePage(url) || req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
-        .then((res) => {
-          if (res.ok && offlinePage(url)) {
-            const copy = res.clone()
-            caches.open(CACHE).then((c) => c.put(req, copy))
-          }
-          return res
-        })
+        .then((res) => (offlinePage(url) ? remember(req, res) : res))
         .catch(() =>
           caches
             .match(req, { ignoreSearch: req.mode !== 'navigate' })

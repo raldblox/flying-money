@@ -13,7 +13,7 @@ import { listenForCarried } from '@/lib/carry/channel'
 import { PROVERBS } from '@/lib/carry/proverbs'
 import { encodeReceipt } from '@/lib/carry/receipt'
 import { carriedPrice, slipForOrder } from '@/lib/carry/till'
-import { short } from '@/lib/fmt'
+import { short, usdc } from '@/lib/fmt'
 import { newOrderId, openTill, type Till } from '@/lib/till'
 
 const PRICE = 10_000n // one 飛錢 certificate
@@ -41,6 +41,7 @@ export function DemoCounter({ chains, payee }: { chains: PickerNetwork[]; payee:
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [origin, setOrigin] = useState('')
+  const [version, setVersion] = useState(0)
   const ids = useId()
 
   useEffect(() => {
@@ -196,13 +197,13 @@ export function DemoCounter({ chains, payee }: { chains: PickerNetwork[]; payee:
         </p>
       </section>
 
-      {till && funded && <Sell till={till} chain={chain} />}
-      {till && funded && <Collect till={till} chain={chain} offline={isOffline} />}
+      {till && funded && <Sell till={till} chain={chain} onSold={() => setVersion((v) => v + 1)} />}
+      {till && funded && <Collect till={till} chain={chain} offline={isOffline} version={version} />}
     </div>
   )
 }
 
-function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
+function Sell({ till, chain, onSold }: { till: Till; chain: ChainKey; onSold: () => void }) {
   const [order, setOrder] = useState<Order | null>(null)
   const [name, setName] = useState('')
   const [result, setResult] = useState<CounterResult | null>(null)
@@ -231,6 +232,15 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
             proverb: PROVERBS[proverb]!,
           }
           setKeepsake(k)
+          recordSale(chain, {
+            at: Date.now(),
+            requestId: r.requestId,
+            certificateId: r.certificateId,
+            price: PRICE.toString(),
+            status: r.status,
+            name: k.name,
+          })
+          onSold()
           // the product goes back to the phone with the receipt: the phone draws the certificate itself
           setReceipt(
             encodeReceipt({
@@ -247,7 +257,7 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
         busy.current = false
       }
     },
-    [order, till, name, chain],
+    [order, till, name, chain, onSold],
   )
   const takeRef = useRef(take)
   takeRef.current = take
@@ -402,18 +412,97 @@ function Sell({ till, chain }: { till: Till; chain: ChainKey }) {
   )
 }
 
-function Collect({ till, chain, offline }: { till: Till; chain: ChainKey; offline: boolean }) {
+interface Row {
+  id: Hex
+  accepted: bigint
+  collected: bigint
+}
+interface Sale {
+  at: number
+  requestId: Hex
+  certificateId: Hex
+  price: string
+  status: 'GUARANTEED' | 'UNVERIFIED'
+  name: string
+}
+const salesKey = (chain: ChainKey) => `fm-demo-sales:${chain}`
+function recordSale(chain: ChainKey, s: Sale) {
+  try {
+    const all = JSON.parse(localStorage.getItem(salesKey(chain)) ?? '[]') as Sale[]
+    localStorage.setItem(salesKey(chain), JSON.stringify([s, ...all].slice(0, 200)))
+  } catch {
+    // private mode: the ledger still shows this till's totals
+  }
+}
+function listSales(chain: ChainKey): Sale[] {
+  try {
+    return JSON.parse(localStorage.getItem(salesKey(chain)) ?? '[]') as Sale[]
+  } catch {
+    return []
+  }
+}
+
+/** The till's books: every budget it has taken payments from, what's collected, what's ready, and each sale. */
+function Collect({
+  till,
+  chain,
+  offline,
+  version,
+}: {
+  till: Till
+  chain: ChainKey
+  offline: boolean
+  /** bumps after each sale, so the books refresh */
+  version: number
+}) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ text: string; href?: string } | null>(null)
+  const [rows, setRows] = useState<Row[]>([])
+  const [waiting, setWaiting] = useState(0)
+  const [sales, setSales] = useState<Sale[]>([])
   const ids = useId()
+  const chainId = getChain(chain).chain.id
+  const explorer = getChain(chain).explorer
+
+  const load = useCallback(async () => {
+    const snap = till.store.snapshot()
+    setRows(
+      snap.certs
+        .filter(([key]) => key.startsWith(`${chainId}:`))
+        .map(([key, r]) => ({
+          id: key.split(':')[1] as Hex,
+          accepted: BigInt(r.consumed),
+          collected: BigInt(r.redeemed),
+        }))
+        .filter((r) => r.accepted > 0n),
+    )
+    setWaiting((await till.counter.unverified()).filter((u) => u.state === 'UNVERIFIED').length)
+    setSales(listSales(chain))
+  }, [till, chain, chainId])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload the books after each sale (version)
+  useEffect(() => {
+    void load()
+  }, [load, version])
+
   async function collect() {
     setBusy(true)
     setMsg(null)
     try {
       // payments taken at the shop's own risk (a budget this till hadn't checked) are checked now, then collected too
-      await till.counter.reconcile().catch(() => {})
-      const pending = await till.store.pendingRedemptions(getChain(chain).chain.id)
-      if (pending.length === 0) return setMsg({ text: 'Nothing to collect yet. Sell something first.' })
+      const rec = await till.counter.reconcile().catch(() => ({ promoted: 0, flagged: 0, waiting: 0 }))
+      const pending = await till.store.pendingRedemptions(chainId)
+      if (pending.length === 0) {
+        const collected = rows.reduce((s, r) => s + r.collected, 0n)
+        setMsg({
+          text:
+            rows.length === 0 && sales.length === 0
+              ? 'No sales on this till yet. Sell something first.'
+              : `Nothing new to collect: everything this till accepted is already collected (${usdc(collected)} USDC)${
+                  rec.waiting ? `, and ${rec.waiting} taken at the till’s own risk can’t be checked yet` : ''
+                }${rec.flagged ? `; ${rec.flagged} turned out not to be covered` : ''}.`,
+        })
+        return
+      }
       const res = await fetch('/api/demo/counter/collect', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -424,24 +513,46 @@ function Collect({ till, chain, offline }: { till: Till; chain: ChainKey; offlin
       if (body.hash) for (const p of pending) await till.store.markRedeemed(p.key, p.note.cumulative, body.hash)
       setMsg(
         body.tx
-          ? { text: `Collected ${body.collected} in one transaction.`, href: body.tx }
+          ? {
+              text: `Collected ${body.collected} ${body.collected === 1 ? 'budget' : 'budgets'} in one transaction.`,
+              href: body.tx,
+            }
           : { text: body.note ?? 'Done.' },
       )
     } catch (e) {
       setMsg({ text: (e as Error).message })
     } finally {
       setBusy(false)
+      await load()
     }
   }
+
+  const ready = rows.reduce((s, r) => s + (r.accepted > r.collected ? r.accepted - r.collected : 0n), 0n)
   return (
-    <section className="sheet grid gap-3 p-5" aria-labelledby={`${ids}-4`}>
+    <section className="sheet grid gap-4 p-5" aria-labelledby={`${ids}-4`}>
       <h2 id={`${ids}-4`} className="font-display text-2xl font-semibold">
-        4 · Back online: collect
+        4 · The till’s books, and collecting
       </h2>
       <p className="text-sm text-ink-2">
-        The till sends what it accepted to the network in one transaction. Until then, the money waits in the budget,
-        set aside for this till.
+        Until the till collects, the money waits in each budget, set aside for this till. Collecting sends everything
+        ready in one transaction; it needs a connection.
       </p>
+      <dl className="grid grid-cols-3 gap-3 text-center">
+        <div className="rounded border border-line p-3">
+          <dt className="smallcaps text-xs text-ink-2">Ready to collect</dt>
+          <dd className="font-display text-2xl font-semibold lining-nums">{usdc(ready)}</dd>
+        </div>
+        <div className="rounded border border-line p-3">
+          <dt className="smallcaps text-xs text-ink-2">Collected</dt>
+          <dd className="font-display text-2xl font-semibold lining-nums">
+            {usdc(rows.reduce((s, r) => s + r.collected, 0n))}
+          </dd>
+        </div>
+        <div className="rounded border border-line p-3">
+          <dt className="smallcaps text-xs text-ink-2">At own risk</dt>
+          <dd className="font-display text-2xl font-semibold lining-nums">{waiting}</dd>
+        </div>
+      </dl>
       <button
         type="button"
         className={`${buttonClass('primary')} sm:w-fit`}
@@ -460,6 +571,68 @@ function Collect({ till, chain, offline }: { till: Till; chain: ChainKey; offlin
           )}
         </p>
       )}
+      {rows.length > 0 && (
+        <table className="w-full text-left text-sm">
+          <caption className="smallcaps mb-1 text-left text-xs text-ink-2">
+            Budgets this till took payments from
+          </caption>
+          <thead>
+            <tr className="text-ink-2">
+              <th className="py-1 font-normal">Budget</th>
+              <th className="py-1 font-normal">Accepted</th>
+              <th className="py-1 font-normal">Collected</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-line">
+                <td className="py-1.5 font-mono">
+                  <a href={`/c/${chain}/${r.id}`} className="text-indigo underline">
+                    {short(r.id)}
+                  </a>
+                </td>
+                <td className="py-1.5 font-mono lining-nums">{usdc(r.accepted)}</td>
+                <td className="py-1.5 font-mono lining-nums">
+                  {usdc(r.collected)}
+                  {r.collected >= r.accepted ? ' ✓' : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {sales.length > 0 && (
+        <details open>
+          <summary className="cursor-pointer text-sm font-medium">
+            {sales.length} {sales.length === 1 ? 'sale' : 'sales'} on this device
+          </summary>
+          <ul className="mt-2 grid gap-1.5 text-sm">
+            {sales.map((s) => (
+              <li key={s.requestId} className="flex flex-wrap justify-between gap-2 border-t border-line pt-1.5">
+                <span suppressHydrationWarning>
+                  {new Date(s.at).toLocaleTimeString()} · 飛錢 certificate{s.name ? ` for ${s.name}` : ''} ·{' '}
+                  <span className="text-ink-2">
+                    {s.status === 'GUARANTEED' ? 'guaranteed' : 'at own risk'} · budget {short(s.certificateId)}
+                  </span>
+                </span>
+                <span className="font-mono lining-nums">{usdc(BigInt(s.price))}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="text-xs text-ink-2">
+        Collections happen on {getChain(chain).chain.name}:{' '}
+        <a
+          href={`${explorer}/address/${getChain(chain).flyingMoney}`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          the contract on the explorer
+        </a>
+        .
+      </p>
     </section>
   )
 }

@@ -52,6 +52,7 @@ import {
   walletStore,
 } from '@/lib/wallet'
 import { backupNeedsPassphrase, openBackup, validBackupPassphrase } from '@/lib/wallet-backup'
+import { listPayments, recordPayment, type WalletPayment } from '@/lib/wallet-history'
 
 type Entry = WalletEntry & { state: CounterState | null }
 type View =
@@ -72,7 +73,11 @@ export function Wallet() {
   const [onChain, setOnChain] = useState<Record<string, bigint>>({})
   const online = useOnline()
 
-  const refresh = useCallback(async () => setEntries(await listEntries()), [])
+  const [payments, setPayments] = useState<WalletPayment[]>([])
+  const refresh = useCallback(async () => {
+    setEntries(await listEntries())
+    setPayments(await listPayments())
+  }, [])
   // a price code that arrived (scanned, heard, opened from a link or share): pick the budget, then review
   const payOffer = useCallback((offer: Offer, list: Entry[]) => {
     const fits = list.filter((e) => certificateMatches(toCounterCert(e), offer))
@@ -91,6 +96,7 @@ export function Wallet() {
         if (h) setView({ k: 'handover', h })
         const list = await listEntries()
         setEntries(list)
+        setPayments(await listPayments())
         // a price code opened by /carry while this wallet wasn't open
         const pending = sessionStorage.getItem(PENDING_OFFER)
         if (pending && !h) {
@@ -166,6 +172,7 @@ export function Wallet() {
       {view.k === 'home' && (
         <Home
           entries={entries}
+          history={payments}
           onChain={onChain}
           openPayment={open}
           onPay={() => setView({ k: 'scan' })}
@@ -375,6 +382,7 @@ function PinInput({
 // ── Home ─────────────────────────────────────────────────────────────────────
 function Home({
   entries,
+  history,
   onChain,
   openPayment,
   onPay,
@@ -383,6 +391,7 @@ function Home({
   onChanged,
 }: {
   entries: Entry[]
+  history: WalletPayment[]
   onChain: Record<string, bigint>
   openPayment: Entry | undefined
   onPay: () => void
@@ -439,6 +448,7 @@ function Home({
                 <p className="mt-2 font-display text-4xl font-semibold lining-nums">
                   {usdc(left)} <span className="text-base font-normal text-ink-2">USDC left · on this phone</span>
                 </p>
+                <SpentBar face={c.faceValue} left={left} />
                 <p className="mt-1 text-sm text-ink-2 lining-nums" suppressHydrationWarning>
                   of {usdc(c.faceValue)} · {expired ? 'ended' : `until ${dayLabel(c.expiresAt)}`}
                   {onChain[e.id] !== undefined && ` · collected by the shop so far: ${usdc(onChain[e.id]!)}`}
@@ -457,6 +467,7 @@ function Home({
                   <summary className="cursor-pointer">Seller address</summary>
                   <span className="break-all font-mono">{e.payee}</span>
                 </details>
+                <Payments payments={history.filter((h) => h.certificateId.toLowerCase() === e.id.toLowerCase())} />
               </li>
             )
           })}
@@ -781,6 +792,30 @@ function ShowNote({
     const r = decodeReceipt(t)
     if (!r || !receiptFor(r, note.memo, note.certificateId)) return
     await confirmCounterPayment(walletStore(), c)
+    const k = r.keepsake
+    const chain = getChainById(note.chainId)
+    await recordPayment({
+      id: note.memo,
+      certificateId: note.certificateId,
+      chain: (chain?.key ?? entry.chain) as ChainKey,
+      at: Date.now(),
+      price: r.price.toString(),
+      status: r.status,
+      ...(r.item ? { item: r.item } : {}),
+      ...(k
+        ? {
+            keepsake: {
+              serial: k.serial,
+              name: k.name,
+              issuedAt: k.issuedAt,
+              paid: r.price.toString(),
+              chainId: k.chainId,
+              certificateId: note.certificateId,
+              proverb: PROVERBS[k.proverb % PROVERBS.length]!,
+            },
+          }
+        : {}),
+    }).catch(() => {})
     navigator.vibrate?.(80)
     setPaid(r)
   }
@@ -868,6 +903,14 @@ function ShowNote({
               className={buttonClass('primary')}
               onClick={async () => {
                 await confirmCounterPayment(walletStore(), c)
+                await recordPayment({
+                  id: note.memo,
+                  certificateId: note.certificateId,
+                  chain: entry.chain,
+                  at: Date.now(),
+                  price: price.toString(),
+                  status: 'CONFIRMED',
+                }).catch(() => {})
                 await onClose()
               }}
             >
@@ -902,6 +945,81 @@ function ShowNote({
         </button>
       </div>
     </section>
+  )
+}
+
+/** How much of the budget is spent, at a glance. */
+function SpentBar({ face, left }: { face: bigint; left: bigint }) {
+  const spent = face > left ? face - left : 0n
+  const pct = face > 0n ? Number((spent * 1000n) / face) / 10 : 0
+  return (
+    <div className="mt-2">
+      <div className="h-2 overflow-hidden rounded-full bg-paper-2" aria-hidden>
+        <div className="h-full bg-seal" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-1 text-sm text-ink-2 lining-nums">
+        {usdc(spent)} spent · {usdc(left)} left
+      </p>
+    </div>
+  )
+}
+
+/** This budget's payments, newest first, with what was bought; a certificate opens full size. */
+function Payments({ payments }: { payments: WalletPayment[] }) {
+  const [open, setOpen] = useState<WalletPayment | null>(null)
+  if (payments.length === 0) return <p className="mt-3 text-sm text-ink-2">No payments from this budget yet.</p>
+  return (
+    <details className="mt-3" open>
+      <summary className="cursor-pointer text-sm font-medium">
+        {payments.length} {payments.length === 1 ? 'payment' : 'payments'}
+      </summary>
+      <ul className="mt-2 grid gap-2">
+        {payments.map((p) => (
+          <li
+            key={p.id}
+            className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm"
+          >
+            <span>
+              <span className="font-medium">{p.item ?? 'Payment'}</span>
+              <span className="block text-xs text-ink-2" suppressHydrationWarning>
+                {new Date(p.at).toLocaleString()} ·{' '}
+                {p.status === 'GUARANTEED'
+                  ? 'checked by the till'
+                  : p.status === 'UNVERIFIED'
+                    ? 'taken at the till’s own risk'
+                    : 'confirmed by you'}
+              </span>
+            </span>
+            <span className="flex items-center gap-3">
+              <span className="font-mono lining-nums">{usdc(BigInt(p.price))}</span>
+              {p.keepsake && (
+                <button type="button" className="text-indigo underline" onClick={() => setOpen(p)}>
+                  Keepsake
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {open?.keepsake && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-[#1b1712]"
+        >
+          <div className="mx-auto grid max-w-md gap-4">
+            <Keepsake
+              data={open.keepsake}
+              network={getChain(open.chain).chain.name}
+              statusUrl={`${window.location.origin}/c/${open.chain}/${open.certificateId}`}
+            />
+            <button type="button" className={buttonClass('primary')} onClick={() => setOpen(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </details>
   )
 }
 

@@ -208,7 +208,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           })),
           next:
             found.length === 0
-              ? 'No sellers announced themselves on this network. They may be elsewhere, or not announcing.'
+              ? 'No sellers announced themselves on this network. They may be elsewhere or not announcing, or a VPN or firewall here may block local discovery (multicast DNS): a VPN needs local network access allowed.'
               : 'fm_quote a URL under one of these before paying; pay only from a budget made for that seller.',
         })
       } catch (e) {

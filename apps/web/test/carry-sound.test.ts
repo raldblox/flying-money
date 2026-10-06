@@ -54,3 +54,10 @@ it('the ultrasound band carries the same frames', async () => {
     expect(new TextDecoder().decode(new Uint8Array(r.buffer, r.byteOffset, r.byteLength).slice())).toBe(frame)
   }
 })
+
+it('the sound library needs no eval, so it runs under the strict CSP of the wallet and till (patches/ggwave)', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { createRequire } = await import('node:module')
+  const src = readFileSync(createRequire(import.meta.url).resolve('ggwave'), 'utf8')
+  expect(src).not.toMatch(/new Function\(|[^\w.]eval\(/)
+})

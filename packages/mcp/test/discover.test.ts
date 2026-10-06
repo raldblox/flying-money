@@ -7,6 +7,7 @@ import { createOracle } from '@flying-money/oracle'
 import { announceSeller, memoryStore as sellerStore } from '@flying-money/server'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { Bonjour } from 'bonjour-service'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { afterAll, expect, it } from 'vitest'
 import { guardedFetch } from '../src/net-guard.js'
@@ -18,6 +19,29 @@ setLocalDeployment({
   usdc: '0x00000000000000000000000000000000000c0c0c',
   flyingMoney: '0x00000000000000000000000000000000000f1f1f',
 })
+/**
+ * Can this machine hear its own multicast DNS at all? A VPN that blocks local traffic, or a firewall, stops it
+ * everywhere (then there is nothing to test here, and the test says so instead of failing).
+ */
+async function multicastWorks(): Promise<boolean> {
+  const a = new Bonjour()
+  const f = new Bonjour()
+  const probe = `probe-${Math.random().toString(36).slice(2, 8)}`
+  a.publish({ name: probe, type: 'flying-money-probe', port: 9, txt: { v: '1' } })
+  const seen = await new Promise<boolean>((done) => {
+    f.find({ type: 'flying-money-probe' }, (svc) => svc.name === probe && done(true))
+    setTimeout(() => done(false), 5000)
+  })
+  await new Promise<void>((r) => a.destroy(() => r()))
+  await new Promise<void>((r) => f.destroy(() => r()))
+  return seen
+}
+const mdns = await multicastWorks()
+if (!mdns)
+  console.warn(
+    'mDNS: this machine can’t hear its own announcements (a VPN or firewall?); skipping the local-network test',
+  )
+
 const payee = privateKeyToAccount(generatePrivateKey()).address
 const oracle = createOracle({ accepts: ['anvil'], payee, store: sellerStore(), readCertificate: async () => null })
 const http = createServer(async (req, res) => {
@@ -34,44 +58,51 @@ afterAll(async () => {
   http.close()
 })
 
-it('an agent finds a seller on the local network, and may pay it only after finding it', {
-  timeout: 20_000,
-}, async () => {
-  const fetch = guardedFetch()
-  const fm = createFlyingMoneyClient({
-    chains: ['anvil'],
-    spender: privateKeyToAccount(generatePrivateKey()),
-    store: memoryStore(),
-    certificates: [],
-    maxPricePerRequest: 50_000n,
-    readCertificate: async () => null,
-    fetch,
-  })
-  const [a, b] = InMemoryTransport.createLinkedPair()
-  const client = new Client({ name: 'local-agent', version: '0' })
-  await Promise.all([
-    createFlyingMoneyMcp({ client: fm, maxPricePerRequest: 50_000n, fetch }).connect(a),
-    client.connect(b),
-  ])
-  const call = async (n: string, args: Record<string, unknown> = {}) => {
-    const r = await client.callTool({ name: n, arguments: args })
-    return { error: Boolean(r.isError), text: (r.content as Array<{ text: string }>)[0]!.text }
-  }
+it.skipIf(!mdns)(
+  'an agent finds a seller on the local network, and may pay it only after finding it',
+  {
+    timeout: 20_000,
+  },
+  async () => {
+    const fetch = guardedFetch()
+    const fm = createFlyingMoneyClient({
+      chains: ['anvil'],
+      spender: privateKeyToAccount(generatePrivateKey()),
+      store: memoryStore(),
+      certificates: [],
+      maxPricePerRequest: 50_000n,
+      readCertificate: async () => null,
+      fetch,
+    })
+    const [a, b] = InMemoryTransport.createLinkedPair()
+    const client = new Client({ name: 'local-agent', version: '0' })
+    await Promise.all([
+      createFlyingMoneyMcp({ client: fm, maxPricePerRequest: 50_000n, fetch }).connect(a),
+      client.connect(b),
+    ])
+    const call = async (n: string, args: Record<string, unknown> = {}) => {
+      const r = await client.callTool({ name: n, arguments: args })
+      return { error: Boolean(r.isError), text: (r.content as Array<{ text: string }>)[0]!.text }
+    }
 
-  const found = JSON.parse((await call('fm_discover', { seconds: 3 })).text) as {
-    sellers: Array<{ name: string; url: string; payee: Hex; networks: string[] }>
-  }
-  const mine = found.sellers.find((s) => s.name === name)
-  expect(mine).toBeDefined()
-  expect(mine).toMatchObject({ payee, networks: ['anvil'] })
-  expect(mine!.url).toMatch(new RegExp(`^http://[^/]+:${port}/v1$`))
+    // a new announcement first probes the network for name conflicts: give it a moment, and a second listen
+    type Found = { sellers: Array<{ name: string; url: string; payee: Hex; networks: string[] }> }
+    let mine: Found['sellers'][number] | undefined
+    for (let attempt = 0; attempt < 2 && !mine; attempt++) {
+      const found = JSON.parse((await call('fm_discover', { seconds: 5 })).text) as Found
+      mine = found.sellers.find((s) => s.name === name)
+    }
+    expect(mine).toBeDefined()
+    expect(mine).toMatchObject({ payee, networks: ['anvil'] })
+    expect(mine!.url).toMatch(new RegExp(`^http://[^/]+:${port}/v1$`))
 
-  // found, so reachable for this session: the quote comes back from the private address
-  const q = await call('fm_quote', { url: `${mine!.url}/tea-price?city=Luoyang` })
-  expect(q.error).toBe(false)
-  expect(JSON.parse(q.text)).toMatchObject({ price: '0.01' })
+    // found, so reachable for this session: the quote comes back from the private address
+    const q = await call('fm_quote', { url: `${mine!.url}/tea-price?city=Luoyang` })
+    expect(q.error).toBe(false)
+    expect(JSON.parse(q.text)).toMatchObject({ price: '0.01' })
 
-  // a fresh session that never discovered it is still refused: private addresses stay blocked by default
-  const fresh = guardedFetch()
-  await expect(fresh(`${mine!.url}/tea-price?city=Luoyang`)).rejects.toThrow(/private, local or reserved/)
-})
+    // a fresh session that never discovered it is still refused: private addresses stay blocked by default
+    const fresh = guardedFetch()
+    await expect(fresh(`${mine!.url}/tea-price?city=Luoyang`)).rejects.toThrow(/private, local or reserved/)
+  },
+)
