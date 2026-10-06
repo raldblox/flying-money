@@ -19,7 +19,7 @@ The assistant reads [/agent.md](/agent.md), adds the MCP server (which makes its
 
 The rest of this page is for developers using the TypeScript SDK directly.
 
-- **Capped.** A stolen agent key can spend at most what's left, at that one service.
+- **Capped.** A stolen agent key can spend at most what's left, and only at the service the budget is earmarked for, so it's worthless to a thief.
 - **Crash-safe.** A timeout never raises what the agent owes. It resends the same slip; it never signs a higher one.
 - **Standard.** Plain HTTP 402 "Payment Required", a TypeScript SDK and an MCP server.
 

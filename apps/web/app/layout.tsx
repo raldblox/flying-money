@@ -21,7 +21,7 @@ const han = Noto_Serif_TC({ weight: ['600'], variable: '--font-noto-tc', preload
 export const metadata: Metadata = {
   title: { default: 'Flying Money: payments that work without the internet', template: '%s · Flying Money' },
   description:
-    'Give an agent, a phone or a robot a budget for one seller. It pays with signed slips that travel by QR code, sound or a link; the seller checks each one on the spot, even offline, and collects in one transaction.',
+    'Earmark digital dollars for a shop, an API or a charger. An agent, a phone or a robot pays with signed slips that travel by QR code, sound, Wi-Fi or a link; the seller checks each one on the spot, even offline, and collects in one transaction. No crypto wallet needed to pay.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
   icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' }, apple: '/brand/apple-touch-icon.png' },

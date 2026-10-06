@@ -28,7 +28,7 @@ Flying Money is for anyone who spends on your behalf, not only agents. A parent,
 - After the till says **Accepted**, tap *Yes, the shop accepted it*. Until you do, the wallet shows the same code again and won't start another payment.
 - Add the wallet to your home screen and export a backup. Browsers may clear data for sites you don't install.
 
-A lost phone never loses money: the giver can take back what's left after the end date. A leaked key can only spend what's left, at that one shop.
+A lost phone never loses money: the giver can take back what's left after the end date. A leaked key can only spend what's left, at the shop it's earmarked for. Paying a shop and tipping its staff? Two budgets, one phone.
 
 ## For the shop: the till (`/shop`)
 

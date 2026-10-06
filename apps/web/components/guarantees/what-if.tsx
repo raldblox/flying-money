@@ -23,7 +23,7 @@ const CASES: Array<{ q: string; verdict: Verdict; a: string; worst: string; Icon
   {
     q: 'My agent’s key is stolen',
     verdict: 'bounded',
-    a: 'The thief can only pay the one seller you chose, and only up to what’s left in the budget. It can’t send money to itself or anyone else.',
+    a: 'The money is earmarked for the seller you chose, so to the thief it’s worthless: it can only pay that seller, up to what’s left. It can’t send money to itself or anyone else.',
     worst: 'At most what was left in that one budget.',
     Icon: IconThief,
   },

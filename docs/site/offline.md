@@ -5,8 +5,9 @@ description: Pay with no internet. A slip travels by QR code, sound, a link or t
 
 # Payments that work without the internet
 
-A Flying Money payment is a **slip**: about 150 bytes, signed by the payer's key, good at one seller, up to a budget
-that is already set aside for that seller. Nothing about a slip needs the internet. It needs a way to get from the
+A Flying Money payment is a **slip**: about 150 bytes, signed by the payer's key, good at the seller its budget is
+earmarked for, up to that budget. Earmarking is what makes it work offline: the money is as good as paid to that
+seller, so it can serve without asking anyone, and the slip is worthless to anyone else. Nothing about a slip needs the internet. It needs a way to get from the
 payer to the seller, and the seller needs to have seen the budget once.
 
 That makes Flying Money a payment network for places the internet doesn't reach reliably: a canteen in a basement, a
@@ -107,7 +108,8 @@ seller (its payee), so a fake announcer can't be paid.
 
 ## Try it
 
-- **[The offline counter](/demo/counter):** your phone in airplane mode pays a till, face to face; the till accepts
-  it as guaranteed and collects when it's back online.
+- **[The offline counter](/demo/counter):** a tea house you can play on one screen. Fill a basket, pay, tip the
+  staff, cut the till's connection and keep paying, let a phone die halfway and resume, play the thief, then collect
+  it all in one transaction. Move the money to your phone to pay the till face to face, by QR or by sound.
 - **[The slip that pays](/demo/slip):** carry a real slip between two devices by QR, sound, share, link or file.
 - **Local network:** `pnpm dev`, then `fm_discover` (above).

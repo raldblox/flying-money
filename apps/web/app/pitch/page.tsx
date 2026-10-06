@@ -52,16 +52,18 @@ export default function PitchPage() {
             their owners have three bad choices: hand over a card with no real ceiling, pay on the blockchain per call
             (slower and costlier than the call itself), or ask sellers to trust an agent they’ve never met. The same gap
             exists for people: parents, employers and gift givers who want to hand over money for one place without
-            handing over a card.
+            handing over a card, to someone who has never used crypto.
           </p>
         </Block>
         <Block title="Solution">
           <p>
-            The owner sets aside a budget in USDC for one seller, one spender and one end date. The spender pays with
-            signed slips carrying the running total. The seller checks each slip on its own machine in milliseconds and
-            collects everything later in one transaction. The spender can’t authorize more than the budget, the money
-            can only reach the named seller, and every valid slip is already backed by money set aside for that seller.
-            The owner takes back what’s left after the end date.
+            The owner earmarks a budget in USDC for a seller, a spender and an end date (several sellers, several
+            budgets). Earmarking is the point: it makes the money as good as paid to that seller, even offline, and
+            useless to anyone who steals the key. The spender pays with signed slips carrying the running total. The
+            seller checks each slip on its own machine in milliseconds and collects everything later in one transaction.
+            The spender can’t authorize more than the budget, the money can only reach the named seller, and every valid
+            slip is already backed by money set aside for that seller. The owner takes back what’s left after the end
+            date.
           </p>
         </Block>
         <Block title="Why now">

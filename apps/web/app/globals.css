@@ -46,6 +46,23 @@
   color-scheme: dark;
 }
 
+/* A subtree that stays light in both themes: the bright screens a camera reads, and what sits on them (the wallet's
+   payment and receipt screens). Without it, dark-theme text tokens land on a fixed light background and vanish. */
+.theme-light {
+  --paper: #f4ede0;
+  --paper-2: #eae0cd;
+  --ink: #1b1a17;
+  --ink-2: #4a463f;
+  --seal: #b7322c;
+  --ochre: #c08a3e;
+  --indigo: #2e3f5c;
+  --celadon: #7fa38f;
+  --line: #cdbfa6;
+  --amber: #8a5a12;
+  color-scheme: light;
+  color: var(--ink);
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);

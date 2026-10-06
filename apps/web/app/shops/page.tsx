@@ -14,7 +14,11 @@ export const metadata: Metadata = {
 const USES = [
   { Icon: IconBowl, t: 'School lunch', d: 'Lunch money that only works at the canteen.' },
   { Icon: IconTea, t: 'A café tab', d: '20 USDC at your regular’s favourite café.' },
-  { Icon: IconWorker, t: 'Field staff', d: 'Fuel money for one station, with no company card to lose.' },
+  {
+    Icon: IconWorker,
+    t: 'Tips for the staff',
+    d: 'A second budget, earmarked for the staff. Pay and tip from one phone.',
+  },
   { Icon: IconGift, t: 'A gift for one shop', d: 'Sent as a link. After the end date, you take back what’s left.' },
 ]
 
@@ -65,7 +69,8 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">
             Give lunch money that only works at the canteen, a café tab for your regular, or fuel money for one station.
-            They pay with their phone. The shop gets paid from money already set aside for it.
+            They pay with their phone, in digital dollars, without ever needing a crypto wallet. The shop gets paid from
+            money already set aside for it, even when its internet is down.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href={`/app${q}`}>Give a budget →</ButtonLink>
@@ -96,7 +101,7 @@ export default async function ShopsPage({ searchParams }: { searchParams: Promis
             Offline and local payments →
           </a>{' '}
           <a href="/demo/counter" className="font-medium text-indigo underline">
-            Try the offline counter →
+            Play the offline counter →
           </a>
         </p>
       </section>

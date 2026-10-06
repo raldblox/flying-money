@@ -23,7 +23,8 @@ export const GLOSSARY: Array<{ people: string; agents: string; code: string; mea
     people: 'Budget',
     agents: 'budget',
     code: 'certificate',
-    meaning: 'Money set aside in a public contract for one seller, one user and an end date.',
+    meaning:
+      'Money earmarked in a public contract for a seller, a user and an end date: as good as paid to that seller, useless to anyone else.',
   },
   { people: 'Funded by', agents: 'owner', code: 'funder', meaning: 'Who put the money in.' },
   {

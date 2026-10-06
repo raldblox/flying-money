@@ -69,8 +69,8 @@ export async function admitDemoRun(req: Request, deps: DemoGuardDeps, face: bigi
   return { ok: true, release }
 }
 
-/** Most testnet USDC the slip demo may lock per UTC day (0.01 a slip: 200 slips). */
-export const SLIP_DAILY_CAP = 2_000_000n
+/** Most testnet USDC the slip and counter demos may lock per UTC day (8 USDC: about 50 counter visitors). */
+export const SLIP_DAILY_CAP = 8_000_000n
 const SLIP_PER_VISITOR_SECONDS = 60
 
 /**

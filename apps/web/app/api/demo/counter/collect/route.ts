@@ -1,5 +1,5 @@
 // The offline counter demo, step 4: the demo till is back online and collects what it accepted, in one transaction.
-// Only for demo budgets (funded by the demo wallet, paying the demo till); the money goes to the till's address.
+// Only for demo budgets (funded by the demo wallet, paying the demo shop or its staff); the money goes to their addresses.
 import { flyingMoneyAbi } from '@flying-money/abi'
 import { keyFromEnv } from '@flying-money/agent'
 import { getChain, isChainKey, rpcUrl } from '@flying-money/chains'
@@ -7,6 +7,7 @@ import { decodeNote, type Hex, readCertificate } from '@flying-money/core'
 import { createPublicClient, createWalletClient, http, isAddressEqual } from 'viem'
 import { demoFunderAddress } from '@/lib/demo-fund'
 import { demoGuardFromEnv } from '@/lib/demo-guard'
+import { SITE } from '@/lib/site'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
 
   const transport = http(rpcUrl(chainKey, process.env))
   const pub = createPublicClient({ chain: chain.chain, transport })
-  const payee = process.env.PAYEE_ADDRESS as Hex
+  // the demo's two sellers: the Tea House and Mei, its staff member (tips)
+  const payees = [process.env.PAYEE_ADDRESS as Hex, SITE.demoStaff]
   const funder = demoFunderAddress()
   const items = []
   for (const r of raw) {
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
     }
     if (n.chainId !== chain.chain.id) return Response.json({ error: 'A slip is for another network.' }, { status: 400 })
     const c = await readCertificate(pub, chain.flyingMoney, n.certificateId)
-    if (!c || !isAddressEqual(c.funder, funder) || !isAddressEqual(c.payee, payee))
+    if (!c || !isAddressEqual(c.funder, funder) || !payees.some((p) => isAddressEqual(c.payee, p)))
       return Response.json({ error: 'Only demo budgets can be collected here.' }, { status: 403 })
     if (n.cumulative <= c.redeemed) continue // already collected
     items.push({ certificateId: n.certificateId, cumulative: n.cumulative, memo: n.memo, signature: n.sig })

@@ -9,7 +9,7 @@ Flying Money uses one set of words everywhere. People-facing screens, agent tool
 
 | People see | Agents see | Code | What it means |
 |---|---|---|---|
-| Budget | budget | certificate | Money set aside in a public contract for one seller, one user and an end date. |
+| Budget | budget | certificate | Money earmarked in a public contract for a seller, a user and an end date: as good as paid to that seller, useless to anyone else. |
 | Funded by | owner | funder | Who put the money in. |
 | Can use | agent (spending key) | spender | The key that can sign payment slips. |
 | Pays / Seller | service | payee | The only address that can ever be paid from it. |

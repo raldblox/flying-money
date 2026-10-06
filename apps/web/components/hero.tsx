@@ -22,12 +22,13 @@ export function Hero() {
             Payments that work <em className="text-seal">without the internet.</em>
           </h1>
           <p className="mt-5 max-w-xl text-xl leading-relaxed text-ink">
-            Give an agent, a phone or a robot a budget for one seller. It pays with a signed slip that travels by QR
-            code, sound or a link, and the seller checks it on the spot, even offline, sure the money is there. It all
-            settles in one transaction when the seller is back online.
+            Earmark digital dollars for a shop, an API or a charger: they’re as good as paid to that seller, even
+            offline, and useless to anyone else. An agent, a phone or a robot pays with a signed slip that travels by QR
+            code, sound, the shop’s Wi-Fi or a link. People just tap and pay: no crypto wallet, no network fees, no seed
+            phrase.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <ButtonLink href="/demo/counter">Try the offline counter →</ButtonLink>
+            <ButtonLink href="/demo/counter">Play the offline counter →</ButtonLink>
             <ButtonLink href="/demo/slip" variant="secondary">
               Get a slip that pays
             </ButtonLink>
@@ -71,7 +72,7 @@ export function Hero() {
             ]}
           />
           <figcaption className="mt-3 min-h-[3.5rem] text-center font-display text-xl leading-snug text-ink">
-            A budget for one seller. <em className="text-seal">Paid by slips, online or off.</em>
+            Money earmarked for the tea house. <em className="text-seal">Paid by slips, online or off.</em>
           </figcaption>
         </figure>
       </div>

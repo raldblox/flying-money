@@ -9,6 +9,7 @@ import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
 import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
+import { inBody } from '@/components/in-body'
 import { useOnline } from '@/components/offline-ready'
 import { Seal } from '@/components/seal'
 import { buttonClass } from '@/components/section'
@@ -369,12 +370,12 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
   }, [kind, result.price, onNext])
   // success tints celadon, own-risk amber, not-accepted dark ink: never the seal red (§22.5 f)
   const tone = kind === 'ok' ? 'bg-celadon/30 text-ink' : kind === 'risk' ? 'bg-amber/25 text-ink' : 'bg-ink text-paper'
-  return (
+  return inBody(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="result-t"
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-paper p-6"
+      className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-paper p-6"
     >
       <div className={`absolute inset-0 ${tone}`} aria-hidden />
       <p className="sr-only" role="status" aria-live="assertive">
@@ -443,7 +444,7 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
           </button>
         </div>
       </div>
-    </div>
+    </div>,
   )
 }
 

@@ -44,7 +44,8 @@ export function agentMd(
 
 Flying Money is how you pay for paid APIs **without ever holding your owner's money or keys**. You get your own
 spending key, which holds nothing. Your owner sets money aside from their own wallet as a **budget**: an amount that can
-pay **one seller**, only from your key, until an end date. You can't go over it, top it up or send it anywhere else.
+pay **the seller it's earmarked for**, only from your key, until an end date. You can't go over it, top it up or send it
+anywhere else, which is why it's worthless to anyone who steals your key. Need several sellers? Ask for one budget each.
 
 That's the stance to take, and to explain to your owner when it comes up:
 

@@ -19,6 +19,7 @@ import { CarryReceive, CarrySend } from '@/components/carry/carry'
 import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { Keepsake } from '@/components/carry/keepsake'
 import { GrantSummary } from '@/components/grant-summary'
+import { inBody } from '@/components/in-body'
 import { NetworkPicker } from '@/components/network-picker'
 import { useOnline } from '@/components/offline-ready'
 import { buttonClass } from '@/components/section'
@@ -647,8 +648,9 @@ function Choose({ offer, entries, onPick }: { offer: Offer; entries: Entry[]; on
   if (fits.length === 0)
     return (
       <p>
-        None of your budgets work at this shop. A budget is only valid at the one shop it was made for (
-        <span className="font-mono">{short(offer.accepts[0]!.payee)}</span>).
+        None of your budgets work at this shop. Each budget is earmarked for the shop it was made for, which is what
+        lets that shop trust it offline. This shop is{' '}
+        <span className="font-mono">{short(offer.accepts[0]!.payee)}</span>.
       </p>
     )
   return (
@@ -816,11 +818,11 @@ function ShowNote({
   if (paid) {
     const chain = getChainById(note.chainId)
     const k = paid.keepsake
-    return (
+    return inBody(
       <section
         role="dialog"
         aria-modal="true"
-        className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
+        className="theme-light fixed inset-0 z-[100] overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
         aria-labelledby="paid-t"
       >
         <div className="mx-auto grid max-w-md gap-4">
@@ -850,15 +852,15 @@ function ShowNote({
             Done
           </button>
         </div>
-      </section>
+      </section>,
     )
   }
 
-  return (
+  return inBody(
     <section
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
+      className="theme-light fixed inset-0 z-[100] overflow-y-auto bg-[#fbf7ef] p-4 text-center text-[#1b1712]"
       aria-labelledby="note-t"
     >
       <div className="mx-auto max-w-md">
@@ -931,7 +933,7 @@ function ShowNote({
           Close (keep it open for later)
         </button>
       </div>
-    </section>
+    </section>,
   )
 }
 
@@ -988,24 +990,25 @@ function Payments({ payments }: { payments: WalletPayment[] }) {
           </li>
         ))}
       </ul>
-      {open?.keepsake && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 overflow-y-auto bg-[#fbf7ef] p-4 text-[#1b1712]"
-        >
-          <div className="mx-auto grid max-w-md gap-4">
-            <Keepsake
-              data={open.keepsake}
-              network={getChain(open.chain).chain.name}
-              statusUrl={`${window.location.origin}/c/${open.chain}/${open.certificateId}`}
-            />
-            <button type="button" className={buttonClass('primary')} onClick={() => setOpen(null)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {open?.keepsake &&
+        inBody(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="theme-light fixed inset-0 z-[100] overflow-y-auto bg-[#fbf7ef] p-4 text-[#1b1712]"
+          >
+            <div className="mx-auto grid max-w-md gap-4">
+              <Keepsake
+                data={open.keepsake}
+                network={getChain(open.chain).chain.name}
+                statusUrl={`${window.location.origin}/c/${open.chain}/${open.certificateId}`}
+              />
+              <button type="button" className={buttonClass('primary')} onClick={() => setOpen(null)}>
+                Close
+              </button>
+            </div>
+          </div>,
+        )}
     </details>
   )
 }

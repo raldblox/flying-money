@@ -60,7 +60,7 @@ const STEPS: Array<Omit<ExplorerStep, 'icon'> & { Icon: typeof IconIssue }> = [
     flow: 0,
     Icon: IconIssue,
     t: 'Fund',
-    d: 'Choose a seller, an amount and an end date. The money is set aside for that seller alone, from your wallet.',
+    d: 'Earmark an amount for a seller until an end date, from your wallet. Several sellers? Several budgets: a shop, its staff’s tips, an API.',
   },
   {
     flow: 1,
@@ -117,6 +117,30 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <section aria-labelledby="play-t" className="mx-auto max-w-6xl px-4 sm:px-6">
+        <Sheet className="grid gap-6 p-6 sm:p-8 md:grid-cols-[1.4fr_1fr] md:items-center">
+          <div>
+            <p className="smallcaps text-xs text-seal">Try it in a minute · one screen · test money</p>
+            <h2 id="play-t" className="mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl">
+              Play the tea house. <em className="text-seal">Then cut its internet.</em>
+            </h2>
+            <p className="mt-3 text-lg text-ink-2">
+              Fill a basket, pay, tip the staff. Cut the till’s connection and keep paying. Let a phone die halfway and
+              finish the payment. Try to pay twice, or steal the budget. It feels like any payment app, and it’s digital
+              dollars underneath: nobody needs a crypto wallet, a network fee or a seed phrase.
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-3 md:items-end">
+            <ButtonLink href="/demo/counter">Play the shop →</ButtonLink>
+            <a
+              href="/demo/slip"
+              className="text-sm font-medium text-ink underline decoration-seal/50 underline-offset-4 hover:decoration-seal"
+            >
+              Or carry a slip between two devices →
+            </a>
+          </div>
+        </Sheet>
+      </section>
 
       <Chapter id="problem" n={1} eyebrow="The problem" title="Every payment asks a server for permission.">
         <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-center">
@@ -134,8 +158,8 @@ export default function Home() {
               ))}
             </ol>
             <p className="mt-6 border-t border-line pt-5 font-display text-2xl font-semibold leading-snug sm:text-3xl">
-              Carry a <em className="text-seal">budget</em> instead: money set aside for one seller, spent with slips
-              that need no connection.
+              Carry a <em className="text-seal">budget</em> instead: money earmarked for a seller, spent with slips that
+              need no connection.
             </p>
           </Sheet>
           <p className="text-xl leading-relaxed text-ink-2">
@@ -217,8 +241,8 @@ export default function Home() {
               </h3>
               <ul className="mt-3 grid gap-3">
                 <li>
-                  The payer can’t pay more than the budget. A stolen key can spend at most what’s left, and only at that
-                  one seller.
+                  The payer can’t pay more than the budget. A stolen key can spend at most what’s left, and only where
+                  it was earmarked: to a thief it’s worthless.
                 </li>
                 <li>Every valid slip is backed by money set aside for that seller until the end date.</li>
                 <li>

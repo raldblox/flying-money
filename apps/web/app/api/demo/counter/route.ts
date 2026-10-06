@@ -1,18 +1,21 @@
-// The offline counter demo: funds a small budget for the demo till and hands it to the visitor's phone wallet (a
-// hand-over link, like a gift). The phone then pays the till with slips, even in airplane mode. Test networks only.
+// The offline counter demo: funds the visitor's two earmarked budgets, one for the Tea House and one for tipping the
+// staff, each payable only to its seller. They're handed to the visitor (on the page, or on their phone by a
+// hand-over link); the visitor then pays with slips, even with the till's connection cut. Test networks only.
 import { getChain, isChainKey } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { FundError, fundDemoBudget } from '@/lib/demo-fund'
 import { admitSlip, demoGuardFromEnv } from '@/lib/demo-guard'
 import { handOverFragment } from '@/lib/handover'
+import { SITE } from '@/lib/site'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-/** Enough for five 0.01 certificates. */
-const FACE = 50_000n
+/** Spending money for the shop shelf, and a little for tips. */
+const SHOP_FACE = 100_000n // 0.10
+const TIPS_FACE = 50_000n // 0.05
 const LIFETIME_S = 3n * 86_400n
 
 export async function POST(req: Request) {
@@ -23,29 +26,41 @@ export async function POST(req: Request) {
     return Response.json({ error: 'The counter demo is not configured here.' }, { status: 503 })
   const guard = demoGuardFromEnv(process.env)
   if (!guard) return Response.json({ error: 'The demo limits are not configured.' }, { status: 503 })
-  const admission = await admitSlip(req, guard, FACE, 'counter')
+  const admission = await admitSlip(req, guard, SHOP_FACE + TIPS_FACE, 'counter')
   if (!admission.ok) return Response.json({ error: admission.error }, { status: admission.status })
 
-  // the phone's own spending key travels to it inside the hand-over link (the fragment, never sent to a server)
-  const key = generatePrivateKey()
+  const shopPayee = process.env.PAYEE_ADDRESS as Hex
+  const staffPayee = SITE.demoStaff
   try {
-    const funded = await fundDemoBudget({
-      chainKey,
-      face: FACE,
-      payee: process.env.PAYEE_ADDRESS as Hex,
-      spender: privateKeyToAccount(key).address,
-      lifetimeS: LIFETIME_S,
-      guard,
-    })
-    return Response.json(
-      {
-        chain: chainKey,
-        chainName: chain.chain.name,
+    const budgets = []
+    for (const b of [
+      { role: 'shop' as const, payee: shopPayee, face: SHOP_FACE, name: 'Tea House' },
+      { role: 'tips' as const, payee: staffPayee, face: TIPS_FACE, name: 'Tips for Mei' },
+    ]) {
+      // each budget has its own spending key; it travels to the visitor inside the hand-over (the fragment of a link,
+      // never sent to a server when opened)
+      const key = generatePrivateKey()
+      const funded = await fundDemoBudget({
+        chainKey,
+        face: b.face,
+        payee: b.payee,
+        spender: privateKeyToAccount(key).address,
+        lifetimeS: LIFETIME_S,
+        guard,
+      })
+      budgets.push({
+        role: b.role,
+        name: b.name,
         certificateId: funded.id,
+        payee: b.payee,
+        face: b.face.toString(),
+        expiresAt: funded.expiresAt.toString(),
         issueTx: `${chain.explorer}/tx/${funded.tx}`,
-        face: FACE.toString(),
-        handOver: handOverFragment({ v: 1, chain: chainKey, id: funded.id, key, name: 'Flying Money tea house' }),
-      },
+        handOver: handOverFragment({ v: 1, chain: chainKey, id: funded.id, key, name: b.name }),
+      })
+    }
+    return Response.json(
+      { chain: chainKey, chainName: chain.chain.name, contract: chain.flyingMoney, budgets },
       { headers: { 'cache-control': 'no-store' } },
     )
   } catch (e) {

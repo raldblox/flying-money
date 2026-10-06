@@ -7,12 +7,12 @@ import { SITE } from '@/lib/site'
 import { deployedChains } from '@/lib/wagmi'
 
 const nav = [
-  { href: '/demo', label: 'Demo' },
+  { href: '/demo/counter', label: 'Play the shop' },
+  { href: '/demo', label: 'Demos' },
   { href: '/docs/agents', label: 'Agents' },
   { href: '/shops', label: 'Shops' },
   { href: '/docs/offline', label: 'Offline' },
   { href: '/docs', label: 'Docs' },
-  { href: '/guarantees', label: 'Promises' },
 ]
 
 const link =
@@ -78,6 +78,7 @@ export function SiteHeader() {
             items={[
               { href: '/start', label: 'Get started' },
               ...nav,
+              { href: '/guarantees', label: 'Promises' },
               { href: '/app', label: 'Open app' },
               { href: '/wallet', label: 'Wallet' },
             ]}

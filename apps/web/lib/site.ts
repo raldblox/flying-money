@@ -8,6 +8,8 @@ export const SITE = {
   github: 'https://github.com/raldblox/flying-money',
   /** The live demo seller (the Silk Road Oracle): a real paid API on every test network, for agents to try. */
   demoSeller: process.env.ORACLE_URL ?? 'https://flying-money-oracle.vercel.app',
+  /** Where the offline counter demo's tips go (Mei, the staff member): a test-network address. */
+  demoStaff: (process.env.NEXT_PUBLIC_DEMO_STAFF ?? '0x8dB423F3b8991865030BcE381F7A50EC517c7c50') as `0x${string}`,
   /** The status line every page that handles funds must state (§20). */
   testnetMode: 'Testnet · test money · unaudited',
   mainnetMode: 'Mainnet · real USDC · unaudited · capped at 100 USDC',
