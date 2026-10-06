@@ -16,8 +16,9 @@ export function strictCsp(nonce: string, opts: { dev: boolean }): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    // chain RPCs, and shops' /.well-known files when verifying a place by domain
-    `connect-src 'self' https:${dev ? ' http://127.0.0.1:* http://localhost:* ws://localhost:* ws://127.0.0.1:*' : ''}`,
+    // chain RPCs, shops' /.well-known files when verifying a place by domain, and data: (the sound decoder reads its own
+    // embedded WebAssembly; a data: URL holds only bytes already in the page)
+    `connect-src 'self' https: data:${dev ? ' http://127.0.0.1:* http://localhost:* ws://localhost:* ws://127.0.0.1:*' : ''}`,
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     "object-src 'none'",

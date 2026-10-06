@@ -59,5 +59,5 @@ it('the sound library needs no eval, so it runs under the strict CSP of the wall
   const { readFileSync } = await import('node:fs')
   const { createRequire } = await import('node:module')
   const src = readFileSync(createRequire(import.meta.url).resolve('ggwave'), 'utf8')
-  expect(src).not.toMatch(/new Function\(|[^\w.]eval\(/)
+  expect(src).not.toMatch(/new Function\(|new_\(Function|[^\w.]eval\(/)
 })
