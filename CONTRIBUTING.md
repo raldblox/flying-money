@@ -1,8 +1,8 @@
 # Contributing to Flying Money
 
 Thanks for your interest. Flying Money is open source (MIT): a contract, a TypeScript SDK, an MCP server and a web app
-for prepaid, capped USDC budgets. It runs on test networks and is **not audited**, so please don't use it with real
-money.
+for prepaid, capped USDC budgets. It runs on test networks, and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total). It
+is **not audited**, so please don't use it with real money beyond that.
 
 ## Ways to help
 - **Try it and report what's confusing.** The [live site](https://useflyingmoney.vercel.app/start) has guided paths for

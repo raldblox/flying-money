@@ -1,4 +1,4 @@
-import { liveNetworks } from '@/lib/networks'
+import { liveMainnets, liveNetworks } from '@/lib/networks'
 import { InkMountains } from './art/ink-mountains'
 import { LiveTally } from './art/live-tally'
 import { ButtonLink } from './section'
@@ -47,7 +47,8 @@ export function Hero() {
             </a>
           </p>
           <p className="mt-7 text-sm text-ink-2">
-            Live on the {liveNetworks()} test networks · Open source (MIT) · Not yet audited ·{' '}
+            Live on the {liveNetworks()} test networks{liveMainnets() && <> and {liveMainnets()} mainnet (capped)</>} ·
+            Open source (MIT) · Not yet audited ·{' '}
             <a
               href="/chains"
               className="font-medium text-ink underline decoration-seal/50 underline-offset-4 hover:decoration-seal"

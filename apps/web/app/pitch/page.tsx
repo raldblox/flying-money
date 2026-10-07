@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { ButtonLink, Sheet } from '@/components/section'
 import { short } from '@/lib/fmt'
-import { liveNetworks } from '@/lib/networks'
+import { liveMainnets, liveNetworks } from '@/lib/networks'
 import { SITE } from '@/lib/site'
 
 export const metadata: Metadata = {
@@ -102,10 +102,10 @@ export default function PitchPage() {
           <Dots
             items={[
               'Rebuilt from scratch starting 23 Sep 2026.',
-              `Contract deployed and verified on the ${liveNetworks()} test networks, with 41 Foundry tests including invariant tests at 256 runs × depth 50.`,
+              `Contract deployed and verified on the ${liveNetworks()} test networks, and on ${liveMainnets()} mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), with 41 Foundry tests including invariant tests at 256 runs × depth 50.`,
               'Live test run: an agent made 20 paid calls, settled in 3 transactions, and the seller received exactly the 0.25 USDC it served. With its network cut, payments kept being accepted; a thief with the stolen key was refused three times.',
               'Working dashboard, shop till with offline acceptance, phone wallet, and an MCP server for Claude.',
-              'Not yet audited. Test networks only. No paying users yet.',
+              'Not yet audited. Test networks plus one capped mainnet. No paying users yet.',
             ]}
           />
           {arb.flyingMoney && (

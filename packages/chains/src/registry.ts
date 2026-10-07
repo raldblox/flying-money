@@ -1,15 +1,17 @@
 import type { Chain, Hex } from 'viem'
-import { anvil, arbitrumSepolia, arcTestnet, baseSepolia, monadTestnet, sepolia, tempoModerato } from 'viem/chains'
+import { anvil, arbitrumSepolia, arc, arcTestnet, baseSepolia, monadTestnet, sepolia, tempoModerato } from 'viem/chains'
 
 /**
  * @flying-money/chains — the ONLY place chain IDs, RPCs, USDC addresses, explorers and caps live
- * (BUILD_SPEC §5.4). No other code may hard-code these values. Test networks only: the contract is unaudited.
+ * (BUILD_SPEC §5.4). No other code may hard-code these values. The contract is unaudited: every network is a test
+ * network except Arc mainnet, which runs under immutable launch caps (§7.1 #9).
  */
 
 export type ChainKey =
   | 'arbitrum-sepolia'
   | 'monad-testnet'
   | 'arc-testnet'
+  | 'arc-mainnet'
   | 'base-sepolia'
   | 'ethereum-sepolia'
   | 'tempo-testnet'
@@ -60,6 +62,8 @@ const CIRCLE_FAUCET = 'https://faucet.circle.com'
 type Base = Omit<ChainConfig, 'flyingMoney' | 'deployedBlock'>
 
 const testnetCaps = { maxFaceValue: 0n, maxTotalOutstanding: 0n }
+/** Mainnet launch caps (§7.1 #9, D1): 100 USDC per certificate, 1,000 USDC across the whole deployment. Immutable. */
+const mainnetCaps = { maxFaceValue: 100_000_000n, maxTotalOutstanding: 1_000_000_000n }
 
 export const baseRegistry: Record<ChainKey, Base> = {
   'arbitrum-sepolia': {
@@ -101,6 +105,22 @@ export const baseRegistry: Record<ChainKey, Base> = {
     confirmations: 0,
     ...testnetCaps,
     notes: ['The Arc test network: gas is paid in test USDC from the Circle faucet.'],
+  },
+  'arc-mainnet': {
+    key: 'arc-mainnet',
+    brand: 'Arc',
+    blockscoutApi: 'https://explorer.arc.io/api/',
+    chain: arc,
+    mainnet: true,
+    usdc: '0x3600000000000000000000000000000000000000',
+    gasToken: 'USDC',
+    explorer: explorerOf(arc),
+    faucets: [],
+    confirmations: 0,
+    ...mainnetCaps,
+    notes: [
+      'Arc mainnet: real USDC, and gas is paid in USDC. Unaudited, so every budget is capped at 100 USDC and the whole deployment at 1,000 USDC. The caps are fixed in the contract.',
+    ],
   },
   'base-sepolia': {
     key: 'base-sepolia',
@@ -168,6 +188,7 @@ export const rpcEnvVar: Record<ChainKey, string> = {
   'arbitrum-sepolia': 'RPC_ARBITRUM_SEPOLIA',
   'monad-testnet': 'RPC_MONAD_TESTNET',
   'arc-testnet': 'RPC_ARC_TESTNET',
+  'arc-mainnet': 'RPC_ARC_MAINNET',
   'base-sepolia': 'RPC_BASE_SEPOLIA',
   'ethereum-sepolia': 'RPC_ETHEREUM_SEPOLIA',
   'tempo-testnet': 'RPC_TEMPO_TESTNET',
@@ -177,6 +198,7 @@ export const rpcEnvVar: Record<ChainKey, string> = {
 const specRpc: Partial<Record<ChainKey, string>> = {
   'monad-testnet': 'https://testnet-rpc.monad.xyz',
   'arc-testnet': 'https://rpc.testnet.arc.io',
+  'arc-mainnet': 'https://rpc.mainnet.arc.io',
   // viem's defaults for these are rate-limited third-party endpoints
   'ethereum-sepolia': 'https://ethereum-sepolia-rpc.publicnode.com',
 }

@@ -13,7 +13,7 @@ export function GET() {
 
 > Payments that work without the internet ("give a budget, not your wallet"). A funder locks USDC for ONE payee, spendable by ONE spender key until expiry. The spender pays with EIP-712 "notes" signed over a cumulative total; the payee verifies locally, with no network needed for a budget it has checked once, and redeems the latest note on-chain in one transaction. A note is about 150 bytes in its compact form (\`fm2n.\`), so it travels by any carrier: an HTTP header, a QR code, sound, a link or a file. Same contract source on every supported EVM chain. No token.
 
-Deployed now: ${chains || 'none yet'}. Unaudited; test networks only.
+Deployed now: ${chains || 'none yet'}. Unaudited. Test networks, plus Arc mainnet under immutable launch caps (100 USDC per budget, 1,000 USDC in total).
 
 **AI agent asked to set up payments? Read [${base}/agent.md](${base}/agent.md) and follow it.**
 

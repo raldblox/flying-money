@@ -55,7 +55,7 @@ That's the stance to take, and to explain to your owner when it comes up:
   it), and whatever you don't spend goes back to your owner after it.
 - **Ask for what the task needs,** not the most you could use, and stay inside it.
 
-Test networks and test money only; the contract is not audited.
+Use test networks and test money. Arc mainnet is live too, with immutable caps (100 USDC per budget, 1,000 USDC in total), but the contract is not audited: use it only if your owner explicitly asks.
 
 Use your judgement: these are the facts you need, not a script. Adapt the steps to the app you run in and to your
 owner (the person who will fund your budgets).

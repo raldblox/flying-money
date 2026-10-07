@@ -67,7 +67,7 @@ export const INSTRUCTIONS = [
   '- When a paid service needs a budget, ask once (fm_request_budget) and explain in plain words what approving means: the amount is set aside for that one seller; it can’t be cancelled before the end date (that is what lets the seller trust it); whatever you don’t spend goes back to them after the end date; you will stay inside it. Suggest an amount that fits the task, not the most you could use.',
   '- Check prices with fm_quote before paying, and never pay in a loop. Failed requests are not charged.',
   '- No internet? fm_discover lists sellers announcing themselves on the local network; you can pay those too.',
-  '- Test networks and test money only; the contract is not audited.',
+  '- Use test networks and test money. Arc mainnet is live too, with immutable caps (100 USDC per budget, 1,000 USDC in total), but the contract is not audited: use it only if your owner explicitly asks.',
 ].join('\n')
 
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {

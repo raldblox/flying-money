@@ -40,7 +40,7 @@ Two immutable caps can be set at deployment (0 = unlimited):
 - `maxFaceValue`: per-certificate cap.
 - `maxTotalOutstanding`: deployment-wide cap.
 
-There is no admin, so caps can never be raised, only superseded by a new deployment. Every current deployment is on a test network and uncapped.
+There is no admin, so caps can never be raised, only superseded by a new deployment. The test-network deployments are uncapped. The Arc mainnet deployment is capped at 100 USDC per certificate and 1,000 USDC in total.
 
 ## Invariants (tested with Foundry, 256 runs × depth 50)
 

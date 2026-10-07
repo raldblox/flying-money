@@ -88,8 +88,9 @@ export default function ChainsPage() {
         </table>
       </div>
       <p className="mt-4 text-sm text-ink-2">
-        Test networks only: the contract is unaudited, so every deployment holds test money. Budgets settle in USDC (in
-        OUSD on Tempo, which has no Circle USDC). On Tempo and Arc, gas is paid in stablecoins too.
+        The contract is unaudited. Test networks hold test money. Arc mainnet holds real USDC under launch caps fixed in
+        the contract: 100 USDC per budget and 1,000 USDC in total. Budgets settle in USDC (in OUSD on Tempo testnet,
+        which has no Circle USDC). On Tempo and Arc, gas is paid in stablecoins too.
       </p>
     </div>
   )

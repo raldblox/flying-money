@@ -27,7 +27,7 @@ We make three claims, and no stronger ones:
 - That a note reaches the seller (if it doesn't, the seller simply doesn't serve).
 - That the seller collects before the end date (its SDK does this automatically).
 - That the USDC issuer never freezes funds.
-- That the code is bug-free: it is **unaudited** software, invariant-tested, running on test networks only.
+- That the code is bug-free: it is **unaudited** software, invariant-tested, running on test networks and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total).
 
 ## At a shop counter
 

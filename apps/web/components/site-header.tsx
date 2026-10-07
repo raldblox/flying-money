@@ -21,7 +21,8 @@ const link =
 export function SiteHeader() {
   // what is live, from the registry: a small badge, not a strip across every page
   const live = deployedChains()
-  const mainnet = live.some((c) => c.mainnet)
+  // the badge describes what the app does: "Mainnet" only when every network it uses is a mainnet
+  const mainnet = live.length > 0 && live.every((c) => c.mainnet)
   return (
     <header>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:py-5">

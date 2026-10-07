@@ -49,7 +49,7 @@ describe('sellerStoreFromEnv', () => {
     expect(c.prefix).toBe('fm:custom:testnet:')
   })
 
-  it('FM_ENV must be testnet or mainnet (the registry is test networks only; the mainnet guards stay as defence)', () => {
+  it('FM_ENV must be testnet or mainnet (the mainnet guards: a mainnet seller needs FM_ENV=mainnet, and the two never mix)', () => {
     const mk = (env: Record<string, string>) => () =>
       sellerStoreFromEnv({ env: { ...up, ...env }, payee, accepts: ['arbitrum-sepolia'], requireDurable: true })
     expect(mk({ FM_ENV: 'staging' })).toThrow(/FM_ENV/)

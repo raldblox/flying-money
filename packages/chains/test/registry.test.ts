@@ -9,6 +9,7 @@ const SPEC = {
   'arbitrum-sepolia': [421614, '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d', 'ETH', false],
   'monad-testnet': [10143, '0x534b2f3A21130d7a60830c2Df862319e593943A3', 'MON', false],
   'arc-testnet': [5042002, '0x3600000000000000000000000000000000000000', 'USDC', false],
+  'arc-mainnet': [5042, '0x3600000000000000000000000000000000000000', 'USDC', true],
   'base-sepolia': [84532, '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 'ETH', false],
   'ethereum-sepolia': [11155111, '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', 'ETH', false],
   'tempo-testnet': [42431, '0x20c0000000000000000000006a37da5c996874be', 'USD', false],
@@ -30,21 +31,28 @@ describe('chain registry (§5.4)', () => {
     })
   }
 
-  it('test networks only, all uncapped (the contract is unaudited)', () => {
+  it('the contract is unaudited: test networks are uncapped, and the only mainnet is capped (100 / 1,000 USDC)', () => {
     for (const c of allChains()) {
-      expect(c.mainnet).toBe(false)
-      expect(c.maxFaceValue).toBe(0n)
-      expect(c.maxTotalOutstanding).toBe(0n)
+      if (c.mainnet) {
+        expect(c.key).toBe('arc-mainnet')
+        expect(c.maxFaceValue).toBe(100_000_000n)
+        expect(c.maxTotalOutstanding).toBe(1_000_000_000n)
+      } else {
+        expect(c.maxFaceValue).toBe(0n)
+        expect(c.maxTotalOutstanding).toBe(0n)
+      }
     }
   })
 
   it('Arc has deterministic finality (confirmations 0) and USDC gas', () => {
     expect(getChain('arc-testnet').confirmations).toBe(0)
+    expect(getChain('arc-mainnet').confirmations).toBe(0)
   })
 
   it('uses spec RPCs, and RPC_<KEY> env overrides them', () => {
     expect(rpcUrl('monad-testnet')).toBe('https://testnet-rpc.monad.xyz')
     expect(rpcUrl('arc-testnet')).toBe('https://rpc.testnet.arc.io')
+    expect(rpcUrl('arc-mainnet')).toBe('https://rpc.mainnet.arc.io')
     expect(rpcUrl('arbitrum-sepolia', { RPC_ARBITRUM_SEPOLIA: 'http://x' })).toBe('http://x')
     for (const k of chainKeys) expect(rpcUrl(k)).toMatch(/^https?:\/\//)
   })

@@ -2,11 +2,28 @@ import type { ChainKey } from '@flying-money/chains'
 import type { PickerNetwork } from '@/components/network-picker'
 import { deployedChains } from './wagmi'
 
-/** "Arbitrum, Base, Ethereum and Tempo": every network the contract is live on, from the registry, in one fair list. */
+const joinNames = (names: string[]): string => {
+  const sorted = [...new Set(names)].sort()
+  if (sorted.length <= 1) return sorted[0] ?? ''
+  return `${sorted.slice(0, -1).join(', ')} and ${sorted.at(-1)}`
+}
+
+/** "Arbitrum, Base, Ethereum and Tempo": every test network the contract is live on, from the registry, in one fair list. */
 export function liveNetworks(): string {
-  const names = [...new Set(deployedChains().map((c) => c.brand))].sort()
-  if (names.length <= 1) return names[0] ?? ''
-  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  return joinNames(
+    deployedChains()
+      .filter((c) => !c.mainnet)
+      .map((c) => c.brand),
+  )
+}
+
+/** "Arc": the mainnets the contract is live on, each under immutable launch caps. Empty when there are none. */
+export function liveMainnets(): string {
+  return joinNames(
+    deployedChains()
+      .filter((c) => c.mainnet)
+      .map((c) => c.brand),
+  )
 }
 
 /** Registry chains → picker entries, alphabetical by brand, so no network is featured first. */
