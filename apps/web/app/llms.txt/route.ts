@@ -7,7 +7,7 @@ export const dynamic = 'force-static'
 export function GET() {
   const base = SITE.url
   const chains = deployedChains()
-    .map((c) => `${c.chain.name} (${c.chain.id}, testnet)`)
+    .map((c) => `${c.chain.name} (${c.chain.id}, ${c.mainnet ? 'mainnet, capped' : 'testnet'})`)
     .join(', ')
   const body = `# Flying Money
 

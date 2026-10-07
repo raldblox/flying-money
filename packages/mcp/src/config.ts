@@ -32,7 +32,8 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *                        keeps it in FM_KEY_FILE (default: agent-key next to FM_STORE, mode 0600) (§22.10 b)
  *   FM_KEY_FILE          where the made key is kept
  *   AGENT_CERTIFICATES   comma-separated certificate ids issued to that key
- *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN, else every network with a deployment)
+ *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN, else every TEST network with a deployment;
+ *                        a mainnet such as arc-mainnet is real money and is used only when named here)
  *   FM_MAX_PRICE         per-request cap in USDC (default 0.05)
  *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json); requests go next to it
  *   FM_OWNER             owner address to ask for budgets (§21.4); optional
@@ -43,9 +44,12 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  *   FM_ALLOW_LAN         1: also pay sellers on this machine and the local network (never link-local); default off
  */
-/** Every public network the contract is deployed on: the default, so no network is favoured over another. */
+/**
+ * Every public test network the contract is deployed on: the default, so no network is favoured over another and an
+ * agent never reaches real money by default. A mainnet is opt-in, by naming it in AGENT_CHAINS.
+ */
 export function deployedChains(): ChainKey[] {
-  return chainKeys.filter((k) => k !== 'anvil' && Boolean(getChain(k).flyingMoney))
+  return chainKeys.filter((k) => k !== 'anvil' && !getChain(k).mainnet && Boolean(getChain(k).flyingMoney))
 }
 
 export function configFromEnv(env: Record<string, string | undefined> = process.env): McpEnvConfig {

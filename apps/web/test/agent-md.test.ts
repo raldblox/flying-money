@@ -5,6 +5,12 @@ import { agentInstruction, agentMd } from '@/lib/agent-md'
 describe('/agent.md', () => {
   const md = agentMd('https://example.test', ['arbitrum-sepolia'])
 
+  it('never makes a mainnet a default: real money is named in the prose, not in AGENT_CHAINS or the faucet list', () => {
+    expect(md).not.toMatch(/AGENT_CHAINS=[^\s]*arc-mainnet/)
+    expect(md).not.toMatch(/\*\*Arc:\*\*.*5042/)
+    expect(md).toMatch(/Arc mainnet is live too/)
+  })
+
   it('walks the agent through setup without a terminal step for the human', () => {
     expect(md).toMatch(/claude mcp add flying-money/)
     for (const client of ['Claude Code', 'Claude Desktop', 'Cursor', 'Any other MCP client'])

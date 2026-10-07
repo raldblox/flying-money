@@ -1,9 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { getChain } from '@flying-money/chains'
 import { afterEach, describe, expect, it } from 'vitest'
 import { loadOrCreateAgentKey } from '../src/agent-key.js'
-import { configFromEnv } from '../src/config.js'
+import { configFromEnv, deployedChains } from '../src/config.js'
 
 // BUILD_SPEC §22.10 b: the MCP server makes and keeps its own spending key, so nobody runs a terminal command.
 const dirs: string[] = []
@@ -14,6 +15,18 @@ const fresh = () => {
 }
 afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+})
+
+describe('an agent never reaches real money by default', () => {
+  it('defaults to test networks; a mainnet is used only when named in AGENT_CHAINS', () => {
+    const defaults = deployedChains()
+    expect(defaults.length).toBeGreaterThan(0)
+    for (const k of defaults) expect(getChain(k).mainnet).toBe(false)
+    expect(defaults).not.toContain('arc-mainnet')
+    // naming it is allowed (an explicit opt-in); the server starts with it
+    const store = join(fresh(), 'outbox.json')
+    expect(() => configFromEnv({ AGENT_CHAINS: 'arc-mainnet', FM_STORE: store })).not.toThrow()
+  })
 })
 
 describe('the MCP server keeps its own spending key (§22.10 b)', () => {

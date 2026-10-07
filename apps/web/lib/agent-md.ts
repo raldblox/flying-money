@@ -20,6 +20,8 @@ export function agentMd(
   const faucets = chainKeys
     .filter(isChainKey)
     .map(getChain)
+    // test networks only: a mainnet is real money, so it is never offered as a default (it is named in the prose)
+    .filter((c) => !c.mainnet && c.key !== 'anvil')
     .map((c) => {
       const gas =
         c.gasToken === 'ETH'
@@ -30,7 +32,7 @@ export function agentMd(
       return `  - **${c.chain.name}:** ${c.stablecoin ?? 'USDC'} from ${c.faucets.join(', ') || 'a faucet for this network'}; gas: ${gas}`
     })
     .join('\n')
-  const chains = chainKeys.join(',')
+  const chains = chainKeys.filter((k) => k !== 'anvil' && !getChain(k).mainnet).join(',')
   const env = { FM_OWNER: '<OWNER_WALLET>', ...(chains ? { AGENT_CHAINS: chains } : {}) }
   const envFlags = Object.entries(env)
     .map(([k, v]) => `-e ${k}=${v}`)
