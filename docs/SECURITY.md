@@ -4,7 +4,7 @@
 
 Please **don't open a public issue** for a security problem. Report it privately through GitHub: **Security → Report a vulnerability** on this repository. If that isn't available, open an issue titled "Security contact request" with no details, and a maintainer will reply with a private channel. We aim to acknowledge reports within 3 days. This is a testnet project without a bug bounty; please don't test against other people's funds or budgets.
 
-> **Audit status: not audited.** Invariant- and property-tested. Live on the Arbitrum, Base, Ethereum and Tempo test
+> **Audit status: not audited.** Invariant- and property-tested. Live on the Arbitrum, Base, Ethereum, Monad and Tempo test
 > networks, and on **Arc mainnet** (chain 5042) under immutable launch caps: 100 USDC per budget, 1,000 USDC in total. The caps are set in the
 > contract's constructor, so no one can raise them; only a new deployment can supersede them.
 

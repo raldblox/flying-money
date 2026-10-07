@@ -8,7 +8,7 @@ const joinNames = (names: string[]): string => {
   return `${sorted.slice(0, -1).join(', ')} and ${sorted.at(-1)}`
 }
 
-/** "Arbitrum, Base, Ethereum and Tempo": every test network the contract is live on, from the registry, in one fair list. */
+/** "Arbitrum, Base, Ethereum, Monad and Tempo": every test network the contract is live on, from the registry, in one fair list. */
 export function liveNetworks(): string {
   return joinNames(
     deployedChains()

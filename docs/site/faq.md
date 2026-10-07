@@ -12,7 +12,7 @@ It uses HTTP 402, but it's a *prefunded tab*: one settlement for many requests, 
 It is a one-way channel in spirit. The differences: anyone can redeem, the spending key is separate from the funder, there is no close negotiation, and it comes as an HTTP-native SDK for agents.
 
 **Which chain?**
-Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum and Tempo test networks, and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), with that chain's USDC (OUSD on Tempo testnet). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
+Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum, Monad and Tempo test networks, and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), with that chain's USDC (OUSD on Tempo testnet). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
 
 **Do certificates move between chains?**
 No, and nothing is bridged. A seller can accept notes on several chains; each chain settles independently. No bridge risk.
