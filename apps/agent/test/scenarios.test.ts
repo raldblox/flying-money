@@ -49,7 +49,8 @@ describe.runIf(anvilAvailable())('/demo scenarios on anvil', () => {
       expect(thief[2]!.detail).toContain('wrong-payee')
 
       // and the payee received exactly what was served
-      expect(done.served).toBe(20)
+      expect(done.served).toBe(19)
+      expect(events.filter((e) => e.type === 'answer')).toHaveLength(19)
       const paid = await pub.readContract({ address: usdc, abi: erc20Abi, functionName: 'balanceOf', args: [payee] })
       expect(paid.toString()).toBe(done.consumed)
       expect(done.redeemed).toBe(done.consumed)

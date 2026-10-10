@@ -55,14 +55,14 @@ export function DemoStage({
           </span>
         </div>
         {/* a fixed height: captions of different lengths never move what's below (stable to film) */}
-        <div aria-live="polite" className="h-[10rem] overflow-hidden sm:h-[8.5rem]">
+        <div aria-live="polite" className="min-h-28 pb-4">
           <h3
             key={caption.title}
-            className="caption-in mt-2 line-clamp-2 font-display text-2xl font-semibold leading-tight text-balance sm:text-3xl"
+            className="caption-in mt-2 font-display text-2xl font-semibold leading-tight text-balance sm:text-3xl"
           >
             {caption.title}
           </h3>
-          <p key={caption.detail} className="caption-in mt-1.5 line-clamp-3 max-w-3xl text-ink-2 sm:line-clamp-2">
+          <p key={caption.detail} className="caption-in mt-1.5 max-w-3xl text-ink-2">
             {caption.detail}
           </p>
         </div>
@@ -72,7 +72,7 @@ export function DemoStage({
       <div className="grid items-start gap-0 px-5 py-6 sm:px-7 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,11rem)_minmax(0,1fr)_minmax(0,11rem)]">
         <Actor
           icon={<IconAgent className="size-10" />}
-          name="AI agent"
+          name="Demo agent"
           tagline="spends"
           stat={`signed ${money(story.signed)}`}
           sub={story.answers[0] ? `Got: ${story.answers[0]}` : 'Waiting for its budget'}
@@ -124,12 +124,13 @@ export function DemoStage({
 /** The finale: the four numbers that matter, big. */
 function Result({ story, action }: { story: Story; action?: ReactNode }) {
   const shown = story.phase === 'done' && Boolean(story.done)
+  if (!shown) return null
   const d = story.done ?? { served: 0, redemptions: 0, redeemed: '0', remaining: '0' }
   const tiles = [
     { big: String(d.served), small: 'paid API calls' },
-    { big: String(d.redemptions), small: `blockchain transaction${d.redemptions === 1 ? '' : 's'}` },
+    { big: String(d.redemptions), small: `seller collection transaction${d.redemptions === 1 ? '' : 's'}` },
     { big: money(BigInt(d.redeemed)), small: 'USDC to the seller, exactly what it served' },
-    { big: money(BigInt(d.remaining)), small: 'USDC the owner can take back' },
+    { big: money(BigInt(d.remaining)), small: 'USDC remaining; sponsor can reclaim after expiry' },
   ]
   return (
     <div
@@ -298,7 +299,7 @@ function BudgetBar({ story }: { story: Story }) {
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-semibold">The budget: {money(face)} USDC</p>
-        <p className="text-xs text-ink-2">The agent can never sign past the right edge.</p>
+        <p className="text-xs text-ink-2">The seller and contract enforce this spending limit.</p>
       </div>
       <div
         className="relative mt-2 flex h-6 overflow-hidden rounded-sm border border-line bg-paper"
@@ -342,14 +343,15 @@ function Legend({ swatch, label, value }: { swatch: string; label: string; value
   )
 }
 
-/** 20 calls on top, the few transactions that collected them underneath: the batching, visible. */
+/** 19 purchases on top, the few transactions that collected them underneath: the batching, visible. */
 function CallsAndCollections({ story, mode }: { story: Story; mode: 'live' | 'illustration' }) {
-  const total = Math.max(20, story.calls)
+  const total = Math.max(19, story.calls)
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-semibold">
-          {story.calls} paid call{story.calls === 1 ? '' : 's'} → {story.collections.length} blockchain transaction
+          {story.calls} paid call{story.calls === 1 ? '' : 's'} → {story.collections.length} seller collection
+          transaction
           {story.collections.length === 1 ? '' : 's'}
         </p>
         <p className="text-xs text-ink-2">Each square is one API call paid with a slip.</p>
@@ -404,6 +406,10 @@ function ThiefRow({ attempts }: { attempts: ThiefAttempt[] }) {
     <div>
       <p className="flex items-center gap-2 font-semibold">
         <IconThief className="size-7 text-ink" /> Someone stole the agent’s key
+      </p>
+      <p className="mt-2 text-sm text-ink-2">
+        A stolen key can still spend the remaining budget at the allowed seller. These checks prevent redirecting
+        payment or exceeding the cap.
       </p>
       <ol className="mt-3 grid gap-3 md:grid-cols-3">
         {attempts.map((a, i) => (

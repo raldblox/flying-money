@@ -11,19 +11,19 @@ describe('demo story', () => {
     expect(money(0n)).toBe('0.00')
   })
 
-  it('the illustration adds up exactly like the live run: 20 calls, 0.25 served and collected, 0.05 back', () => {
+  it('the illustration adds up exactly like the live run: 19 calls, 0.25 served and collected, 0.05 back', () => {
     for (const cutNetwork of [false, true])
       for (const stealKey of [false, true]) {
         const s = play(illustrationScript({ cutNetwork, stealKey }))
         expect(s.phase).toBe('done')
-        expect(s.calls).toBe(20)
+        expect(s.calls).toBe(19)
         expect(s.served).toBe(250_000n)
         expect(s.collected).toBe(250_000n)
         expect(s.signed).toBe(250_000n)
         expect(s.done?.remaining).toBe('50000')
         // every call is collected exactly once, in order
         expect(s.collections.flatMap((c) => [c.from, c.to])[0]).toBe(1)
-        expect(s.collections.at(-1)?.to).toBe(20)
+        expect(s.collections.at(-1)?.to).toBe(19)
         for (let i = 1; i < s.collections.length; i++) expect(s.collections[i]!.from).toBe(s.collections[i - 1]!.to + 1)
         expect(s.collections.reduce((t, c) => t + c.paid, 0n)).toBe(250_000n)
         expect(s.thief).toHaveLength(stealKey ? 3 : 0)

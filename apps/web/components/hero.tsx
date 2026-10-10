@@ -5,55 +5,40 @@ import { ButtonLink } from './section'
 
 const H1 = 'mt-4 font-display text-[2.6rem] font-semibold leading-[1.04] tracking-tight text-balance sm:text-[3.9rem]'
 
-/**
- * The promise (§22.4), led by what only Flying Money does: a payment is a signed slip that needs no connection,
- * checked on the spot and guaranteed because the money is set aside for that seller.
- */
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="relative overflow-hidden">
       <InkMountains className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] w-full opacity-70" />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:pb-28 lg:pt-16">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:pb-16 lg:pt-16">
         <div className="rise min-w-0">
-          <p className="smallcaps text-sm text-seal">
-            <span lang="zh-Hant">飛錢</span> Flying Money · money that flies, since 804
-          </p>
+          <p className="smallcaps text-sm text-seal">For people, shops and AI agents</p>
           <h1 id="hero-title" className={H1}>
-            Payments that work <em className="text-seal">without the internet.</em>
+            Give a budget.
+            <br />
+            <em className="text-seal">Not your wallet.</em>
           </h1>
           <p className="mt-5 max-w-xl text-xl leading-relaxed text-ink">
-            Earmark digital dollars for a shop, an API or a charger: they’re as good as paid to that seller, even
-            offline, and useless to anyone else. An agent, a phone or a robot pays with a signed slip that travels by QR
-            code, sound, the shop’s Wi-Fi or a link. People just tap and pay: no crypto wallet, no network fees, no seed
-            phrase.
+            Let a person or an agent pay from money you set aside for one seller. You choose the amount and end date.
+            They pay with signed slips, within those limits.
+          </p>
+          <p className="mt-4 max-w-xl text-ink-2">
+            Once a seller has checked the funded budget online, it can check payment slips offline and collect before
+            the budget expires.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <ButtonLink href="/demo/counter">Play the offline counter →</ButtonLink>
-            <ButtonLink href="/demo/slip" variant="secondary">
-              Get a slip that pays
+            <ButtonLink href="/#demos">Choose your demo →</ButtonLink>
+            <ButtonLink href="/how-it-works" variant="secondary">
+              How it works
             </ButtonLink>
           </div>
-          <p className="mt-6 font-display text-2xl font-semibold">
-            Give a budget. <em className="text-seal">Not your wallet.</em>
+          <p className="mt-4 text-sm text-ink-2">
+            Two guided experiences · We provide test funds · No wallet to connect
           </p>
-          <p className="mt-2 max-w-xl text-ink-2">
-            The payer holds only its own key, which holds no money. You set the seller, the amount and the end date, and
-            take back what’s left.{' '}
-            <a
-              href="/demo"
-              className="font-medium text-ink underline decoration-seal/50 underline-offset-4 hover:decoration-seal"
-            >
-              Watch an agent pay →
-            </a>
-          </p>
-          <p className="mt-7 text-sm text-ink-2">
-            Live on the {liveNetworks()} test networks{liveMainnets() && <> and {liveMainnets()} mainnet (capped)</>} ·
-            Open source (MIT) · Not yet audited ·{' '}
-            <a
-              href="/chains"
-              className="font-medium text-ink underline decoration-seal/50 underline-offset-4 hover:decoration-seal"
-            >
-              See networks →
+          <p className="mt-6 text-xs leading-relaxed text-ink-2">
+            Open source · Not yet audited · Live on {liveNetworks()} test networks
+            {liveMainnets() && <> and {liveMainnets()} mainnet (capped)</>}.{' '}
+            <a href="/chains" className="underline underline-offset-4">
+              See deployments
             </a>
           </p>
         </div>
@@ -73,7 +58,10 @@ export function Hero() {
             ]}
           />
           <figcaption className="mt-3 min-h-[3.5rem] text-center font-display text-xl leading-snug text-ink">
-            Money earmarked for the tea house. <em className="text-seal">Paid by slips, online or off.</em>
+            An illustrated budget, spent one slip at a time.
+            <span className="mt-1 block font-sans text-xs text-ink-2">
+              Illustration only · Try a demo below to make real test-network payments.
+            </span>
           </figcaption>
         </figure>
       </div>

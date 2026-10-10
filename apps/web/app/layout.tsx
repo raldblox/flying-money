@@ -5,6 +5,7 @@ import { Providers } from '@/app/app/providers'
 import { PaperDefs } from '@/components/art/paper-defs'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { THEME_SCRIPT } from '@/lib/theme'
 import './globals.css'
 
 const display = Cormorant_Garamond({
@@ -19,9 +20,9 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' }
 const han = Noto_Serif_TC({ weight: ['600'], variable: '--font-noto-tc', preload: false })
 
 export const metadata: Metadata = {
-  title: { default: 'Flying Money: payments that work without the internet', template: '%s · Flying Money' },
+  title: { default: 'Flying Money: give a budget, not your wallet', template: '%s · Flying Money' },
   description:
-    'Earmark digital dollars for a shop, an API or a charger. An agent, a phone or a robot pays with signed slips that travel by QR code, sound, Wi-Fi or a link; the seller checks each one on the spot, even offline, and collects in one transaction. No crypto wallet needed to pay.',
+    'Set aside USDC for one seller, one spending key, an amount and an end date. Experience sponsored shop and agent demos, then explore how signed payment slips work offline after budget verification.',
   applicationName: 'Flying Money',
   manifest: '/manifest.webmanifest',
   icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' }, apple: '/brand/apple-touch-icon.png' },
@@ -39,9 +40,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       data-scroll-behavior="smooth"
       className={`${display.variable} ${sans.variable} ${mono.variable} ${han.variable}`}
     >
+      <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: fixed theme bootstrap allowed by its exact CSP hash */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-dvh flex flex-col antialiased">
         <PaperDefs />
         <a

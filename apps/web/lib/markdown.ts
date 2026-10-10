@@ -31,5 +31,8 @@ const md = new Marked({
 })
 
 export function renderMarkdown(source: string, inline = false): string {
-  return inline ? (md.parseInline(source) as string) : (md.parse(source) as string)
+  // Scrollable code examples must be reachable by keyboard. Keep Marked's escaping and rendering intact.
+  return inline
+    ? (md.parseInline(source) as string)
+    : (md.parse(source) as string).replace(/<pre>/g, '<pre tabindex="0">')
 }

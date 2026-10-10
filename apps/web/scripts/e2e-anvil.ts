@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { flyingMoneyAbi, mockUsdcAbi } from '@flying-money/abi'
 import { anvilAccount, deployLocal } from '@flying-money/agent/anvil'
 import { counterRequestId, encodeHeader, type Hex, newRequestId, signNote } from '@flying-money/core'
-import { createPublicClient, createWalletClient, http, parseEventLogs, parseUnits } from 'viem'
+import { createPublicClient, createWalletClient, http, parseEventLogs, parseUnits, toHex } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { anvil as anvilChain } from 'viem/chains'
 
@@ -41,7 +41,7 @@ if (cmd === 'setup') {
   writeFileSync(stateFile, JSON.stringify({ spenderKey, usdc, flyingMoney, anvilPid: proc.pid }))
   writeFileSync(
     join(import.meta.dirname, '..', '.env.development.local'),
-    `NEXT_PUBLIC_FM_E2E_ANVIL=${url}\nNEXT_PUBLIC_FM_E2E_USDC=${usdc}\nNEXT_PUBLIC_FM_E2E_CONTRACT=${flyingMoney}\nNEXT_PUBLIC_FM_E2E_ACCOUNT=${funder.address}\n`,
+    `NEXT_PUBLIC_FM_E2E_ANVIL=${url}\nNEXT_PUBLIC_FM_E2E_USDC=${usdc}\nNEXT_PUBLIC_FM_E2E_CONTRACT=${flyingMoney}\nNEXT_PUBLIC_FM_E2E_ACCOUNT=${funder.address}\nDEMO_FUNDER_KEY=${toHex(funder.getHdKey().privateKey!)}\nDEMO_AGENT_KEY=${spenderKey}\nREDEEMER_KEY=${toHex(anvilAccount(2).getHdKey().privateKey!)}\nPAYEE_ADDRESS=${anvilAccount(3).address}\nFM_REDIS_PREFIX=fm:test:browser:${crypto.randomUUID()}:\n`,
   )
   console.log(
     JSON.stringify({ usdc, flyingMoney, funder: funder.address, spender: privateKeyToAccount(spenderKey).address }),

@@ -19,13 +19,13 @@ export default function DemoPage() {
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-14">
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-seal">Live demo · {SITE.testnetMode}</p>
       <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight sm:text-6xl">
-        Watch an agent <em className="text-seal">pay</em>.
+        Your agent. <em className="text-seal">Your approval.</em>
       </h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
-        An AI agent buys data from an API, one request at a time, from a budget it can’t go past. Below is how it plays
-        out. Press <strong className="text-ink">Run it for real</strong> to do it on a test network with real
-        transactions.
+        Borrow our scripted agent to shop at the Silk Road Oracle. We provide the test funds. You approve its shopping
+        list, then receive the answers, a keepsake, and the receipts. No personal wallet needed.
       </p>
+      <DemoClient chains={demoChains} defaultChain={chain.key} />
       <section className="mt-8 grid gap-4 sm:grid-cols-2" aria-label="Other demos">
         <a href="/demo/counter" className="sheet block border-seal p-5 hover:border-seal">
           <p className="smallcaps text-xs text-seal">Play it · one screen, no setup</p>
@@ -44,7 +44,6 @@ export default function DemoPage() {
           </p>
         </a>
       </section>
-      <DemoClient chains={demoChains} defaultChain={chain.key} />
     </div>
   )
 }

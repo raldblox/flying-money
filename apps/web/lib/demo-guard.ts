@@ -97,3 +97,54 @@ export async function admitSlip(
   if (!budget.ok) return { ok: false, status: 429, error: 'Today’s slips are used up. They reset at midnight UTC.' }
   return { ok: true }
 }
+
+/** Advisory only: reads never reserve a slot or consume the visitor allowance. POST still admits atomically. */
+export async function inspectDemoRun(req: Request, deps: DemoGuardDeps, face: bigint) {
+  if (await deps.lock.isHeld('demo'))
+    return {
+      available: false,
+      reason: 'busy',
+      message: 'Another visitor’s agent is shopping. Check again shortly, or watch the illustration.',
+    }
+  const day = new Date().toISOString().slice(0, 10)
+  if ((await deps.limits.read('demo-usdc', day)) + face > DEMO_DAILY_CAP)
+    return {
+      available: false,
+      reason: 'exhausted',
+      message:
+        'Today’s sponsored demo budget is used up. It resets at midnight UTC. The illustration is still available.',
+    }
+  if ((await deps.limits.read('demo-visitor', visitor(req))) >= 1n)
+    return {
+      available: false,
+      reason: 'cooldown',
+      message: 'You can start one sponsored run every two minutes. Your existing run is still available.',
+    }
+  return { available: true, reason: 'ready', message: 'Sponsorship is available. Nothing starts until you approve.' }
+}
+
+export async function inspectCounter(req: Request, deps: DemoGuardDeps, face: bigint, chain: string) {
+  if (await deps.lock.isHeld(`slip:${chain}`))
+    return {
+      available: false,
+      reason: 'busy',
+      message: 'Another visitor’s budget is being funded. Check again shortly.',
+    }
+  if ((await deps.limits.read('counter-visitor', visitor(req))) >= 1n)
+    return {
+      available: false,
+      reason: 'cooldown',
+      message: 'You can claim one demo wallet per minute. Check again shortly.',
+    }
+  if ((await deps.limits.read('slip-usdc', new Date().toISOString().slice(0, 10))) + face > SLIP_DAILY_CAP)
+    return {
+      available: false,
+      reason: 'exhausted',
+      message: 'Today’s sponsored counter budget is used up. It resets at midnight UTC.',
+    }
+  return {
+    available: true,
+    reason: 'ready',
+    message: 'Your sponsored budget is available. Claim it when you’re ready.',
+  }
+}

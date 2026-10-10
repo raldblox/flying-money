@@ -55,14 +55,14 @@ export function keepsakeSvg(d: KeepsakeData, opts: { network: string; statusUrl:
 <text x="300" y="276" text-anchor="middle" font-size="17" fill="${ink}">This certifies that</text>
 <text x="300" y="318" text-anchor="middle" font-size="30" font-style="italic" fill="${ink}">${esc(d.name || 'the bearer of this slip')}</text>
 <text x="300" y="362" text-anchor="middle" font-size="17" fill="${ink}">paid ${usd} USDC on ${esc(opts.network)}</text>
-<text x="300" y="388" text-anchor="middle" font-size="17" fill="${ink}">with a signed slip, carried from device to device,</text>
+<text x="300" y="388" text-anchor="middle" font-size="17" fill="${ink}">with a signed payment slip,</text>
 <text x="300" y="414" text-anchor="middle" font-size="17" fill="${ink}">and checked on the spot by the seller.</text>
 ${proverb.map((l, i) => `<text x="300" y="${484 + i * 26}" text-anchor="middle" font-size="18" font-style="italic" fill="${ink}">${esc(l)}</text>`).join('\n')}
 <text x="300" y="${494 + proverb.length * 26}" text-anchor="middle" font-size="12" fill="#5d554a">${esc(d.proverb.source)}</text>
 <g transform="translate(64 676)"><rect x="-6" y="-6" width="104" height="104" fill="#fbf7ef"/><path d="${qr}" fill="${ink}"/></g>
 <text x="180" y="704" font-size="12" fill="#5d554a">Issued ${esc(when)}</text>
 <text x="180" y="724" font-size="12" fill="#5d554a">Budget ${esc(d.certificateId.slice(0, 10))}…${esc(d.certificateId.slice(-6))}</text>
-<text x="180" y="744" font-size="12" fill="#5d554a">Scan to see it collected on-chain.</text>
+<text x="180" y="744" font-size="12" fill="#5d554a">Scan to check the budget on-chain.</text>
 <text x="180" y="764" font-size="12" fill="#5d554a">Test network · test money</text>
 <g transform="translate(486 724) rotate(-8)">
 <circle r="52" fill="none" stroke="${seal}" stroke-width="4"/><circle r="44" fill="none" stroke="${seal}" stroke-width="1.5"/>

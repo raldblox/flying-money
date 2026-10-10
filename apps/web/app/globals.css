@@ -163,6 +163,11 @@ body {
   }
 }
 
+:root[data-theme="dark"] .sheet::before {
+  background-image: radial-gradient(120% 90% at 50% 40%, transparent 50%, rgb(0 0 0 / 0.35)), var(--grain);
+  filter: url(#deckle) drop-shadow(0 10px 24px rgb(0 0 0 / 0.55));
+}
+
 /* Ledger ruling (Chinese account books): red column rules and faint horizontal lines. */
 .ledger {
   background-image: repeating-linear-gradient(
@@ -712,4 +717,23 @@ a {
     opacity: 1;
     transform: none;
   }
+}
+/* Demo transactions use quiet surfaces; the surrounding page retains the paper identity. */
+.demo-panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  box-shadow: var(--sheet-shadow);
+}
+.demo-panel:focus-within {
+  border-color: color-mix(in srgb, var(--ink) 45%, var(--line));
+}
+.demo-paused *,
+.demo-paused *::before,
+.demo-paused *::after {
+  animation-play-state: paused;
+}
+.demo-journey {
+  list-style: none;
+  padding: 0;
 }

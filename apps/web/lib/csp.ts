@@ -1,3 +1,8 @@
+import { createHash } from 'node:crypto'
+import { THEME_SCRIPT } from './theme'
+
+const themeHash = createHash('sha256').update(THEME_SCRIPT).digest('base64')
+
 /**
  * Audit F11: the pages that decrypt or use keys (wallet, till, account) get a strict, per-request nonce CSP from
  * `proxy.ts`, so an injected script can't run there. Other pages are static and carry the baseline headers from
@@ -11,7 +16,7 @@ export function strictCsp(nonce: string, opts: { dev: boolean }): string {
   const dev = opts.dev
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'sha256-${themeHash}' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ''}`,
     // inline style attributes are used for layout and animation; styles can't run code
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",

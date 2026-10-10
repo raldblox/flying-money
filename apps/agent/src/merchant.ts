@@ -1,6 +1,6 @@
 import { type FlyingMoneyClient, NoCertificateError, PriceTooHighError } from '@flying-money/client'
 
-/** "The Merchant" (§13.2 mode A): a deterministic, scripted buyer planning a tea trade. About 20 paid calls. */
+/** "The Merchant" (§13.2 mode A): a deterministic, scripted buyer planning a tea trade. 19 paid purchases, including a keepsake. */
 
 export interface MerchantStep {
   label: string
@@ -29,9 +29,15 @@ export function merchantPlan(): MerchantStep[] {
     ...CITIES.map((c) => ({ label: `asked tea price @${c}`, path: `/v1/tea-price?city=${q(c)}` })),
     ...WEATHER.map(([c, lat, lon]) => ({ label: `asked weather @${c}`, path: `/v1/weather?lat=${lat}&lon=${lon}` })),
     ...ROUTES.map(([a, b]) => ({ label: `asked route ${a} → ${b}`, path: `/v1/route?from=${q(a)}&to=${q(b)}` })),
-    { label: 'asked for a proverb', path: '/v1/proverb' },
-    { label: 'asked for another proverb', path: '/v1/proverb' },
+    { label: 'bought your Flying Money keepsake', path: '/v1/certificate?name=Silk%20Road%20visitor' },
   ]
+}
+
+export interface MerchantAnswer {
+  step: string
+  path: string
+  status: number
+  body: Record<string, unknown> | null
 }
 
 export interface MerchantResult {
@@ -50,6 +56,7 @@ export async function runMerchant(opts: {
   oracleUrl: string
   log?: MerchantLog
   steps?: MerchantStep[]
+  onAnswer?: (answer: MerchantAnswer) => void
 }): Promise<MerchantResult> {
   const log = opts.log ?? (() => {})
   const steps = opts.steps ?? merchantPlan()
@@ -64,6 +71,7 @@ export async function runMerchant(opts: {
       const res = await opts.fm.fetch(base + step.path)
       const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
       out.answers.push({ step: step.label, status: res.status, body })
+      opts.onAnswer?.({ step: step.label, path: step.path, status: res.status, body })
       if (res.ok) {
         out.served++
         if (typeof body?.pricePerJin === 'number') tea.set(String(body.city), body.pricePerJin)
@@ -80,6 +88,7 @@ export async function runMerchant(opts: {
         break
       }
       out.failed++
+      opts.onAnswer?.({ step: step.label, path: step.path, status: 0, body: null })
       await log(`${step.label} → error: ${(e as Error).message}`)
     }
   }
@@ -110,6 +119,7 @@ function summarise(body: Record<string, unknown> | null): string {
   if ('pricePerJin' in body) return `${body.pricePerJin} per jin (${body.trend})`
   if ('temperature_c' in body) return `${body.temperature_c}°C, wind ${body.wind_kmh} km/h`
   if ('distanceLi' in body) return `${body.distanceLi} li, ~${body.caravanDays} caravan days`
+  if (body.kind === 'flying-money-certificate') return `keepsake ${body.serial}`
   if ('text' in body) return `“${body.text}”`
   return 'ok'
 }

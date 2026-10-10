@@ -101,6 +101,7 @@ const upstashRest = (url: string, token: string) =>
 // ───────── locks: {p}lock:{name} (SET NX PX, ≤ 5 min) ─────────
 
 export interface Lock {
+  isHeld(name: string): Promise<boolean>
   /** Returns an owner token, or null if someone else holds the lock. */
   acquire(name: string, ttlMs: number): Promise<string | null>
   /** Releases only if `token` still owns the lock (compare-and-delete). */
@@ -113,6 +114,9 @@ const RELEASE = `if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call
 export function redisLock(r: RedisEval, prefix: string): Lock {
   const key = (name: string) => `${prefix}lock:${name}`
   return {
+    async isHeld(name) {
+      return Number(await r.eval("return redis.call('EXISTS', KEYS[1])", [key(name)], [])) === 1
+    },
     async acquire(name, ttlMs) {
       const token = crypto.randomUUID()
       const res = await r.eval(ACQUIRE, [key(name)], [token, String(Math.max(1, Math.min(ttlMs, 300_000)))])
@@ -128,6 +132,9 @@ export function redisLock(r: RedisEval, prefix: string): Lock {
 export function memoryLock(): Lock {
   const held = new Map<string, { token: string; until: number }>()
   return {
+    async isHeld(name) {
+      return (held.get(name)?.until ?? 0) > Date.now()
+    },
     async acquire(name, ttlMs) {
       const h = held.get(name)
       if (h && h.until > Date.now()) return null
@@ -160,6 +167,7 @@ if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[3]) en
 return {1, nxt}`
 
 export interface RateLimiter {
+  read(scope: string, id: string): Promise<bigint>
   /** Counts one hit; ok while the count within the window is ≤ limit. Shared by every instance. */
   hit(scope: string, id: string, limit: number, windowSeconds: number): Promise<{ ok: boolean; count: number }>
   /** Adds `amount` to a budget only if the window's total stays ≤ cap (integer base units, exact). */
@@ -175,6 +183,9 @@ export interface RateLimiter {
 export function rateLimiter(r: RedisEval, prefix: string): RateLimiter {
   const key = (scope: string, id: string) => `${prefix}rl:${scope}:${id}`
   return {
+    async read(scope, id) {
+      return BigInt(String(await r.eval("return redis.call('GET', KEYS[1]) or '0'", [key(scope, id)], [])))
+    },
     async hit(scope, id, limit, windowSeconds) {
       const n = Number(await r.eval(HIT, [key(scope, id)], [String(windowSeconds)]))
       return { ok: n <= limit, count: n }
@@ -201,6 +212,10 @@ export function memoryRateLimiter(): RateLimiter {
     return fresh
   }
   return {
+    async read(scope, id) {
+      const value = m.get(`${scope}:${id}`)
+      return value && value.until > Date.now() ? value.n : 0n
+    },
     async hit(scope, id, limit, windowSeconds) {
       const e = cur(`${scope}:${id}`, windowSeconds)
       e.n += 1n

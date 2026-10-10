@@ -45,4 +45,4 @@ const done = await runLiveDemo({
 console.log(
   `\ncalls ${done.calls} · served ${done.served} · consumed ${usd(done.consumed)} · redeemed ${usd(done.redeemed)} in ${done.redemptions} tx · remaining ${usd(done.remaining)} returns to the funder after expiry`,
 )
-process.exit(done.served >= 20 && done.redemptions >= 1 && done.redeemed === done.consumed ? 0 : 1)
+process.exit(done.served >= 19 && done.redemptions >= 1 && done.redeemed === done.consumed ? 0 : 1)

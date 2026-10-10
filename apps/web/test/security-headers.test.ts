@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { strictCsp, strictCspPath } from '../lib/csp'
 import { renderMarkdown } from '../lib/markdown'
+import { THEME_SCRIPT } from '../lib/theme'
 
 // Audit F11: key-holding pages get a strict, per-request nonce CSP, and the docs' Markdown can't inject script.
 describe('F11: strict CSP on key-holding pages', () => {
@@ -18,8 +20,14 @@ describe('F11: strict CSP on key-holding pages', () => {
       expect(strictCspPath(p), p).toBe(false)
   })
 
-  it('allows only nonce-carrying scripts, and no eval in production', () => {
+  it('allows nonce-carrying scripts and the exact theme bootstrap, without eval in production', () => {
     const csp = strictCsp('abc123', { dev: false })
+    expect(csp).toContain(`'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`)
+    expect(csp).not.toContain(
+      `'sha256-${createHash('sha256')
+        .update(THEME_SCRIPT + ';alert(1)')
+        .digest('base64')}'`,
+    )
     expect(csp).toMatch(/script-src 'self' 'nonce-abc123' 'strict-dynamic'(;| )/)
     // JavaScript eval stays off; only WebAssembly may compile (the sound carrier's decoder)
     expect(csp).not.toMatch(/'unsafe-eval'/)

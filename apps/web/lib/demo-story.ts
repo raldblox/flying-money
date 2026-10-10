@@ -1,7 +1,9 @@
+import type { MerchantAnswer } from '@flying-money/agent'
 // Turns the /demo event stream into a visual story: actors, flights, captions and totals. Pure, so the live run and
 // the labelled illustration share it (and it is unit-tested). Amounts stay integer base units (bigint).
 
 export type DemoEvent =
+  | ({ type: 'answer' } & MerchantAnswer)
   | { type: 'start'; chain: string; chainName: string; explorer: string; face: string }
   | { type: 'info'; text: string; url?: string }
   | { type: 'issued'; certificateId: string; faceValue: string; expiresAt: string; txHash: string; txUrl: string }
@@ -100,7 +102,7 @@ export const initialStory: Story = {
   network: 'up',
   thief: [],
   caption: {
-    title: 'An AI agent is about to pay for 20 API calls',
+    title: 'An AI agent is about to pay for 19 approved purchases',
     detail: 'Watch each payment travel as a signed slip, and the seller collect them in a few transactions.',
     tone: 'ink',
   },
@@ -113,6 +115,7 @@ const PATHS: Record<string, string> = {
   '/v1/route': 'a trade route',
   '/v1/weather': 'live weather',
   '/v1/proverb': 'a proverb',
+  '/v1/certificate': 'your keepsake',
 }
 
 /** "0.1" → "0.10": display only. */
@@ -275,7 +278,7 @@ export function reduceStory(s: Story, e: DemoEvent): Story {
         done: e,
         certificateUrl: e.certificateUrl,
         caption: {
-          title: `${e.served} paid calls, ${e.redemptions} blockchain transaction${e.redemptions === 1 ? '' : 's'}`,
+          title: `${e.served} paid calls, ${e.redemptions} seller collection transaction${e.redemptions === 1 ? '' : 's'}`,
           detail: `The seller received exactly ${money(BigInt(e.redeemed))} USDC for what it served. ${money(BigInt(e.remaining))} USDC stays locked until the end date; then the owner can take it back.`,
           tone: 'celadon',
         },
@@ -318,8 +321,7 @@ export function illustrationScript(opts: { cutNetwork: boolean; stealKey: boolea
     ...['2,900 li, ~58 caravan days', '520 li, ~11 caravan days', '3,100 li, ~62 caravan days'].map(
       (a) => ['/v1/route', 20_000n, a] as [string, bigint, string],
     ),
-    ['/v1/proverb', 5_000n, '“A journey of a thousand li begins with one step.”'],
-    ['/v1/proverb', 5_000n, '“Tea is the pulse of the road.”'],
+    ['/v1/certificate', 10_000n, 'Your Flying Money keepsake'],
   ]
   const face = 300_000n
   const ev: DemoEvent[] = [

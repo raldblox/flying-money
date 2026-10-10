@@ -20,9 +20,10 @@ import {
   type PublicClient,
 } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { type MerchantResult, runMerchant } from './merchant.js'
+import { type MerchantAnswer, type MerchantResult, runMerchant } from './merchant.js'
 
 export type LiveEvent =
+  | ({ type: 'answer' } & MerchantAnswer)
   | { type: 'info'; text: string; url?: string }
   | { type: 'issued'; certificateId: Hex; faceValue: string; expiresAt: string; txHash: Hex; txUrl: string }
   | { type: 'step'; text: string }
@@ -202,6 +203,7 @@ export async function runLiveDemo(cfg: LiveDemoConfig): Promise<Extract<LiveEven
     const merchant = await runMerchant({
       fm,
       oracleUrl,
+      onAnswer: (answer) => emit({ type: 'answer', ...answer }),
       log: async (text) => {
         emit({ type: 'step', text })
         step++
