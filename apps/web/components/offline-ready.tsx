@@ -18,45 +18,55 @@ export function useOnline() {
   return online
 }
 
-/** Must match CACHE in public/sw.js. */
-const SHELL_CACHE = 'fm-shell-v4'
-
-/**
- * On the very first visit this page loaded before the service worker controlled it, so its own page and scripts are
- * not cached yet. Add them now (same-origin build assets only), so the next visit works offline.
- */
-async function warmCache() {
-  const c = await caches.open(SHELL_CACHE)
-  const assets = performance
-    .getEntriesByType('resource')
-    .map((e) => e.name)
-    .filter((u) => u.startsWith(`${location.origin}/_next/static/`))
-  await Promise.all(
-    assets.map(async (a) => {
-      if (!(await c.match(a))) await c.add(a).catch(() => {})
-    }),
-  )
-  const page = location.pathname + location.search
-  if (!(await c.match(page))) await c.add(page).catch(() => {})
+/** Ask the active worker to verify its own cache, rather than guessing from registration alone. */
+async function warmCache(worker: ServiceWorker): Promise<boolean> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    const finish = (ready: boolean) => {
+      clearTimeout(timeout)
+      channel.port1.close()
+      resolve(ready)
+    }
+    const timeout = setTimeout(() => finish(false), 30_000)
+    channel.port1.onmessage = (event) => finish(event.data?.ready === true)
+    const assets = performance
+      .getEntriesByType('resource')
+      .map((e) => e.name)
+      .filter((url) => url.startsWith(`${location.origin}/_next/static/`))
+    worker.postMessage({ type: 'CACHE_PAGE', page: location.href.split('#')[0], assets }, [channel.port2])
+  })
 }
 
 export function OfflineReady() {
   const online = useOnline()
   const [ready, setReady] = useState(false)
+  const [checked, setChecked] = useState(false)
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || process.env.NODE_ENV !== 'production') return
+    if (!online || !('serviceWorker' in navigator) || process.env.NODE_ENV !== 'production') return
+    let gone = false
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then(() => navigator.serviceWorker.ready)
-      .then(() => warmCache())
-      .then(() => setReady(true))
-      .catch(() => {})
-  }, [])
+      .then((registration) => (registration.active ? warmCache(registration.active) : false))
+      .then((saved) => {
+        if (!gone) {
+          setReady(saved)
+          setChecked(true)
+        }
+      })
+      .catch(() => {
+        if (!gone) setChecked(true)
+      })
+    return () => {
+      gone = true
+    }
+  }, [online])
   return (
     <p className="smallcaps flex items-center gap-2 text-xs text-ink-2" role="status" aria-live="polite">
       <span aria-hidden className={`inline-block size-2 rounded-full ${online ? 'bg-celadon' : 'bg-amber'}`} />
       {online ? 'Online' : 'Offline'}
-      {ready && <span>· works offline on this device</span>}
+      {ready && <span>· this page is saved for offline use</span>}
+      {checked && !ready && <span>· offline copy not confirmed; reopen this page when connected</span>}
     </p>
   )
 }

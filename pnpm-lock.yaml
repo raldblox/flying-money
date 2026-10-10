@@ -107,6 +107,9 @@ importers:
       '@flying-money/agent':
         specifier: workspace:*
         version: link:../agent
+      '@flying-money/browser':
+        specifier: workspace:*
+        version: link:../../packages/browser
       '@flying-money/chains':
         specifier: workspace:*
         version: link:../../packages/chains
@@ -181,6 +184,15 @@ importers:
   contracts: {}
 
   packages/abi: {}
+
+  packages/browser:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^2.4.0
+        version: 2.4.0
+      viem:
+        specifier: ^2.56.8
+        version: 2.56.8(typescript@7.0.2)(zod@4.6.5)
 
   packages/chains:
     dependencies:

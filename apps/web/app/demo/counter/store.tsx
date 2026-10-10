@@ -249,16 +249,23 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
     void (async () => {
       try {
         const a = await openTill(chain, shopPayee, 'Tea House', { readCertificate: readCert })
+        if (gone) {
+          a.release()
+          return
+        }
+        opened.push(a)
         const b = await openTill(chain, staffPayee, 'Mei', { readCertificate: readCert })
         if (gone) {
           a.release()
           b.release()
           return
         }
-        opened.push(a, b)
+        opened.push(b)
         setShopTill(a)
         setStaffTill(b)
       } catch (e) {
+        for (const t of opened) t.release()
+        if (gone) return
         setError(`The tills couldn’t open: ${(e as Error).message}`)
       }
     })()
@@ -271,6 +278,10 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
   const setConnection = (isCut: boolean) => {
     cutRef.current = isCut
     setCut(isCut)
+    if (!isCut) {
+      void shopTill?.recover()
+      void staffTill?.recover()
+    }
     setNews({
       tone: 'info',
       text: isCut
@@ -1281,16 +1292,22 @@ function Books({
       })
       const body = (await res.json()) as { tx?: string; hash?: Hex; collected?: number; error?: string; note?: string }
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
-      if (body.hash)
-        for (const { till, pr } of pending) await till.store.markRedeemed(pr.key, pr.note.cumulative, body.hash)
-      if (body.hash) onCollected(collectedAt)
+      let waiting = 0
+      for (const { till } of tills) waiting += (await till.syncCollected(body.hash)).waiting
+      if (waiting > 0)
+        throw new Error(
+          'Collection was submitted, but some amounts still need a network check. They remain pending; reconnect to check again.',
+        )
+      let remaining = 0
+      for (const { till } of tills) remaining += (await till.store.pendingRedemptions(chainId)).length
+      if (remaining === 0) onCollected(collectedAt)
       setMsg(
         body.tx
           ? {
-              text: `Collection confirmed for ${rows
+              text: `Collection checked for ${rows
                 .filter((r) => r.accepted > r.collected)
                 .map((r) => r.seller)
-                .join(' and ')}. One transaction; no gas paid by the visitor.`,
+                .join(' and ')}. Any unpaid amounts remain pending. No gas paid by the visitor.`,
               href: body.tx,
             }
           : { text: body.note ?? 'Done.' },

@@ -1,0 +1,26 @@
+{
+  "name": "@flying-money/browser",
+  "version": "0.1.0",
+  "description": "Browser storage, key vault, exclusive access and reconnect scheduling for Flying Money.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.4.0",
+    "viem": "^2.56.8"
+  }
+}

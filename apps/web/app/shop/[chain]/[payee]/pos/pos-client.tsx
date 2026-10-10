@@ -1,5 +1,6 @@
 'use client'
 import { flyingMoneyAbi } from '@flying-money/abi'
+import type { RecoveryState } from '@flying-money/browser'
 import { type ChainKey, getChain } from '@flying-money/chains'
 import type { CounterResult, PendingRedemption, RejectReason, UnverifiedRecord } from '@flying-money/server/browser'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
@@ -81,6 +82,8 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
   const [fatal, setFatal] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('sell')
   const online = useOnline()
+  const [recoveryState, setRecoveryState] = useState<RecoveryState>('waiting')
+  const [revision, setRevision] = useState(0)
 
   useEffect(() => {
     let t: Till | null = null
@@ -102,8 +105,11 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
 
   // Re-check unverified payments whenever the connection returns (§6.8).
   useEffect(() => {
-    if (online && till) void till.counter.reconcile().catch(() => {})
-  }, [online, till])
+    return till?.subscribeRecovery((state) => {
+      setRecoveryState(state)
+      if (state !== 'checking') setRevision((value) => value + 1)
+    })
+  }, [till])
 
   if (fatal)
     return (
@@ -118,6 +124,15 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
 
   return (
     <div className="mt-4">
+      <p role="status" className="mb-4 text-sm text-ink-2">
+        {!online
+          ? 'Offline · accepted payments stay on this device.'
+          : recoveryState === 'checking'
+            ? 'Checking saved payments…'
+            : recoveryState === 'waiting'
+              ? 'Some payments still need a check. Retrying automatically while this till is open.'
+              : 'Saved payment checks are up to date. Collection is a separate step.'}
+      </p>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-5xl font-semibold tracking-tight">{till.settings.name}</h1>
@@ -166,7 +181,7 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
       </div>
       <div id="till-panel" role="tabpanel" aria-labelledby={`till-tab-${tab}`} className="mt-6">
         {tab === 'sell' && <Sell till={till} />}
-        {tab === 'ledger' && <Ledger till={till} chainKey={chainKey} online={online} />}
+        {tab === 'ledger' && <Ledger till={till} chainKey={chainKey} online={online} revision={revision} />}
         {tab === 'settings' && <Settings till={till} />}
       </div>
     </div>
@@ -449,7 +464,17 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
 }
 
 // ── Ledger: accepted by you → collected on-chain ─────────────────────────────────
-function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; online: boolean }) {
+function Ledger({
+  till,
+  chainKey,
+  online,
+  revision,
+}: {
+  till: Till
+  chainKey: ChainKey
+  online: boolean
+  revision: number
+}) {
   const chain = getChain(chainKey)
   const [rows, setRows] = useState<
     Array<{ key: string; id: Hex; consumed: bigint; redeemed: bigint; toCollect: bigint }>
@@ -483,9 +508,10 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
     )
     setUnverified(await till.counter.unverified())
   }, [till, chain.chain.id])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recovery changes the durable ledger
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, revision])
 
   const total = pending.reduce((s, p) => s + (p.note.cumulative - p.redeemedOnChain), 0n)
 
@@ -510,8 +536,13 @@ function Ledger({ till, chainKey, online }: { till: Till; chainKey: ChainKey; on
       return wallet.writeContract({ ...request, chain: chain.chain })
     })
     if (r) {
-      for (const p of batch) await till.store.markRedeemed(p.key, p.note.cumulative, r.transactionHash)
-      setCollected(`Collected. ${batch.length} ${batch.length === 1 ? 'payment' : 'payments'} in one transfer.`)
+      const result = await till.syncCollected(r.transactionHash)
+      setCollected(
+        result.waiting > 0
+          ? 'Transaction confirmed. Some collection amounts still need a network check; they remain pending.'
+          : 'Collection checked against the network. Any unpaid amounts remain in the ledger.',
+      )
+      void till.recover()
       await load()
     }
   }

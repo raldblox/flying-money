@@ -8,6 +8,7 @@ const validTheme = (value: string | null): Theme => (value === 'light' || value 
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<Theme>('system')
+  const [ready, setReady] = useState(false)
   const apply = useCallback((next: Theme) => {
     if (next === 'system') delete document.documentElement.dataset.theme
     else document.documentElement.dataset.theme = next
@@ -15,6 +16,7 @@ export function ThemeSwitcher() {
   }, [])
   useEffect(() => {
     setTheme(validTheme(document.documentElement.getAttribute('data-theme')))
+    setReady(true)
     const sync = (event: StorageEvent) => {
       if (event.key === storageKey || event.key === null) apply(validTheme(event.newValue))
     }
@@ -62,6 +64,7 @@ export function ThemeSwitcher() {
       </svg>
       <select
         aria-label="Color theme"
+        disabled={!ready}
         value={theme}
         onChange={(event) => {
           const next = validTheme(event.target.value)

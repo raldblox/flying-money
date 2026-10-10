@@ -11,4 +11,5 @@ export {
   type UnverifiedRecord,
 } from './counter.js'
 export { type MemoryStoreOptions, memoryStore, type StoreSnapshot } from './memory-store.js'
+export { reconcileRedemptions } from './reconcile-redemptions.js'
 export type { NoteStore, PendingRedemption, SellerState } from './store.js'

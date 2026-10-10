@@ -1,13 +1,19 @@
-import type { ChainKey } from '@flying-money/chains'
+import { createRecovery, holdLock, type RecoveryState } from '@flying-money/browser'
+
+export { holdLock, LockBusyError as TillBusyError } from '@flying-money/browser'
+
+import { type ChainKey, getChain } from '@flying-money/chains'
 import {
   type Counter,
   type CounterConfig,
   createCounter,
   memoryStore,
+  reconcileRedemptions,
   type StoreSnapshot,
 } from '@flying-money/server/browser'
 import type { Hex } from 'viem'
 import './e2e'
+import { loadCertificate } from './chain'
 import { idbKV, type KV } from './idb'
 
 /** Till settings (§12.5 step 4), kept on this device. */
@@ -35,6 +41,9 @@ export interface Till {
   kv: KV
   settings: TillSettings
   saveSettings(s: TillSettings): Promise<void>
+  syncCollected(txHash?: Hex): Promise<{ checked: number; waiting: number }>
+  recover(): Promise<void>
+  subscribeRecovery(listener: (state: RecoveryState) => void): () => void
   release(): void
 }
 
@@ -51,74 +60,99 @@ export async function openTill(
 ): Promise<Till> {
   const id = `fm-till:${chain}:${payee.toLowerCase()}`
   const release = await holdLock(id)
-  const kv = idbKV(id)
-  const snap = await kv.get('store')
-  const settingsRaw = await kv.get('settings')
-  const settings: TillSettings = settingsRaw
-    ? { ...DEFAULT_SETTINGS, ...(JSON.parse(settingsRaw) as Partial<TillSettings>) }
-    : { ...DEFAULT_SETTINGS, ...(name ? { name } : {}) }
-  const store = memoryStore({
-    ...(snap ? { initial: JSON.parse(snap) as StoreSnapshot } : {}),
-    onCommit: (s) => kv.set('store', JSON.stringify(s)),
-  })
-  const counter = createCounter({
-    chain,
-    payee,
-    store,
-    kv: { get: kv.get, set: kv.set, keys: kv.keys },
-    firstVisitLimit: BigInt(settings.firstVisitLimit),
-    offlineFloat: BigInt(settings.offlineFloat),
-    ...(opts.readCertificate ? { readCertificate: opts.readCertificate } : {}),
-  })
-  return {
-    counter,
-    store,
-    kv,
-    settings,
-    saveSettings: (s) => kv.set('settings', JSON.stringify(s)),
-    release,
-  }
-}
-
-export class TillBusyError extends Error {
-  constructor() {
-    super('This till is already open in another tab or window.')
-  }
-}
-
-/**
- * Holds an exclusive Web Lock for the page's lifetime; throws TillBusyError if another tab keeps it. Retries briefly,
- * because a page that is re-mounting (or reloading) may still be releasing its own lock.
- */
-export async function holdLock(name: string, attempts = 8): Promise<() => void> {
-  for (let i = 1; ; i++) {
-    try {
-      return await tryLock(name)
-    } catch (e) {
-      if (!(e instanceof TillBusyError) || i >= attempts) throw e
-      await new Promise((r) => setTimeout(r, 150))
-    }
-  }
-}
-
-function tryLock(name: string): Promise<() => void> {
-  if (!('locks' in navigator)) return Promise.resolve(() => {})
-  return new Promise((resolve, reject) => {
-    let free: () => void = () => {}
-    const held = new Promise<void>((r) => {
-      free = r
+  try {
+    const kv = idbKV(id)
+    const snap = await kv.get('store')
+    const settingsRaw = await kv.get('settings')
+    const settings: TillSettings = settingsRaw
+      ? { ...DEFAULT_SETTINGS, ...(JSON.parse(settingsRaw) as Partial<TillSettings>) }
+      : { ...DEFAULT_SETTINGS, ...(name ? { name } : {}) }
+    const store = memoryStore({
+      ...(snap ? { initial: JSON.parse(snap) as StoreSnapshot } : {}),
+      onCommit: (s) => kv.set('store', JSON.stringify(s)),
     })
-    navigator.locks
-      .request(name, { ifAvailable: true }, async (lock) => {
-        if (!lock) {
-          reject(new TillBusyError())
-          return
+    const counter = createCounter({
+      chain,
+      payee,
+      store,
+      kv: { get: kv.get, set: kv.set, keys: kv.keys },
+      firstVisitLimit: BigInt(settings.firstVisitLimit),
+      offlineFloat: BigInt(settings.offlineFloat),
+      ...(opts.readCertificate ? { readCertificate: opts.readCertificate } : {}),
+    })
+    const syncCollected = async (txHash?: Hex) => {
+      const network = getChain(chain)
+      const pending = await store.pendingRedemptions(network.chain.id)
+      return reconcileRedemptions(
+        store,
+        pending.map((p) => p.key),
+        async (key) => {
+          const certificateId = key.split(':')[1] as Hex
+          const certificate = opts.readCertificate
+            ? await opts.readCertificate(network.chain.id, network.flyingMoney!, certificateId)
+            : await loadCertificate(chain, certificateId)
+          return certificate?.redeemed ?? null
+        },
+        txHash,
+      )
+    }
+    let recoveryState: RecoveryState = 'waiting'
+    const listeners = new Set<(state: RecoveryState) => void>()
+    const recovery = createRecovery({
+      reconcile: async () => {
+        const checks = await counter.reconcile()
+        const collected = await syncCollected()
+        return checks.waiting > 0 || collected.waiting > 0
+      },
+      onState: (state) => {
+        recoveryState = state
+        for (const listener of listeners) listener(state)
+      },
+    })
+    const accept = counter.accept
+    counter.accept = async (...args) => {
+      const result = await accept(...args)
+      // RPC failure may happen while navigator.onLine stays true: enqueue recovery when work is created.
+      if (result.status === 'UNVERIFIED') void recovery.wake()
+      return result
+    }
+    const wake = () => {
+      void recovery.wake()
+    }
+    const visible = () => {
+      if (document.visibilityState === 'visible') wake()
+    }
+    window.addEventListener('online', wake)
+    window.addEventListener('focus', wake)
+    document.addEventListener('visibilitychange', visible)
+    wake()
+    return {
+      counter,
+      store,
+      kv,
+      settings,
+      saveSettings: (s) => kv.set('settings', JSON.stringify(s)),
+      syncCollected,
+      recover: recovery.wake,
+      subscribeRecovery: (listener) => {
+        listeners.add(listener)
+        listener(recoveryState)
+        return () => {
+          listeners.delete(listener)
         }
-        resolve(free)
-        await held
-      })
-      .catch(reject)
-  })
+      },
+      release: () => {
+        window.removeEventListener('online', wake)
+        window.removeEventListener('focus', wake)
+        document.removeEventListener('visibilitychange', visible)
+        listeners.clear()
+        void recovery.stop().finally(release)
+      },
+    }
+  } catch (error) {
+    release()
+    throw error
+  }
 }
 
 /** "Tea 3.50" lines → items. Amounts are parsed as exact decimals (never floats). */

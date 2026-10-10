@@ -37,6 +37,7 @@ export {
   redisInboxStore,
 } from './inbox.js'
 export { type MemoryStoreOptions, memoryStore, type StoreSnapshot } from './memory-store.js'
+export { reconcileRedemptions } from './reconcile-redemptions.js'
 export {
   createRedeemer,
   type RedeemedEvent,

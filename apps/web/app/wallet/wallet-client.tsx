@@ -1,4 +1,5 @@
 'use client'
+import { recoverWhileOpen } from '@flying-money/browser'
 import { type ChainKey, chainKeys, getChain, getChainById } from '@flying-money/chains'
 import {
   abandonCounterPayment,
@@ -67,6 +68,7 @@ type View =
 
 export function Wallet() {
   const [ready, setReady] = useState<'loading' | 'busy' | 'no-pin' | 'ok'>('loading')
+  const [openError, setOpenError] = useState('')
   const [entries, setEntries] = useState<Entry[]>([])
   const [view, setView] = useState<View>({ k: 'home' })
   // the PIN just set, kept in memory for this visit only, so a first budget isn't asked for it a third time (§22.5 e)
@@ -111,8 +113,12 @@ export function Wallet() {
         }
         setReady((await hasPin()) ? 'ok' : 'no-pin')
       })
-      .catch(() => {
-        if (!gone) setReady('busy')
+      .catch((error) => {
+        release?.()
+        if (!gone) {
+          setOpenError(error instanceof Error ? error.message : 'Could not open local wallet storage.')
+          setReady('busy')
+        }
       })
     return () => {
       gone = true
@@ -137,18 +143,35 @@ export function Wallet() {
 
   // When online, show what the shop has already collected on-chain (§12.5 balance labels).
   useEffect(() => {
-    if (!online) return
-    for (const e of entries)
-      loadCertificate(e.chain, e.id)
-        .then((c) => c && setOnChain((m) => ({ ...m, [e.id]: c.redeemed })))
-        .catch(() => {})
-  }, [online, entries])
+    if (!online || ready !== 'ok' || entries.length === 0) return
+    let gone = false
+    const stop = recoverWhileOpen({
+      reconcile: async () => {
+        let waiting = false
+        await Promise.all(
+          entries.map(async (e) => {
+            try {
+              const c = await loadCertificate(e.chain, e.id)
+              if (c && !gone) setOnChain((m) => ({ ...m, [`${e.chain}:${e.id}`]: c.redeemed }))
+            } catch {
+              waiting = true
+            }
+          }),
+        )
+        return waiting
+      },
+    })
+    return () => {
+      gone = true
+      void stop()
+    }
+  }, [online, entries, ready])
 
   if (ready === 'loading') return <p className="mt-10 text-ink-2">Opening your wallet…</p>
   if (ready === 'busy')
     return (
       <p role="alert" className="sheet mt-8 p-8">
-        Your wallet is already open in another tab. Use that one, so a payment is never shown twice.
+        {openError}
       </p>
     )
   if (ready === 'no-pin')
@@ -452,7 +475,8 @@ function Home({
                 <SpentBar face={c.faceValue} left={left} />
                 <p className="mt-1 text-sm text-ink-2 lining-nums" suppressHydrationWarning>
                   of {usdc(c.faceValue)} · {expired ? 'ended' : `until ${dayLabel(c.expiresAt)}`}
-                  {onChain[e.id] !== undefined && ` · collected by the shop so far: ${usdc(onChain[e.id]!)}`}
+                  {onChain[`${e.chain}:${e.id}`] !== undefined &&
+                    ` · collected by the shop so far: ${usdc(onChain[`${e.chain}:${e.id}`]!)}`}
                 </p>
                 {/* the seller's name from the hand-over, not a raw address (§22.5 e) */}
                 <GrantSummary

@@ -4,7 +4,7 @@ import { flyingMoneyAbi } from '@flying-money/abi'
 import { keyFromEnv } from '@flying-money/agent'
 import { getChain, isChainKey, rpcUrl } from '@flying-money/chains'
 import { decodeNote, type Hex, readCertificate } from '@flying-money/core'
-import { createPublicClient, createWalletClient, http, isAddressEqual } from 'viem'
+import { createPublicClient, createWalletClient, http, isAddressEqual, parseEventLogs } from 'viem'
 import { demoFunderAddress } from '@/lib/demo-fund'
 import { demoGuardFromEnv } from '@/lib/demo-guard'
 import { SITE } from '@/lib/site'
@@ -63,8 +63,12 @@ export async function POST(req: Request) {
       args: [items],
     })
     const tx = await wallet.writeContract(request)
-    await pub.waitForTransactionReceipt({ hash: tx })
-    return Response.json({ collected: items.length, tx: `${chain.explorer}/tx/${tx}`, hash: tx })
+    const receipt = await pub.waitForTransactionReceipt({ hash: tx })
+    if (receipt.status !== 'success') throw new Error('Collection transaction reverted.')
+    const collected = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'NoteRedeemed' }).filter(
+      (log) => isAddressEqual(log.address, chain.flyingMoney!),
+    ).length
+    return Response.json({ collected, tx: `${chain.explorer}/tx/${tx}`, hash: tx })
   } catch (e) {
     return Response.json({ error: `Couldn’t collect: ${(e as Error).message.split('\n')[0]}` }, { status: 502 })
   }
