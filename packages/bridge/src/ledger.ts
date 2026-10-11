@@ -17,19 +17,22 @@ export interface LedgerEntry {
   gas?: string
 }
 
+export interface LedgerTotals {
+  paid: number
+  failed: number
+  spent: bigint
+  charged: bigint
+  collected: bigint
+  collections: number
+  gas: bigint
+  since: number
+}
+
+/** Memory and file ledgers answer at once; the Redis one answers later, so every method may return a promise. */
 export interface Ledger {
-  add(e: LedgerEntry): void
-  recent(n: number): LedgerEntry[]
-  totals(): {
-    paid: number
-    failed: number
-    spent: bigint
-    charged: bigint
-    collected: bigint
-    collections: number
-    gas: bigint
-    since: number
-  }
+  add(e: LedgerEntry): void | Promise<void>
+  recent(n: number): LedgerEntry[] | Promise<LedgerEntry[]>
+  totals(): LedgerTotals | Promise<LedgerTotals>
 }
 
 /** Activity log kept in memory and, with a path, appended to a JSONL file so a restart keeps the history. */

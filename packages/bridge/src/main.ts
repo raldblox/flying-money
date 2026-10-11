@@ -28,6 +28,7 @@ import { createBridge } from './bridge.js'
 import { fileNoteStore } from './file-store.js'
 import { createLedger } from './ledger.js'
 import { fileOutcomes, memoryOutcomes } from './outcomes.js'
+import { chainReaders, logCollection } from './readers.js'
 
 const env = process.env
 const key = env.BRIDGE_FLOAT_KEY?.trim()
@@ -58,31 +59,15 @@ const sellerStore = dev
     ? { store: fileNoteStore(env.BRIDGE_NOTES_FILE), durable: true }
     : sellerStoreFromEnv({ env, payee: float.address, accepts: chains, requireDurable: true })
 
-/** The float's USDC balance on each network it pays on, so it refuses a quote it could not fund. */
-const readers = new Map<string, () => Promise<bigint>>()
-for (const k of chains) {
-  const c = getChain(k)
-  const pub = createPublicClient({ chain: c.chain, transport: http(rpcUrl(k, env)) })
-  readers.set(`eip155:${c.chain.id}`, () =>
-    pub.readContract({ address: c.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [float.address] }),
-  )
-}
-
+const readers = chainReaders(chains, float.address, env)
 const ledger = createLedger(env.BRIDGE_LEDGER_FILE)
-const gasReaders = new Map<string, () => Promise<bigint>>()
-for (const k of chains) {
-  const c = getChain(k)
-  const pub = createPublicClient({ chain: c.chain, transport: http(rpcUrl(k, env)) })
-  gasReaders.set(`eip155:${c.chain.id}`, () => pub.getBalance({ address: float.address }))
-}
-
 const bridge = createBridge({
   ledger,
-  gasBalance: async (network) => (await gasReaders.get(network)?.()) ?? 0n,
+  gasBalance: readers.gas,
   ...(env.BRIDGE_LABEL ? { label: env.BRIDGE_LABEL } : {}),
   outcomes: env.BRIDGE_STATE_FILE ? fileOutcomes(env.BRIDGE_STATE_FILE) : memoryOutcomes(),
   trustProxy: env.BRIDGE_TRUST_PROXY === '1',
-  floatBalance: async (network) => (await readers.get(network)?.()) ?? 0n,
+  floatBalance: readers.usdc,
   accepts: chains,
   float,
   store: sellerStore.store,
@@ -113,26 +98,7 @@ if (env.BRIDGE_REDEEM === '1') {
       safetyBeforeExpiry: Number(env.BRIDGE_REDEEM_SAFETY ?? 21_600),
     },
     onRedeemed: (e) => {
-      const entry = {
-        at: Date.now(),
-        kind: 'collected' as const,
-        network: `eip155:${e.chainId}`,
-        amount: e.paid.toString(),
-        tx: e.txHash,
-      }
-      // what this collection cost: execution gas plus, on a rollup, the fee for posting it to Ethereum
-      const key = chains.find((k) => getChain(k).chain.id === e.chainId)
-      const reader = key ? readers.get(`eip155:${e.chainId}`) : undefined
-      if (key && reader) {
-        const pub = createPublicClient({ chain: getChain(key).chain, transport: http(rpcUrl(key, env)) })
-        pub
-          .getTransactionReceipt({ hash: e.txHash })
-          .then((r) => {
-            const l1 = (r as unknown as { l1Fee?: bigint }).l1Fee ?? 0n
-            ledger.add({ ...entry, gas: (r.gasUsed * r.effectiveGasPrice + l1).toString() })
-          })
-          .catch(() => ledger.add(entry))
-      } else ledger.add(entry)
+      void logCollection(ledger, chains, env, e)
       console.log(`collected ${e.paid} from budget ${e.certificateId} (tx ${e.txHash})`)
     },
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),

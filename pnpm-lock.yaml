@@ -74,6 +74,21 @@ importers:
         specifier: ^2.56.8
         version: 2.56.8(typescript@7.0.2)(zod@4.6.5)
 
+  apps/bridge:
+    dependencies:
+      '@flying-money/bridge':
+        specifier: workspace:*
+        version: link:../../packages/bridge
+      '@flying-money/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@vercel/functions':
+        specifier: ^3.9.9
+        version: 3.9.9(ws@8.21.0)
+      hono:
+        specifier: ^4.12.0
+        version: 4.13.8
+
   apps/oracle:
     dependencies:
       '@flying-money/chains':
@@ -230,6 +245,9 @@ importers:
       '@x402/hono':
         specifier: 2.28.0
         version: 2.28.0(hono@4.13.8)(typescript@7.0.2)
+      ioredis-mock:
+        specifier: ^8.13.1
+        version: 8.13.1(@types/ioredis-mock@8.2.8(ioredis@5.11.1))(ioredis@5.11.1)
 
   packages/browser:
     dependencies:

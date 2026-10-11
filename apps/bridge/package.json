@@ -1,0 +1,16 @@
+{
+  "name": "@flying-money/bridge-app",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@flying-money/core": "workspace:*",
+    "@flying-money/bridge": "workspace:*",
+    "@vercel/functions": "^3.9.9",
+    "hono": "^4.12.0"
+  }
+}

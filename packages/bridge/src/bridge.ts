@@ -242,7 +242,8 @@ export function createBridge(config: BridgeConfig) {
 
   // Public monitoring view: everything an owner, an agent or a judge needs to check the bridge, nothing secret.
   app.get('/status', async (c) => {
-    const t = ledger.totals()
+    const t = await ledger.totals()
+    const recent = await ledger.recent(25)
     const networks = await Promise.all(
       config.upstreamNetworks.map(async (network) => {
         const usdcBalance = config.floatBalance ? await config.floatBalance(network).catch(() => null) : null
@@ -257,7 +258,7 @@ export function createBridge(config: BridgeConfig) {
       for (const p of await config.store.pendingRedemptions(id).catch(() => []))
         owed += p.note.cumulative > p.redeemedOnChain ? p.note.cumulative - p.redeemedOnChain : 0n
     }
-    const last = ledger.recent(1)[0]
+    const last = recent[0]
     const lastPrice = last?.price ? BigInt(last.price) : 1_000n
     const usdcTotal = networks.reduce((a, n) => a + BigInt(n.usdc ?? '0'), 0n)
     const calls = lastPrice > 0n ? usdcTotal / lastPrice : 0n
@@ -297,7 +298,7 @@ export function createBridge(config: BridgeConfig) {
         collected: t.collected.toString(),
         since: t.since,
       },
-      recent: ledger.recent(25),
+      recent,
     })
   })
 
@@ -338,7 +339,7 @@ export function createBridge(config: BridgeConfig) {
               } catch {
                 tx = undefined
               }
-              ledger.add({
+              await ledger.add({
                 at: now(),
                 kind: ok ? 'paid' : 'failed',
                 host: url.hostname,
