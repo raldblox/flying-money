@@ -122,6 +122,10 @@ export function IssueWizard({
   const [pastedSpender, setPastedSpender] = useState<string>(preset?.spender ?? '')
   const [generated, setGenerated] = useState<{ key: Hex; address: Hex } | null>(null)
   const [keySaved, setKeySaved] = useState(false)
+  // on a mainnet the budget is real USDC: it is never sent without this being ticked
+  const [realOk, setRealOk] = useState(false)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: switching network asks again
+  useEffect(() => setRealOk(false), [chain.key])
   // giving to a person: who it's for, and which of the three screens is showing
   const forPerson = Boolean(preset?.forPerson)
   const [personName, setPersonName] = useState(preset?.holderName ?? '')
@@ -249,6 +253,7 @@ export function IssueWizard({
   if (spenderMode === 'generate' && generated && !keySaved && !holderName && !forPerson)
     problems.push('Save the generated key first.')
   if (face === null || face === 0n) problems.push('Enter an amount above 0 (up to 6 decimals).')
+  if (chain.mainnet && !realOk) problems.push('Confirm that this is real money before you fund it.')
   if (face && chain.maxFaceValue > 0n && face > chain.maxFaceValue)
     problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
   if (face && balance !== undefined && face > balance)
@@ -256,7 +261,9 @@ export function IssueWizard({
       `Your wallet holds ${usdc(balance)} USDC on ${chain.chain.name}.${
         !chain.mainnet && chain.faucets[0]
           ? ` Get test USDC at ${chain.faucets[0]} (and a little test ETH for network fees).`
-          : ''
+          : chain.mainnet && chain.gasToken === 'USDC'
+            ? ' USDC also pays the network fee here, so keep a little extra.'
+            : ''
       }`,
     )
 
@@ -830,6 +837,22 @@ export function IssueWizard({
               expiresAt={endsAt}
               test={!chain.mainnet}
             />
+            {chain.mainnet && (
+              <label className="mt-3 flex items-start gap-3 rounded-md border border-seal bg-seal/5 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={realOk}
+                  onChange={(e) => setRealOk(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <strong>This is real USDC on {chain.chain.name}.</strong> The contract is not audited, so a budget is
+                  capped at {usdc(chain.maxFaceValue, { min: 0 })} USDC and the whole deployment at{' '}
+                  {usdc(chain.maxTotalOutstanding, { min: 0 })} USDC. Money in a budget can’t be taken back before its
+                  end date.
+                </span>
+              </label>
+            )}
             {/* the commitment, beside the signature (§22.4) */}
             <p className="mt-3 rounded-md border-l-4 border-ink/60 bg-paper-2/60 p-3 text-sm">
               This budget pays only <strong>{sellerName}</strong>. You can’t cancel it early or change who can use it.

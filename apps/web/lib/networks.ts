@@ -28,9 +28,9 @@ export function liveMainnets(): string {
 
 /** Registry chains → picker entries, alphabetical by brand, so no network is featured first. */
 export function toPickerNetworks(
-  chains: Array<{ key: ChainKey; brand: string; chain: { name: string } }>,
+  chains: Array<{ key: ChainKey; brand: string; mainnet?: boolean; chain: { name: string } }>,
 ): PickerNetwork[] {
   return [...chains]
     .sort((a, b) => a.brand.localeCompare(b.brand))
-    .map((c) => ({ key: c.key, brand: c.brand, name: c.chain.name }))
+    .map((c) => ({ key: c.key, brand: c.brand, name: c.chain.name, ...(c.mainnet ? { mainnet: true } : {}) }))
 }

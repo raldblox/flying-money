@@ -32,6 +32,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === '/app' ? path === '/app' : path.startsWith(href))
   // how many budget requests wait in the inbox (when this browser is signed in to it)
   const inbox = useInbox()
+  const { chain } = useAccountCtx()
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:py-10">
       <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
@@ -69,7 +70,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="min-w-0">
         {/* at phone widths the sidebar's network note is off-screen: say it here (§22.4) */}
-        <TestNote className="mb-4 lg:hidden" />
+        <TestNote chain={chain} className={chain.mainnet ? 'mb-4' : 'mb-4 lg:hidden'} />
         <WalletGate>{children}</WalletGate>
       </div>
     </div>
@@ -88,7 +89,7 @@ function NetworkNote() {
           <p className="mt-1 text-sm text-ink">{chain.chain.name}</p>
         </>
       )}
-      <p className="mt-2">Test money only. Not audited.</p>
+      <p className="mt-2">{chain.mainnet ? 'Real USDC, capped. Not audited.' : 'Test money only. Not audited.'}</p>
     </div>
   )
 }

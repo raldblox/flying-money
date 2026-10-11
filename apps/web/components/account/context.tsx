@@ -44,7 +44,8 @@ export function AccountProvider({
   defaultChain: string
   oraclePayee?: Hex
 }) {
-  const chains = deployedChains().filter((c) => !c.mainnet)
+  // every deployed network, mainnet included: the default is a test network, and a mainnet says it is real money
+  const chains = deployedChains()
   const fallback = (chains.find((c) => c.key === defaultChain)?.key ?? chains[0]?.key ?? 'arbitrum-sepolia') as ChainKey
   const [chainKey, setChainKey] = usePreferredChain(
     chains.map((c) => c.key),

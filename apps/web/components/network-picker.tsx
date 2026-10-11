@@ -8,6 +8,8 @@ export interface PickerNetwork {
   brand: string
   /** full network name ("Tempo Testnet (Moderato)"), shown as a tooltip and read by screen readers */
   name: string
+  /** real money: the chip says "mainnet" instead of "testnet" */
+  mainnet?: boolean
 }
 
 /**
@@ -55,7 +57,7 @@ export function NetworkPicker({
                 value={n.key}
                 checked={on}
                 onChange={() => onChange(n.key)}
-                aria-label={n.name}
+                aria-label={n.mainnet ? `${n.name}, real money` : n.name}
                 className="peer sr-only"
               />
               <span
@@ -73,11 +75,12 @@ export function NetworkPicker({
                 {!compact && (
                   <span
                     aria-hidden
-                    className={`smallcaps hidden text-[0.6rem] sm:inline ${on ? 'text-paper/70' : 'text-ink-2'}`}
+                    className={`smallcaps hidden text-[0.6rem] sm:inline ${on ? 'text-paper/70' : n.mainnet ? 'text-seal' : 'text-ink-2'}`}
                   >
-                    testnet
+                    {n.mainnet ? 'mainnet' : 'testnet'}
                   </span>
                 )}
+                {compact && n.mainnet && <span className="smallcaps text-[0.6rem] text-seal">mainnet</span>}
               </span>
             </label>
           )
