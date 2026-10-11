@@ -18,7 +18,7 @@ No. It bridges *protocols*, not chains: it pays an x402 site on the network the 
 It is a one-way channel in spirit. The differences: anyone can redeem, the spending key is separate from the funder, there is no close negotiation, and it comes as an HTTP-native SDK for agents.
 
 **Which chain?**
-Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum, Monad and Tempo test networks, and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), with that chain's USDC (OUSD on Tempo testnet). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
+Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum, Monad and Tempo test networks, and on Arc mainnet (100 USDC per budget, 1,000 in total) and Base mainnet (1,000 per budget, 10,000 in total) under immutable caps, with that chain's USDC (OUSD on Tempo testnet). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
 
 **Do certificates move between chains?**
 No, and no funds are bridged between chains. A seller can accept notes on several chains; each chain settles independently. No cross-chain bridge risk. (The [x402 bridge](/docs/bridge) is a different thing: a payer-side service for paying ordinary x402 sites.)
@@ -42,4 +42,4 @@ Notes can be signed and verified without a connection, and a shop's till keeps a
 None from Flying Money. The seller pays gas when collecting (one transaction for many payments); on Arc, gas is paid in USDC.
 
 **Is it audited?**
-No. It is invariant-tested and runs on test networks, plus Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), so a bug can only ever touch a small amount. An independent audit comes before any real-money launch.
+No. It is invariant-tested and runs on test networks, plus Arc and Base mainnet under immutable caps (Arc 100 USDC per budget and 1,000 in total; Base 1,000 and 10,000), so a bug can only ever touch a limited amount. An independent audit comes before any real-money launch.

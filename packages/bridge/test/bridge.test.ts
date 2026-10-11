@@ -82,7 +82,7 @@ function upstream(opts: { amount?: string; network?: string; scheme?: string; fa
           scheme: opts.scheme ?? 'exact',
           network: opts.network ?? UPSTREAM_NETWORK,
           amount: opts.amount ?? '1000',
-          asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+          asset: getChain('base-sepolia').usdc,
           payTo: '0x00000000000000000000000000000000000a11ce',
           maxTimeoutSeconds: 60,
           extra: { name: 'USDC', version: '2' },

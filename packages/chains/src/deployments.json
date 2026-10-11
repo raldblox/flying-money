@@ -7,6 +7,10 @@
     "flyingMoney": "0xb9ae3158f9ca841d9da3c3725014d8352ca967f2",
     "deployedBlock": "24678725"
   },
+  "base-mainnet": {
+    "flyingMoney": "0x25c12e1b9106ef64fa5849b3910ceebbf8cb7ef9",
+    "deployedBlock": "52478707"
+  },
   "base-sepolia": {
     "flyingMoney": "0xb9ae3158f9ca841d9da3c3725014d8352ca967f2",
     "deployedBlock": "47697989"

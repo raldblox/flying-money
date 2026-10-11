@@ -8,7 +8,7 @@ describe('/agent.md', () => {
   it('never makes a mainnet a default: real money is named in the prose, not in AGENT_CHAINS or the faucet list', () => {
     expect(md).not.toMatch(/AGENT_CHAINS=[^\s]*arc-mainnet/)
     expect(md).not.toMatch(/\*\*Arc:\*\*.*5042/)
-    expect(md).toMatch(/Arc mainnet is live too/)
+    expect(md).toMatch(/Arc and Base mainnet are live too/)
   })
 
   it('walks the agent through setup without a terminal step for the human', () => {

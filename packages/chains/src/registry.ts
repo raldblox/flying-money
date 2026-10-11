@@ -1,10 +1,20 @@
 import type { Chain, Hex } from 'viem'
-import { anvil, arbitrumSepolia, arc, arcTestnet, baseSepolia, monadTestnet, sepolia, tempoModerato } from 'viem/chains'
+import {
+  anvil,
+  arbitrumSepolia,
+  arc,
+  arcTestnet,
+  base,
+  baseSepolia,
+  monadTestnet,
+  sepolia,
+  tempoModerato,
+} from 'viem/chains'
 
 /**
  * @flying-money/chains — the ONLY place chain IDs, RPCs, USDC addresses, explorers and caps live
  * (BUILD_SPEC §5.4). No other code may hard-code these values. The contract is unaudited: every network is a test
- * network except Arc mainnet, which runs under immutable launch caps (§7.1 #9).
+ * network except the capped mainnets (Arc, Base), which run under immutable launch caps (§7.1 #9).
  */
 
 export type ChainKey =
@@ -12,6 +22,7 @@ export type ChainKey =
   | 'monad-testnet'
   | 'arc-testnet'
   | 'arc-mainnet'
+  | 'base-mainnet'
   | 'base-sepolia'
   | 'ethereum-sepolia'
   | 'tempo-testnet'
@@ -64,6 +75,8 @@ type Base = Omit<ChainConfig, 'flyingMoney' | 'deployedBlock'>
 const testnetCaps = { maxFaceValue: 0n, maxTotalOutstanding: 0n }
 /** Mainnet launch caps (§7.1 #9, D1): 100 USDC per certificate, 1,000 USDC across the whole deployment. Immutable. */
 const mainnetCaps = { maxFaceValue: 100_000_000n, maxTotalOutstanding: 1_000_000_000n }
+/** Base mainnet launch caps (12 Oct 2026, the owner's decision): 1,000 USDC per certificate, 10,000 USDC in total. Immutable. */
+const baseMainnetCaps = { maxFaceValue: 1_000_000_000n, maxTotalOutstanding: 10_000_000_000n }
 
 export const baseRegistry: Record<ChainKey, Base> = {
   'arbitrum-sepolia': {
@@ -120,6 +133,22 @@ export const baseRegistry: Record<ChainKey, Base> = {
     ...mainnetCaps,
     notes: [
       'Arc mainnet: real USDC, and gas is paid in USDC. Unaudited, so every budget is capped at 100 USDC and the whole deployment at 1,000 USDC. The caps are fixed in the contract.',
+    ],
+  },
+  'base-mainnet': {
+    key: 'base-mainnet',
+    brand: 'Base',
+    blockscoutApi: 'https://base.blockscout.com/api/',
+    chain: base,
+    mainnet: true,
+    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    gasToken: 'ETH',
+    explorer: explorerOf(base),
+    faucets: [],
+    confirmations: 3,
+    ...baseMainnetCaps,
+    notes: [
+      'Base mainnet: real USDC, ETH for gas (a few cents). Unaudited, so every budget is capped at 1,000 USDC and the whole deployment at 10,000 USDC. The caps are fixed in the contract.',
     ],
   },
   'base-sepolia': {
@@ -189,6 +218,7 @@ export const rpcEnvVar: Record<ChainKey, string> = {
   'monad-testnet': 'RPC_MONAD_TESTNET',
   'arc-testnet': 'RPC_ARC_TESTNET',
   'arc-mainnet': 'RPC_ARC_MAINNET',
+  'base-mainnet': 'RPC_BASE_MAINNET',
   'base-sepolia': 'RPC_BASE_SEPOLIA',
   'ethereum-sepolia': 'RPC_ETHEREUM_SEPOLIA',
   'tempo-testnet': 'RPC_TEMPO_TESTNET',

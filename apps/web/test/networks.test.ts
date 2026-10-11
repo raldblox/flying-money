@@ -11,10 +11,12 @@ describe('live networks copy', () => {
   })
 
   it('keeps mainnets out of the test-network list and names them separately', () => {
-    const mainnets = deployedChains().filter((c) => c.mainnet)
-    for (const c of mainnets) {
+    const all = deployedChains()
+    const testBrands = new Set(all.filter((c) => !c.mainnet).map((c) => c.brand))
+    for (const c of all.filter((c) => c.mainnet)) {
       expect(liveMainnets()).toContain(c.brand)
-      expect(liveNetworks().split(/, | and /)).not.toContain(c.brand)
+      // a brand with both kinds (Base) is named in each list; a mainnet-only brand (Arc) is never a "test network"
+      if (!testBrands.has(c.brand)) expect(liveNetworks().split(/, | and /)).not.toContain(c.brand)
     }
   })
 })

@@ -35,7 +35,7 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_KEY_FILE          where the made key is kept
  *   AGENT_CERTIFICATES   comma-separated certificate ids issued to that key
  *   AGENT_CHAINS         comma-separated registry keys (default: AGENT_CHAIN, else every TEST network with a deployment;
- *                        a mainnet such as arc-mainnet is real money and is used only when named here)
+ *                        a mainnet such as arc-mainnet or base-mainnet is real money and is used only when named here)
  *   FM_MAX_PRICE         per-request cap in USDC (default 0.05)
  *   FM_STORE             durable outbox file (default ~/.flying-money/outbox.json); requests go next to it
  *   FM_OWNER             owner address to ask for budgets (§21.4); optional

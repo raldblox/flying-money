@@ -15,7 +15,7 @@ export function GET() {
 
 **x402:** Flying Money works with x402 two ways (prototypes, test networks). Sellers can list it as an x402 scheme (\`x402: true\`), and an agent can pay any ordinary x402 site from a capped budget through a bridge its owner runs (\`FM_BRIDGE_URL\`; the agent holds no money and pays no gas). See [x402](${base}/docs/x402.md).
 
-Deployed now: ${chains || 'none yet'}. Unaudited. Test networks, plus Arc mainnet under immutable launch caps (100 USDC per budget, 1,000 USDC in total).
+Deployed now: ${chains || 'none yet'}. Unaudited. Test networks, plus Arc mainnet (100 USDC per budget, 1,000 in total) and Base mainnet (1,000 per budget, 10,000 in total) under immutable launch caps.
 
 **AI agent asked to set up payments? Read [${base}/agent.md](${base}/agent.md) and follow it.**
 

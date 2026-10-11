@@ -3,7 +3,7 @@
 Pay HTTP 402 APIs (Flying Money, x402 sellers that list the `flying-money` scheme, and, through a self-hosted bridge, ordinary x402 sites) from a capped USDC budget. `fetch` with payments built in, a crash-safe outbox (a retry never charges twice), and support for x402 sellers.
 
 Part of [Flying Money](https://github.com/raldblox/flying-money): give an AI agent or a person a budget, not your wallet. A budget is USDC locked for one
-seller, one spending key, a maximum and an end date. Live on test networks and, under immutable caps, on Arc mainnet; not audited.
+seller, one spending key, a maximum and an end date. Live on test networks and, under immutable caps, on Arc and Base mainnets; not audited.
 
 ## Install
 

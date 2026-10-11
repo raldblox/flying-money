@@ -70,7 +70,7 @@ export const INSTRUCTIONS = [
   '- Check prices with fm_quote before paying, and never pay in a loop. Failed requests are not charged.',
   '- Some paid sites are ordinary x402 sites that know nothing about Flying Money. When your owner runs a bridge (FM_BRIDGE_URL), fm_quote and fm_paid_fetch pay them through it, from a budget made for the bridge. Ask for that budget the same way (fm_request_budget): it lets you pay any x402 site up to its amount, so suggest a small one.',
   '- No internet? fm_discover lists sellers announcing themselves on the local network; you can pay those too.',
-  '- Use test networks and test money. Arc mainnet is live too, with immutable caps (100 USDC per budget, 1,000 USDC in total), but the contract is not audited: use it only if your owner explicitly asks.',
+  '- Use test networks and test money. Arc and Base mainnet are live too, with immutable caps (Arc 100 USDC per budget and 1,000 in total; Base 1,000 and 10,000), but the contract is not audited: use it only if your owner explicitly asks.',
 ].join('\n')
 
 export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {

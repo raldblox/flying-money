@@ -1,5 +1,5 @@
 import { createBridge } from '@flying-money/bridge'
-import { setLocalDeployment } from '@flying-money/chains'
+import { getChain, setLocalDeployment } from '@flying-money/chains'
 import { createFlyingMoneyClient, memoryStore } from '@flying-money/client'
 import { type Certificate, certificateId, type Hex } from '@flying-money/core'
 import { memoryStore as sellerStore } from '@flying-money/server'
@@ -55,7 +55,7 @@ async function setup(opts: { withBudget?: boolean; withBridge?: boolean } = {}) 
           scheme: 'exact',
           network: 'eip155:84532',
           amount: '1000',
-          asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+          asset: getChain('base-sepolia').usdc,
           payTo: '0x00000000000000000000000000000000000a11ce',
           maxTimeoutSeconds: 60,
           extra: { name: 'USDC', version: '2' },

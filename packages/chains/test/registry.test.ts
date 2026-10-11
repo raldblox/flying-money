@@ -10,6 +10,7 @@ const SPEC = {
   'monad-testnet': [10143, '0x534b2f3A21130d7a60830c2Df862319e593943A3', 'MON', false],
   'arc-testnet': [5042002, '0x3600000000000000000000000000000000000000', 'USDC', false],
   'arc-mainnet': [5042, '0x3600000000000000000000000000000000000000', 'USDC', true],
+  'base-mainnet': [8453, '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 'ETH', true],
   'base-sepolia': [84532, '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 'ETH', false],
   'ethereum-sepolia': [11155111, '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', 'ETH', false],
   'tempo-testnet': [42431, '0x20c0000000000000000000006a37da5c996874be', 'USD', false],
@@ -31,12 +32,15 @@ describe('chain registry (§5.4)', () => {
     })
   }
 
-  it('the contract is unaudited: test networks are uncapped, and the only mainnet is capped (100 / 1,000 USDC)', () => {
+  it('the contract is unaudited: test networks are uncapped, and each mainnet is capped (Arc 100 / 1,000, Base 1,000 / 10,000 USDC)', () => {
+    const caps: Record<string, [bigint, bigint]> = {
+      'arc-mainnet': [100_000_000n, 1_000_000_000n],
+      'base-mainnet': [1_000_000_000n, 10_000_000_000n],
+    }
     for (const c of allChains()) {
       if (c.mainnet) {
-        expect(c.key).toBe('arc-mainnet')
-        expect(c.maxFaceValue).toBe(100_000_000n)
-        expect(c.maxTotalOutstanding).toBe(1_000_000_000n)
+        expect(Object.keys(caps)).toContain(c.key)
+        expect([c.maxFaceValue, c.maxTotalOutstanding]).toEqual(caps[c.key])
       } else {
         expect(c.maxFaceValue).toBe(0n)
         expect(c.maxTotalOutstanding).toBe(0n)
