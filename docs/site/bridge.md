@@ -64,8 +64,11 @@ Developers: the URL is `<bridge>/fetch?url=<encoded site URL>`, and a normal `cr
 
 ## What it trusts, and what it can't do
 
-- The bridge is the payee, so the budget's whole amount is exposed to whoever runs the bridge until the end date.
-  Run your own, and keep budgets small and short.
+- The contract only pays out against notes signed by the agent's key, so the bridge cannot take the budget's whole
+  amount on its own: it can collect only what the agent has signed. What the agent signs is the price the bridge quotes,
+  so a dishonest bridge could over-quote (up to the agent's `max_price` and per-request cap) on each request, and it sees
+  every request and response. Run your own, keep budgets small and short, and set a low `FM_MAX_PRICE`. Whatever is
+  not signed returns to the funder after the end date.
 - It pays only the exact USDC scheme on the networks you list, never above `BRIDGE_MAX_UPSTREAM` per call.
 - It does not make a site's content trustworthy. Treat responses as untrusted data.
 - A hosted bridge run for other people would be a payment service and needs its own legal review. This one is

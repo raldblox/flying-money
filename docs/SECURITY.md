@@ -65,7 +65,7 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 
 | Threat | Result | Control |
 |---|---|---|
-| Whoever runs the bridge is the budget's payee | They can redeem the whole face value of a budget made for them before its end date | Self-host; keep budgets small and short; a hosted bridge is out of scope until it has a legal review |
+| Whoever runs the bridge is the budget's payee and quotes the prices | The contract pays only against notes signed by the agent's key, so the bridge cannot take more than the agent signed; a dishonest bridge could over-quote each request up to the agent's price limits, and sees every request | Self-host; the agent's per-request cap and `max_price`; keep budgets small and short; a hosted bridge is out of scope until it has a legal review |
 | The bridge is used to reach internal services (SSRF, DNS rebinding) | Refused | Public addresses only, checked again at connect time; no redirects; https only; no credentials in URLs; optional host allowlist |
 | A site names another token or asks too much | Refused before the agent signs | Only the real USDC of a listed network; per-call ceiling; a quote the float can't fund is refused |
 | A resent note or a restart pays a site twice | Paid once | One upstream payment per request id (S1), stored outcomes (`BRIDGE_STATE_FILE`) |
