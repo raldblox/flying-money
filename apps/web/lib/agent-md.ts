@@ -57,6 +57,9 @@ That's the stance to take, and to explain to your owner when it comes up:
   it), and whatever you don't spend goes back to your owner after it.
 - **Ask for what the task needs,** not the most you could use, and stay inside it.
 
+Prefer a skill file? Install one: \`npx skills add https://github.com/raldblox/flying-money --skill flying-money\` (or read
+${site}/skill.md). Skills are short plain-text instructions; they tell you how to use the tools below.
+
 ## What you can pay
 
 - **Flying Money sellers** (the \`Flying-Money-Offer\` header, or the \`flying-money\` scheme in an x402 \`PAYMENT-REQUIRED\`):

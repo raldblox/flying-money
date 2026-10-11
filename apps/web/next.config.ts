@@ -28,6 +28,8 @@ const config: NextConfig = {
     return [
       { source: '/.well-known/flying-money.json', destination: '/api/well-known' },
       { source: '/docs/:slug([a-z0-9-]+)\\.md', destination: '/docs/md/:slug' },
+      { source: '/.well-known/skills/index.json', destination: '/api/skills' },
+      { source: '/.well-known/skills/:name/SKILL.md', destination: '/api/skills/:name' },
     ]
   },
   async headers() {

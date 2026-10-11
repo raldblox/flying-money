@@ -11,6 +11,7 @@ export const DOCS = [
   { slug: 'shops', group: 'Start' },
   { slug: 'offline', group: 'Start' },
   { slug: 'x402', group: 'Start' },
+  { slug: 'skills', group: 'Start' },
   { slug: 'protocol', group: 'Reference' },
   { slug: 'contract', group: 'Reference' },
   { slug: 'client', group: 'Reference' },

@@ -234,6 +234,8 @@ export function createBridge(config: BridgeConfig) {
       upstreamNetworks: config.upstreamNetworks,
       maxPerCall: config.maxUpstreamAmount.toString(),
       feeBps: config.feeBps ?? 0,
+      feeFlat: (config.feeFlat ?? 0n).toString(),
+      status: 'GET /status',
       use: 'GET /fetch?url=<x402 site>, paying with a Flying Money note (Flying-Money-Note) for the quoted price',
       limits:
         'Only the exact USDC scheme. A budget for this payee can be spent only here; unspent money returns to its funder after the end date.',

@@ -11,6 +11,18 @@ asking the site to change anything: your agent keeps its budget, and the bridge 
 
 **Status: prototype, test networks only.** Tested end to end on Base Sepolia, including a real third-party x402 site (`x402.org/protected`) paid through the bridge by an agent that followed only the tool guidance. Not audited.
 
+## The hosted bridge (Base mainnet, beta)
+
+There is a public bridge you can use without running anything: **`https://flying-money-bridge.vercel.app`**. It runs as
+serverless functions with its state in Redis and a scheduled collector, on **Base mainnet with real USDC**, and it is **not
+audited**. Its limits are small on purpose (at most 0.01 USDC per call; a 1% fee plus 0.0002 USDC per call; budgets need at
+least 36 hours left). Its wallet is public, and `GET /status` and the [/bridge](/bridge) page show its balance, what it
+has paid and collected, and fees. It describes itself to agents at `/skill.md`.
+
+Use it by setting `FM_BRIDGE_URL=https://flying-money-bridge.vercel.app` and asking your owner for a small budget for its
+wallet (see [Pay any x402 site](/docs/x402)). It is operated by the Flying Money project as a beta, with no uptime
+promise. For anything that matters, run your own.
+
 ## How the money moves
 
 Three different things happen, and only two of them move money. Using a 0.001 USDC call as the example:
@@ -148,7 +160,7 @@ payments in the app's blast radius and under its deploy schedule.
 | Where | Fit |
 |---|---|
 | Your own machine, a VM or a container | **Recommended for now.** One process, a durable file store (`BRIDGE_NOTES_FILE`, `BRIDGE_STATE_FILE`, `BRIDGE_LEDGER_FILE`), automatic collection. |
-| A separate serverless project (Vercel) | Possible, the way the demo seller runs: the same code with Upstash Redis for state and a cron job to collect. Needs Redis-backed outcome and log stores and a scheduled collector, which are not built yet. |
+| A separate serverless project (Vercel) | **Built** (`apps/bridge`): the same code with Upstash Redis for state, a daily cron to collect, and a coalesced collection pass after each paid call. This is how the hosted beta runs. Needs `BRIDGE_FLOAT_KEY` (kept as a sensitive variable), the Redis variables, `CRON_SECRET`, and `FM_ENV=mainnet` with a prefix containing "mainnet". |
 | Inside the web app | Not recommended: its keys, its deploys and its timeouts are the wrong home for money movement. |
 
 ## Security model
