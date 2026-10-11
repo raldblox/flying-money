@@ -24,6 +24,16 @@ export const metadata: Metadata = {
   description:
     'Set aside USDC for one seller, one spending key, an amount and an end date. Experience sponsored shop and agent demos, then explore how signed payment slips work offline after budget verification.',
   applicationName: 'Flying Money',
+  // entry points for AI agents: setup instructions, a short index, and every docs page in one file
+  alternates: {
+    types: {
+      'text/markdown': [{ url: '/agent.md', title: 'Setup for AI agents' }],
+      'text/plain': [
+        { url: '/llms.txt', title: 'Index for AI agents' },
+        { url: '/llms-full.txt', title: 'All docs in one file' },
+      ],
+    },
+  },
   manifest: '/manifest.webmanifest',
   icons: { icon: { url: '/icon.svg', type: 'image/svg+xml' }, apple: '/brand/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'Flying Money', statusBarStyle: 'default' },
