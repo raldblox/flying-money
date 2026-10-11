@@ -7,6 +7,7 @@
 //   BRIDGE_FEE_BPS            fee on top of the site's price, basis points (default 0)
 //   BRIDGE_ALLOW_HOSTS        optional comma list: reach only these hostnames
 //   BRIDGE_REDEEM_MIN / _MAX_AGE  collect when this much (USDC, default 0.05) or this many seconds (default 600) are waiting
+//   BRIDGE_NOTES_FILE         durable file for the seller's accepted notes (one self-hosted process; Redis/Upstash for several)
 //   BRIDGE_STATE_FILE         JSON file remembering what each paid request returned (so a restart never pays a site twice)
 //   BRIDGE_TRUST_PROXY=1      take the client address from X-Forwarded-For (only behind your own proxy)
 //   PORT                      default 8790
@@ -19,6 +20,7 @@ import { serve } from '@hono/node-server'
 import { createPublicClient, erc20Abi, http, parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createBridge } from './bridge.js'
+import { fileNoteStore } from './file-store.js'
 import { fileOutcomes, memoryOutcomes } from './outcomes.js'
 
 const env = process.env
@@ -34,9 +36,21 @@ const upstreamNetworks = (env.BRIDGE_UPSTREAM_NETWORKS ?? chains.map((c) => `eip
   .split(',')
   .map((s) => s.trim())
 const dev = env.BRIDGE_DEV === '1'
+// Durable store: Redis/Upstash for several instances, or BRIDGE_NOTES_FILE for one self-hosted process. A mainnet bridge
+// never runs on memory (its accepted notes are money owed to it): BRIDGE_DEV=1 is refused when a mainnet is listed.
+const mainnetChains = chains.filter((c) => getChain(c).mainnet)
+if (dev && mainnetChains.length > 0) {
+  console.error(
+    `flying-money-bridge: BRIDGE_DEV=1 (memory store) is not allowed with a mainnet (${mainnetChains.join(', ')})`,
+  )
+  process.exit(1)
+}
+const redisConfigured = Boolean(env.REDIS_URL || env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL)
 const sellerStore = dev
   ? { store: memoryStore(), durable: false }
-  : sellerStoreFromEnv({ env, payee: float.address, accepts: chains, requireDurable: true })
+  : env.BRIDGE_NOTES_FILE && !redisConfigured
+    ? { store: fileNoteStore(env.BRIDGE_NOTES_FILE), durable: true }
+    : sellerStoreFromEnv({ env, payee: float.address, accepts: chains, requireDurable: true })
 
 /** The float's USDC balance on each network it pays on, so it refuses a quote it could not fund. */
 const readers = new Map<string, () => Promise<bigint>>()
@@ -87,3 +101,4 @@ console.log(`flying-money-bridge on http://${env.HOST ?? '127.0.0.1'}:${port}`)
 console.log(`payee (issue budgets to this address, spender = your agent): ${float.address}`)
 console.log(`budget chains: ${chains.join(', ')}; pays on: ${upstreamNetworks.join(', ')}`)
 console.log(dev ? 'DEV mode: memory store, not safe to restart' : 'store: durable')
+if (!env.BRIDGE_STATE_FILE && !dev) console.log('tip: set BRIDGE_STATE_FILE so a restart never pays a site twice')

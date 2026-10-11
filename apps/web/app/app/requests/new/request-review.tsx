@@ -12,6 +12,7 @@ import { WalletButton } from '@/components/app/wallet-button'
 import { IconAgent, IconLedger, IconServe } from '@/components/art/ink-icons'
 import { GrantSummary } from '@/components/grant-summary'
 import { buttonClass } from '@/components/section'
+import { RealMoneyNote } from '@/components/test-note'
 import { loadCertificate } from '@/lib/chain'
 import { badgeOf, listHolders, listPlaces } from '@/lib/contacts'
 import { short } from '@/lib/fmt'
@@ -39,6 +40,8 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
   // contacts are read asynchronously: no warnings until we know
   const [known, setKnown] = useState(false)
   const [vouched, setVouched] = useState(false)
+  // on a mainnet the budget is real USDC: it is never funded without this being ticked
+  const [realOk, setRealOk] = useState(false)
   // opened from the inbox (?inbox=<id>) rather than a link: decisions go back to the inbox
   const [inboxId, setInboxId] = useState<string | null>(null)
   const [inboxItem, setInboxItem] = useState<InboxItem | null>(null)
@@ -327,6 +330,23 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
         </p>
       ) : (
         <div className="sheet flex flex-wrap items-center justify-between gap-4 p-5">
+          {chain.mainnet && (
+            <div className="grid w-full gap-3">
+              <RealMoneyNote chain={chain} />
+              <label className="flex w-full cursor-pointer items-start gap-3 rounded-md border border-seal/40 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-seal"
+                  checked={realOk}
+                  onChange={(e) => setRealOk(e.target.checked)}
+                />
+                <span>
+                  I understand this is real USDC on {chain.brand}, the contract is not audited, and the budget can’t be
+                  cancelled before its end date.
+                </span>
+              </label>
+            </div>
+          )}
           {needsVouch && (
             <label className="flex w-full cursor-pointer items-start gap-3 rounded-md border border-seal/40 p-3 text-sm">
               <input
@@ -362,7 +382,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             <button
               type="button"
               className={buttonClass('secondary')}
-              disabled={!isConnected || wrongWallet || (needsVouch && !vouched)}
+              disabled={!isConnected || wrongWallet || (needsVouch && !vouched) || (chain.mainnet && !realOk)}
               onClick={() => {
                 setSmaller(true)
                 setStep('fund')
@@ -373,7 +393,7 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             <button
               type="button"
               className={buttonClass('primary')}
-              disabled={!isConnected || wrongWallet || (needsVouch && !vouched)}
+              disabled={!isConnected || wrongWallet || (needsVouch && !vouched) || (chain.mainnet && !realOk)}
               onClick={() => {
                 setSmaller(false)
                 setStep('fund')
@@ -398,6 +418,9 @@ export function RequestReview({ oraclePayee }: { oraclePayee?: Hex }) {
             <p className="w-full text-sm text-ink-2">
               Tick the box above to approve a request from someone you haven’t saved.
             </p>
+          )}
+          {chain.mainnet && !realOk && (
+            <p className="w-full text-sm text-ink-2">Tick the real-money box above to approve.</p>
           )}
         </div>
       )}
