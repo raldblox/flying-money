@@ -57,6 +57,7 @@ describe('chain registry (§5.4)', () => {
     expect(rpcUrl('monad-testnet')).toBe('https://testnet-rpc.monad.xyz')
     expect(rpcUrl('arc-testnet')).toBe('https://rpc.testnet.arc.io')
     expect(rpcUrl('arc-mainnet')).toBe('https://rpc.mainnet.arc.io')
+    expect(rpcUrl('base-mainnet')).toBe('https://base-rpc.publicnode.com')
     expect(rpcUrl('arbitrum-sepolia', { RPC_ARBITRUM_SEPOLIA: 'http://x' })).toBe('http://x')
     for (const k of chainKeys) expect(rpcUrl(k)).toMatch(/^https?:\/\//)
   })

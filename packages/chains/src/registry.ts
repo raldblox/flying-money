@@ -229,6 +229,8 @@ const specRpc: Partial<Record<ChainKey, string>> = {
   'monad-testnet': 'https://testnet-rpc.monad.xyz',
   'arc-testnet': 'https://rpc.testnet.arc.io',
   'arc-mainnet': 'https://rpc.mainnet.arc.io',
+  // mainnet.base.org rate-limits (HTTP 429) after a few requests, which broke budget-approval detection on the first real run
+  'base-mainnet': 'https://base-rpc.publicnode.com',
   // viem's defaults for these are rate-limited third-party endpoints
   'ethereum-sepolia': 'https://ethereum-sepolia-rpc.publicnode.com',
 }
