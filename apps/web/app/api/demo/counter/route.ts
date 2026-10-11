@@ -38,7 +38,7 @@ export async function GET(req: Request) {
           available: false,
           reason: 'unavailable',
           message:
-            'The sponsored counter is unavailable on this network. Try another network or watch the payment illustration.',
+            'The sponsored counter is unavailable on this network. Try another network. The preview on this page still plays.',
         },
         { headers },
       )
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
             available: false,
             reason: 'unfunded',
             message:
-              'The counter sponsor needs more test funds for this network. You pay nothing yourself. Try another network or watch the illustration.',
+              'The counter sponsor needs more test funds for this network. You pay nothing yourself. Try another network. The preview on this page still plays.',
           },
       { headers },
     )
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
       {
         available: false,
         reason: 'unavailable',
-        message: 'We could not check counter sponsorship. Check again or watch the payment illustration.',
+        message: 'We could not check counter sponsorship. Please check again in a moment.',
       },
       { headers },
     )

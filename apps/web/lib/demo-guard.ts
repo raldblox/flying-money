@@ -104,7 +104,7 @@ export async function inspectDemoRun(req: Request, deps: DemoGuardDeps, face: bi
     return {
       available: false,
       reason: 'busy',
-      message: 'Another visitor’s agent is shopping. Check again shortly, or watch the illustration.',
+      message: 'Another visitor’s agent is shopping. Check again shortly. The preview on this page still plays.',
     }
   const day = new Date().toISOString().slice(0, 10)
   if ((await deps.limits.read('demo-usdc', day)) + face > DEMO_DAILY_CAP)
@@ -112,7 +112,7 @@ export async function inspectDemoRun(req: Request, deps: DemoGuardDeps, face: bi
       available: false,
       reason: 'exhausted',
       message:
-        'Today’s sponsored demo budget is used up. It resets at midnight UTC. The illustration is still available.',
+        'Today’s sponsored demo budget is used up. It resets at midnight UTC. The preview on this page still plays.',
     }
   if ((await deps.limits.read('demo-visitor', visitor(req))) >= 1n)
     return {

@@ -96,8 +96,6 @@ test('the agent waits for approval, respects decline, and preserves a partial ru
   await page.goto('/demo')
   await expect(page.getByRole('heading', { name: 'May I shop at the Oracle for you?' })).toBeVisible()
   expect(requests).toBe(0)
-  await page.getByRole('button', { name: 'Not now', exact: true }).click()
-  await expect(page.getByText('Not now. No purchases have been started.')).toBeVisible()
   expect(requests).toBe(0)
   await page.getByRole('button', { name: 'Approve these purchases', exact: true }).click()
   await expect(page.getByRole('alert').filter({ hasText: 'This run needs attention' })).toContainText(
@@ -105,22 +103,20 @@ test('the agent waits for approval, respects decline, and preserves a partial ru
   )
   await expect(page.getByRole('heading', { name: 'Check your saved run' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Your Silk Road briefing' })).toBeVisible()
-  await page.getByText(/Explore all purchased answers/).click()
   await expect(page.getByText('80 per jin · steady')).toBeVisible()
   await expect(page.getByText(/unavailable \(HTTP 503\)/)).toBeVisible()
   expect(requests).toBe(1)
 })
 
-test('illustration is opt-in and can be paused without starting a purchase', async ({ page }) => {
+test('the picture plays a labelled preview by itself, without starting a purchase', async ({ page }) => {
   let requests = 0
   page.on('request', (r) => {
-    if (r.url().endsWith('/api/demo/run')) requests++
+    if (r.url().endsWith('/api/demo/run') && r.method() === 'POST') requests++
   })
   await page.goto('/demo')
-  await page.getByRole('button', { name: 'Watch an illustration' }).click()
-  await page.getByRole('button', { name: 'Pause illustration' }).click()
-  await expect(page.getByRole('button', { name: 'Resume illustration' })).toBeVisible()
-  await page.getByRole('button', { name: 'Close illustration' }).click()
+  await expect(page.getByText('Illustration · not a live run')).toBeVisible()
+  await expect(page.getByText(/signed slips/i).first()).toBeVisible()
+  await page.waitForTimeout(2500)
   expect(requests).toBe(0)
 })
 
@@ -195,14 +191,16 @@ test('counter claims a budget, signs, resumes after refresh, pays offline and co
     await route.fulfill({ json: { hash, tx: `#${hash}`, collected: items.length } })
   })
   await page.goto('/demo/counter')
-  await expect(page.getByText(/Temporary spending keys/)).toBeVisible()
+  await expect(page.getByText(/No wallet app, no gas/).first()).toBeVisible()
   await page.screenshot({ path: '../../artifacts/demo-ux-review/implemented-counter-onboarding.png', fullPage: true })
-  await page.getByRole('button', { name: 'Set up wallet & claim demo budget' }).click()
+  await page.getByRole('button', { name: 'Claim my test budgets' }).click()
   await expect(page.getByText(/Your budgets are ready/)).toBeVisible({ timeout: 90_000 })
   await page.getByRole('button', { name: 'Green tea 0.01 USDC' }).click()
   await page.getByRole('button', { name: 'Review purchase · 0.01 USDC' }).click()
   await page.getByRole('button', { name: 'Sign & pay 0.01 USDC' }).click()
-  await expect(page.getByRole('region', { name: 'Your latest receipt' })).toContainText('Awaiting seller collection')
+  await expect(page.getByRole('region', { name: 'Your latest receipt' })).toContainText(
+    'The seller collects it on-chain later',
+  )
   await expect(
     page.getByRole('list', { name: 'Your demo journey' }).getByRole('listitem').filter({ hasText: 'Try offline' }),
   ).not.toContainText('completed')
@@ -214,10 +212,8 @@ test('counter claims a budget, signs, resumes after refresh, pays offline and co
   await expect(
     page.getByRole('list', { name: 'Your demo journey' }).getByRole('listitem').filter({ hasText: 'Try offline' }),
   ).not.toContainText('completed')
-  await expect(page.getByRole('region', { name: 'What you experienced' })).toContainText(
-    'offline experiment is still available',
-  )
-  await page.getByRole('button', { name: 'Try offline payment' }).click()
+  await expect(page.getByRole('region', { name: 'What you experienced' })).toContainText('collected on-chain')
+  await page.getByRole('button', { name: 'Cut the till’s connection' }).click()
   await page.getByRole('button', { name: 'Flying Money keepsake 0.01 USDC' }).click()
   await page.getByRole('button', { name: 'Review purchase · 0.01 USDC' }).click()
   await page.getByRole('button', { name: 'Sign & pay 0.01 USDC' }).click()
@@ -227,7 +223,7 @@ test('counter claims a budget, signs, resumes after refresh, pays offline and co
   await expect(page.getByRole('region', { name: 'Your latest receipt' })).toContainText('Collected on-chain')
   await expect(page.getByRole('button', { name: 'Everything collected' })).toBeDisabled()
   await expect(page.getByRole('region', { name: 'What you experienced' })).toContainText(
-    'You also paid while the till could not reach the blockchain.',
+    'even while it couldn’t reach the blockchain',
   )
   await expect(
     page.getByRole('list', { name: 'Your demo journey' }).getByRole('listitem').filter({ hasText: 'Try offline' }),
@@ -272,7 +268,9 @@ test('refresh reconnects to the same agent run without purchasing again', async 
   expect(purchases).toBe(1)
 })
 
-test('unavailable sponsorship explains the reason and offers an illustration without purchase', async ({ page }) => {
+test('unavailable sponsorship explains the reason, and the preview still plays without a purchase', async ({
+  page,
+}) => {
   let purchases = 0
   await page.route('**/api/demo/run**', async (route) => {
     if (route.request().method() === 'POST') purchases++
@@ -287,8 +285,7 @@ test('unavailable sponsorship explains the reason and offers an illustration wit
   await page.goto('/demo')
   await expect(page.getByText(/Today’s sponsored demo budget is used up/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Approve these purchases', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Watch an illustration' }).click()
-  await expect(page.getByRole('button', { name: 'Pause illustration' })).toBeVisible()
+  await expect(page.getByText('Illustration · not a live run')).toBeVisible()
   expect(purchases).toBe(0)
 })
 
@@ -306,9 +303,8 @@ test('counter explains unavailable sponsorship before claiming a wallet', async 
   })
   await page.goto('/demo/counter')
   await expect(page.getByText('Another visitor’s budget is being funded. Check again shortly.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Set up wallet & claim demo budget' })).toBeDisabled()
-  await expect(page.getByRole('link', { name: 'Watch the payment illustration' })).toBeVisible()
-  await page.getByRole('button', { name: 'Check availability again' }).click()
+  await expect(page.getByRole('button', { name: 'Claim my test budgets' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Check again' }).click()
   await expect(page.getByText('Another visitor’s budget is being funded. Check again shortly.')).toBeVisible()
   expect(claims).toBe(0)
 })

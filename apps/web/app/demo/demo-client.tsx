@@ -4,6 +4,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Briefing } from '@/components/demo/briefing'
 import { DemoStage } from '@/components/demo/demo-stage'
 import { Journey } from '@/components/demo/journey'
+import { MoreDemos } from '@/components/demo/more-demos'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { usePreferredChain } from '@/lib/chain-param'
@@ -23,9 +24,7 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
   const [availabilityCheck, setAvailabilityCheck] = useState(0)
   const [recoverableId, setRecoverableId] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
-  const [mode, setMode] = useState<'proposal' | 'illustration' | 'live'>('proposal')
-  const [paused, setPaused] = useState(false)
-  const [declined, setDeclined] = useState(false)
+  const [mode, setMode] = useState<'proposal' | 'live'>('proposal')
   const [error, setError] = useState<string | null>(null)
   const [log, setLog] = useState<DemoEvent[]>([])
   const [cutNetwork, setCutNetwork] = useState(false)
@@ -34,7 +33,6 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
     (s: typeof initialStory, e: DemoEvent | null) => (e ? reduceStory(s, e) : initialStory),
     initialStory,
   )
-  const illustration = useRef<DemoEvent[]>([])
   const runLock = useRef(false)
   const controller = useRef<AbortController | null>(null)
   useEffect(() => () => controller.current?.abort(), [])
@@ -57,7 +55,7 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
         if (!abort.signal.aborted)
           setAvailability({
             available: false,
-            message: 'Sponsorship could not be checked. Check again or watch the illustration.',
+            message: 'The sponsored budget could not be checked right now. Please try again in a moment.',
           })
       })
     return () => abort.abort()
@@ -147,38 +145,37 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
     setPhase('running')
     void followRun(recoverableId, controller.current.signal)
   }
+  // while you decide, the picture plays a labelled preview on a loop (no funds, no transactions); a twist changes it
   useEffect(() => {
-    if (mode !== 'illustration' || paused) return
+    if (mode !== 'proposal') return
+    dispatch(null)
+    let queue = illustrationScript({ cutNetwork, stealKey })
+    let rest = 0
     const timer = setInterval(() => {
-      const event = illustration.current.shift()
-      if (event) dispatch(event)
-      else setPaused(true)
+      const event = queue.shift()
+      if (event) {
+        dispatch(event)
+        return
+      }
+      rest += 1
+      if (rest > 5) {
+        rest = 0
+        dispatch(null)
+        queue = illustrationScript({ cutNetwork, stealKey })
+      }
     }, 850)
     return () => clearInterval(timer)
-  }, [mode, paused])
+  }, [mode, cutNetwork, stealKey])
 
   useEffect(() => {
     if (phase !== 'idle') document.getElementById('agent-progress')?.focus()
   }, [phase])
-  function closeIllustration() {
-    dispatch(null)
-    for (const event of log) dispatch(event)
-    setMode(log.length ? 'live' : 'proposal')
-  }
-  function illustrate() {
-    dispatch(null)
-    illustration.current = illustrationScript({ cutNetwork, stealKey })
-    setMode('illustration')
-    setPaused(false)
-  }
-
   async function run() {
     if (runLock.current || !availability?.available) return
     runLock.current = true
     controller.current = new AbortController()
     setMode('live')
     setPhase('running')
-    setDeclined(false)
     setError(null)
     setLog([])
     dispatch(null)
@@ -226,8 +223,112 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
   ]
 
   return (
-    <div className="mt-7 grid gap-6 demo-experience">
+    <div className="mt-6 grid gap-5 demo-experience">
       <Journey steps={steps} current={current} />
+      {mode === 'proposal' && (
+        <section aria-labelledby="proposal-title" className="demo-panel overflow-hidden">
+          <div className="grid lg:grid-cols-[1.35fr_1fr]">
+            <div className="p-5 sm:p-7">
+              <p className="smallcaps text-xs text-ink-2">The agent proposes · you decide</p>
+              <h2 id="proposal-title" className="mt-2 max-w-xl font-display text-3xl font-semibold sm:text-4xl">
+                May I shop at the Oracle for you?
+              </h2>
+              <p className="mt-2 max-w-xl text-ink-2">
+                I’ll buy this list from the Silk Road Oracle and bring you a briefing and a keepsake.
+              </p>
+              <ul className="mt-4 divide-y divide-line border-y border-line">
+                {shopping.map(([label, amount]) => (
+                  <li key={label} className="flex justify-between gap-4 py-2.5 text-sm">
+                    <span>{label}</span>
+                    <span className="whitespace-nowrap font-mono">{amount} USDC</span>
+                  </li>
+                ))}
+              </ul>
+              <fieldset disabled={active} className="mt-5 grid gap-3">
+                <NetworkPicker
+                  networks={chains}
+                  value={chainKey}
+                  onChange={setChainKey}
+                  label="Test network"
+                  disabled={active}
+                />
+                <p className="smallcaps text-xs text-ink-2">Add a twist (optional) · the picture below shows it</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-seal has-[:checked]:bg-seal/5">
+                    <input
+                      type="checkbox"
+                      checked={cutNetwork}
+                      onChange={(e) => setCutNetwork(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <span>
+                      <strong>Cut the seller’s connection</strong>
+                      <br />
+                      <span className="text-ink-2">Known budgets still pay. Collection waits.</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-seal has-[:checked]:bg-seal/5">
+                    <input
+                      type="checkbox"
+                      checked={stealKey}
+                      onChange={(e) => setStealKey(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <span>
+                      <strong>Steal the agent’s key</strong>
+                      <br />
+                      <span className="text-ink-2">A thief tries to overspend and to pay someone else.</span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+            <div className="flex flex-col justify-start gap-6 border-t border-line bg-paper-2 p-5 sm:p-7 lg:border-t-0 lg:border-l">
+              <div>
+                <p className="smallcaps text-xs text-ink-2">Sponsored by Flying Money</p>
+                <p className="mt-2 font-display text-5xl font-semibold">
+                  0.30 <span className="text-xl">test USDC</span>
+                </p>
+                <dl className="mt-4 grid gap-3 text-sm">
+                  <div>
+                    <dt className="text-ink-2">Only allowed seller</dt>
+                    <dd className="font-semibold">Silk Road Oracle</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-2">Budget lifetime</dt>
+                    <dd>7 days from funding. It can’t be cancelled early.</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-2">Your cost</dt>
+                    <dd className="font-semibold">Nothing. We supply the funds and setup fees.</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="grid gap-3">
+                <div className="text-sm" role="status">
+                  <p>{availability?.message ?? 'Checking that the sponsored budget is available…'}</p>
+                  {availability && !availability.available && (
+                    <button type="button" className="mt-1 underline" onClick={() => setAvailabilityCheck((n) => n + 1)}>
+                      Check again
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className={buttonClass('primary')}
+                  disabled={active || chains.length === 0 || !availability?.available}
+                  onClick={() => void run()}
+                >
+                  Approve these purchases
+                </button>
+                <p className="text-xs text-ink-2">
+                  Approving starts the demo and funds its budget. It never connects a wallet of yours.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       {mode === 'live' && (
         <section id="agent-progress" tabIndex={-1} className="demo-panel p-5 sm:p-7" aria-label="Agent progress">
           <p className="smallcaps text-xs text-ink-2">
@@ -248,14 +349,12 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
           </h2>
           <p className="mt-3 text-sm text-ink-2">
             {done
-              ? `Your agent spent ${money(BigInt(done.consumed))} test USDC from its 0.30 USDC sponsored budget. You paid nothing yourself. Explore your briefing and save your keepsake below.`
-              : (answers.at(-1)?.step ??
-                'We supply the test funds and setup fees. Your personal wallet is not connected.')}
+              ? `Your agent spent ${money(BigInt(done.consumed))} test USDC of its 0.30 USDC sponsored budget. You paid nothing yourself.`
+              : (answers.at(-1)?.step ?? 'We supply the test funds and setup fees. Your wallet is not connected.')}
           </p>
-          {recoverableId && (
+          {recoverableId && active && (
             <p className="mt-2 text-xs text-ink-2">
-              This tab can reconnect after refresh. Run records are kept for up to 24 hours; refreshing never approves
-              another purchase.
+              You can refresh this page: it reconnects to the run, and never approves another purchase.
             </p>
           )}
           {active && (
@@ -272,120 +371,29 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
               </p>
             </>
           )}
+          {!active && (
+            <button
+              type="button"
+              className={`${buttonClass('secondary')} mt-4`}
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem('fm-agent-run')
+                  sessionStorage.removeItem('fm-agent-snapshot')
+                } catch {
+                  /* nothing to clear */
+                }
+                setRecoverableId(null)
+                setLog([])
+                setError(null)
+                setPhase('idle')
+                setMode('proposal')
+              }}
+            >
+              Run it again, with a twist
+            </button>
+          )}
         </section>
       )}
-      <details className="demo-panel overflow-hidden" open={mode !== 'live'}>
-        <summary className={`cursor-pointer p-4 font-medium ${mode !== 'live' ? 'hidden' : ''}`}>
-          Your approved list & sponsored budget
-        </summary>
-        <section aria-labelledby="proposal-title">
-          <div className="grid lg:grid-cols-[1.4fr_1fr]">
-            <div className="p-5 sm:p-8">
-              <p className="smallcaps text-xs text-ink-2">The agent proposes · you decide</p>
-              <h2 id="proposal-title" className="mt-3 max-w-xl font-display text-3xl font-semibold sm:text-4xl">
-                May I shop at the Oracle for you?
-              </h2>
-              <p className="mt-3 max-w-xl text-ink-2">
-                I’ll buy this collection from the Silk Road Oracle and bring you a Silk Road briefing: the answers, a
-                tea-price comparison, and a keepsake you can save.
-              </p>
-              <ul className="mt-5 divide-y divide-line border-y border-line">
-                {shopping.map(([label, amount]) => (
-                  <li key={label} className="flex justify-between gap-4 py-3 text-sm">
-                    <span>{label}</span>
-                    <span className="whitespace-nowrap font-mono">{amount} USDC</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-ink-2">
-                Predefined shopping list · scripted agent. Tea prices and routes are fictional; weather comes from
-                Open-Meteo. The keepsake includes a proverb.
-              </p>
-            </div>
-            <div className="flex flex-col justify-between gap-5 border-t border-line bg-paper-2 p-5 sm:p-8 lg:border-t-0 lg:border-l">
-              <div>
-                <p className="smallcaps text-xs text-ink-2">Sponsored by Flying Money</p>
-                <p className="mt-2 font-display text-5xl font-semibold">
-                  0.30 <span className="text-xl">test USDC</span>
-                </p>
-                <p className="mt-1 text-sm">Budget limit · expected purchases 0.25 USDC</p>
-                <dl className="mt-5 grid gap-3 text-sm">
-                  <div>
-                    <dt className="text-ink-2">Only allowed seller</dt>
-                    <dd className="font-semibold">Silk Road Oracle</dd>
-                  </div>
-                  <div>
-                    <dt className="text-ink-2">Budget lifetime</dt>
-                    <dd>{issued ? utcDate(BigInt(issued.expiresAt)) : '7 days from funding'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-ink-2">Your cost</dt>
-                    <dd className="font-semibold">Nothing. We supply the funds and setup fees.</dd>
-                  </div>
-                </dl>
-              </div>
-              <div className="grid gap-3">
-                <p role="status" className="text-sm font-medium">
-                  {active
-                    ? issued
-                      ? 'You approved the list. Your agent is buying it.'
-                      : 'You approved the list. Preparing its sponsored budget…'
-                    : phase === 'done'
-                      ? 'Your agent has returned. Explore your briefing below.'
-                      : declined
-                        ? 'Not now. No purchases have been started.'
-                        : phase === 'error'
-                          ? 'This run stopped. Check its progress below.'
-                          : 'Waiting for your permission. No purchases started.'}
-                </p>
-                {!active && (
-                  <div className="text-sm" role="status">
-                    <p>{availability?.message ?? 'Checking sponsored demo availability…'}</p>
-                    {availability && !availability.available && (
-                      <button
-                        type="button"
-                        className="mt-2 underline"
-                        onClick={() => setAvailabilityCheck((n) => n + 1)}
-                      >
-                        Check availability again
-                      </button>
-                    )}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className={buttonClass('primary')}
-                  disabled={active || chains.length === 0 || !availability?.available}
-                  onClick={() => void run()}
-                >
-                  {active
-                    ? 'Agent at work…'
-                    : phase === 'done' || phase === 'error'
-                      ? 'Approve a new run'
-                      : 'Approve these purchases'}
-                </button>
-                {phase === 'idle' && (
-                  <button
-                    type="button"
-                    className={buttonClass('secondary')}
-                    onClick={() => {
-                      setDeclined(true)
-                      setMode('proposal')
-                    }}
-                  >
-                    Not now
-                  </button>
-                )}
-                <p className="text-xs text-ink-2">
-                  Approval starts this demo and funds its budget; it does not connect your wallet. Purchases then
-                  proceed within the approved list. Unspent funds stay locked until expiry and return to the sponsor
-                  when reclaimed.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </details>
       {error && (
         <div role="alert" className="rounded border border-seal bg-paper p-4">
           <strong>This run needs attention</strong>
@@ -396,47 +404,17 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
             </button>
           )}
           <p className="mt-2 text-sm">
-            Existing answers and transaction links remain below. Starting another run creates a new sponsored budget.
+            We handle the seller’s collection for this demo, so there is nothing for you to fix. Reconnecting never
+            starts a new purchase.
           </p>
         </div>
       )}
-      <details className="demo-panel p-4">
-        <summary className="cursor-pointer font-medium">Network & optional experiments</summary>
-        <fieldset disabled={active} className="mt-4 grid gap-4">
-          <NetworkPicker
-            networks={chains}
-            value={chainKey}
-            onChange={setChainKey}
-            label="Test network"
-            disabled={active}
-          />
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={cutNetwork}
-              onChange={(e) => setCutNetwork(e.target.checked)}
-              className="mt-1"
-            />
-            <span>
-              <strong>Interrupt the seller’s blockchain connection</strong>
-              <br />A simulated connection failure: known budgets can still pay; collection waits.
-            </span>
-          </label>
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={stealKey}
-              onChange={(e) => setStealKey(e.target.checked)}
-              className="mt-1"
-            />
-            <span>
-              <strong>Test a stolen spending key</strong>
-              <br />
-              Try to exceed the limit and pay another seller. A stolen key can still spend at the allowed seller.
-            </span>
-          </label>
-        </fieldset>
-      </details>
+
+      {/* the picture: a looping preview while you decide, then the live run, always on screen */}
+      <div className={paused(mode, phase) ? 'demo-paused' : undefined}>
+        <DemoStage story={story} mode={mode === 'live' ? 'live' : 'illustration'} reserveThief={stealKey} />
+      </div>
+
       {mode === 'live' && (answers.length > 0 || done) && (
         <Briefing
           answers={answers}
@@ -449,10 +427,6 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
       {mode === 'live' && (
         <section className="demo-panel p-5" aria-label="Payment record">
           <h2 className="font-display text-2xl font-semibold">Your payment record</h2>
-          <p className="mt-2 text-sm text-ink-2">
-            Your approval covers the shopping list. The funded budget enforces the seller, amount and expiry; it cannot
-            be cancelled early.
-          </p>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               ['Delivered', String(story.calls)],
@@ -466,94 +440,65 @@ export function DemoClient({ chains, defaultChain }: { chains: PickerNetwork[]; 
               </div>
             ))}
           </div>
-          {issued && (
-            <p className="mt-4 text-sm">
-              <a className="text-indigo underline" href={issued.txUrl} target="_blank" rel="noreferrer">
-                Budget setup transaction
-              </a>{' '}
-              · separate from seller collection
-            </p>
-          )}
-          {done && (
-            <p className="mt-3 text-sm">
-              {money(BigInt(done.remaining))} USDC remains in the budget. The sponsor can reclaim what remains after
-              expiry.
-            </p>
-          )}
-          {statusUrl && (
-            <a className="mt-3 inline-block text-sm text-indigo underline" href={statusUrl}>
-              Inspect this budget
-            </a>
+          <p className="mt-4 text-sm text-ink-2">
+            {issued && (
+              <>
+                <a className="text-indigo underline" href={issued.txUrl} target="_blank" rel="noreferrer">
+                  Budget setup transaction
+                </a>{' '}
+                ·{' '}
+              </>
+            )}
+            {statusUrl && (
+              <>
+                <a className="text-indigo underline" href={statusUrl}>
+                  Inspect this budget
+                </a>{' '}
+                ·{' '}
+              </>
+            )}
+            {done
+              ? `${money(BigInt(done.remaining))} USDC remains; the sponsor can reclaim it after expiry.`
+              : 'The seller collects what it served, in batches.'}
+          </p>
+          {log.filter((e) => e.type !== 'answer').length > 0 && (
+            <ol className="mt-4 max-h-72 overflow-auto divide-y divide-line border-t border-line text-sm">
+              {log
+                .filter((e) => e.type !== 'answer')
+                .map((e, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: append-only event log
+                  <li key={i} className="break-words py-2">
+                    {describe(e)}
+                    {'txUrl' in e && e.txUrl && (
+                      <>
+                        {' '}
+                        <a href={e.txUrl} className="text-indigo underline" target="_blank" rel="noreferrer">
+                          View transaction
+                        </a>
+                      </>
+                    )}
+                    {e.type === 'info' && e.url && (
+                      <>
+                        {' '}
+                        <a href={e.url} className="text-indigo underline" target="_blank" rel="noreferrer">
+                          View setup transaction
+                        </a>
+                      </>
+                    )}
+                  </li>
+                ))}
+            </ol>
           )}
         </section>
       )}
-      {!active && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button id="illustration" type="button" className={buttonClass('secondary')} onClick={illustrate}>
-            Watch an illustration
-          </button>
-          <span className="text-sm text-ink-2">An optional walkthrough. No funds or purchases.</span>
-        </div>
-      )}
-      {mode === 'illustration' && (
-        <div className="flex flex-wrap items-center gap-3">
-          <strong className="text-sm">Illustration · no live transactions</strong>
-          <button type="button" className={buttonClass('secondary')} onClick={() => setPaused(!paused)}>
-            {paused ? 'Resume illustration' : 'Pause illustration'}
-          </button>
-          <button type="button" className="text-sm underline" onClick={closeIllustration}>
-            Close illustration
-          </button>
-        </div>
-      )}
-      {mode !== 'proposal' && (
-        <details className="demo-panel p-4" open={mode === 'illustration'}>
-          <summary className="cursor-pointer font-medium">Why it works: signed payments, then collection</summary>
-          <div className={paused && mode === 'illustration' ? 'demo-paused mt-4' : 'mt-4'}>
-            <DemoStage story={story} mode={mode === 'live' ? 'live' : 'illustration'} />
-          </div>
-        </details>
-      )}
-      {mode === 'live' && log.length > 0 && (
-        <details className="demo-panel p-4 text-sm">
-          <summary className="cursor-pointer font-medium">Verify it: payment events & transaction links</summary>
-          <ol className="mt-3 max-h-96 overflow-auto divide-y divide-line">
-            {log
-              .filter((e) => e.type !== 'answer')
-              .map((e, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: append-only event log
-                <li key={i} className="break-words py-2">
-                  {describe(e)}
-                  {'txUrl' in e && e.txUrl && (
-                    <>
-                      {' '}
-                      <a href={e.txUrl} className="text-indigo underline" target="_blank" rel="noreferrer">
-                        View transaction
-                      </a>
-                    </>
-                  )}
-                  {e.type === 'info' && e.url && (
-                    <>
-                      {' '}
-                      <a href={e.url} className="text-indigo underline" target="_blank" rel="noreferrer">
-                        View setup transaction
-                      </a>
-                    </>
-                  )}
-                </li>
-              ))}
-          </ol>
-        </details>
-      )}
-      {done && (
-        <div className="flex flex-wrap gap-3">
-          <a href="/docs/agents" className={buttonClass('primary')}>
-            Give your own agent a budget
-          </a>
-        </div>
-      )}
+      <MoreDemos current="agent" />
     </div>
   )
+}
+
+/** The picture is only frozen when a live run has stopped; the preview and a running demo always move. */
+function paused(mode: 'proposal' | 'live', phase: Phase) {
+  return mode === 'live' && phase !== 'running' && phase !== 'idle'
 }
 
 function describe(e: DemoEvent): string {

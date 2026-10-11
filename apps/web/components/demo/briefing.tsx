@@ -74,7 +74,7 @@ export function Briefing({
           </p>
         </div>
       )}
-      <details className="mt-5 rounded border border-line p-4">
+      <details className="mt-5 rounded border border-line p-4" open>
         <summary className="cursor-pointer font-semibold">
           Explore all purchased answers · {answers.filter((a) => a.path.split('?')[0] !== '/v1/certificate').length}{' '}
           purchase results

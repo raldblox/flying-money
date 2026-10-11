@@ -737,3 +737,28 @@ a {
   list-style: none;
   padding: 0;
 }
+
+/* The slip travelling from the wallet to the till in the counter's picture; it moves once per accepted payment. */
+.flow-dot {
+  animation: flow-dot 1000ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes flow-dot {
+  from {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(166px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-dot {
+    animation: none;
+    opacity: 0;
+  }
+}

@@ -117,8 +117,14 @@ describe('no hard-coded chain values outside @flying-money/chains', () => {
   walk(root)
   const allowed = (p: string) => {
     const r = relative(root, p).split(sep).join('/')
-    // contracts/deployments/ is git-ignored forge output that echoes registry values back
-    return r.startsWith('packages/chains/') || r.startsWith('contracts/deployments/') || r === 'pnpm-lock.yaml'
+    // contracts/deployments/ is git-ignored forge output that echoes registry values back; recovery-worker.js is the
+    // git-ignored esbuild bundle of the offline recovery worker, which bundles the registry package itself
+    return (
+      r.startsWith('packages/chains/') ||
+      r.startsWith('contracts/deployments/') ||
+      r === 'apps/web/public/recovery-worker.js' ||
+      r === 'pnpm-lock.yaml'
+    )
   }
   const needles = Object.values(SPEC)
     .map(([, usdc]) => usdc.toLowerCase())

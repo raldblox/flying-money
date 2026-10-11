@@ -1,10 +1,13 @@
 'use client'
 import type { ChainKey } from '@flying-money/chains'
-import Link from 'next/link'
 import { useState } from 'react'
+import { SlipView } from '@/app/slip/slip-client'
 import { CarrySend } from '@/components/carry/carry'
+import { Journey } from '@/components/demo/journey'
+import { MoreDemos } from '@/components/demo/more-demos'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
+import { decodeCarried } from '@/lib/carry/codec'
 import { short } from '@/lib/fmt'
 
 interface Slip {
@@ -41,81 +44,106 @@ export function SlipDemo({ chains }: { chains: PickerNetwork[] }) {
     }
   }
 
+  let note = null
+  if (slip) {
+    try {
+      const c = decodeCarried(slip.slip)
+      if (c.kind === 'note') note = c.note
+    } catch {
+      note = null
+    }
+  }
+
   return (
-    <div className="mt-8 grid gap-6">
-      <ol className="grid gap-2 text-sm text-ink-2 sm:grid-cols-3">
-        <li className="sheet p-3">
-          <strong className="text-ink">1 · The agent pays.</strong> It sets aside 0.01 test USDC for the demo seller and
-          signs a slip for it.
-        </li>
-        <li className="sheet p-3">
-          <strong className="text-ink">2 · You carry it.</strong> QR, sound, share, link, file or text: pick one.
-        </li>
-        <li className="sheet p-3">
-          <strong className="text-ink">3 · Spend it anywhere.</strong> The seller checks the slip on the spot and hands
-          you a 飛錢 certificate.
-        </li>
-      </ol>
+    <div className="mt-6 grid gap-5">
+      <Journey steps={['Get a slip', 'Spend it', 'Your keepsake']} current={slip ? 1 : 0} />
 
       {!slip ? (
-        <section className="sheet grid gap-4 p-5" aria-label="Get a slip">
-          {chains.length > 1 && (
-            <NetworkPicker networks={chains} value={chain} onChange={setChain} label="Network" disabled={busy} />
-          )}
-          <button
-            type="button"
-            className={`${buttonClass('primary')} sm:w-fit`}
-            onClick={() => void get()}
-            disabled={busy}
-          >
-            {busy ? 'The agent is funding your slip…' : 'Get a slip from the agent'}
-          </button>
-          <p className="text-xs text-ink-2">
-            One real transaction on the test network you pick (a few seconds; up to 15 on Ethereum Sepolia). Test money
-            only.
-          </p>
-          {error && (
-            <p role="alert" className="text-sm text-seal">
-              {error}
+        <section className="demo-panel grid gap-5 p-5 sm:p-7 md:grid-cols-[1.2fr_1fr]" aria-label="Get a slip">
+          <div className="grid content-start gap-4">
+            <h2 className="font-display text-3xl font-semibold">Let the agent sign you a payment.</h2>
+            <p className="text-ink-2">
+              The agent sets aside 0.01 test USDC for a demo seller and signs a slip for it. The slip is about 150
+              characters: small enough for a QR code, a sound or a text message.
             </p>
-          )}
+            {chains.length > 1 && (
+              <NetworkPicker networks={chains} value={chain} onChange={setChain} label="Test network" disabled={busy} />
+            )}
+            <button
+              type="button"
+              className={`${buttonClass('primary')} sm:w-fit`}
+              onClick={() => void get()}
+              disabled={busy}
+            >
+              {busy ? 'The agent is funding your slip…' : 'Get a slip from the agent'}
+            </button>
+            <p className="text-xs text-ink-2">
+              One real transaction on the network you pick (a few seconds; up to 15 on Ethereum Sepolia). Test money
+              only.
+            </p>
+            {error && (
+              <p role="alert" className="text-sm text-seal">
+                {error}
+              </p>
+            )}
+          </div>
+          <ol className="grid content-start gap-3 text-sm" aria-label="What happens">
+            <li className="rounded-md border border-line bg-paper-2 p-3">
+              <strong>1 · The agent pays.</strong> It earmarks a small budget for one seller and signs a slip over it.
+            </li>
+            <li className="rounded-md border border-line bg-paper-2 p-3">
+              <strong>2 · You spend it.</strong> The seller checks the signature on the spot, with no internet needed.
+            </li>
+            <li className="rounded-md border border-line bg-paper-2 p-3">
+              <strong>3 · You get a 飛錢 keepsake.</strong> The seller collects the money later, in one transaction.
+            </li>
+          </ol>
         </section>
       ) : (
         <>
-          <section className="sheet grid gap-2 p-5 text-sm" aria-label="Your slip">
-            <p className="font-display text-2xl font-semibold">Your slip: 0.01 USDC on {slip.chainName}</p>
-            <p className="text-ink-2">
-              Budget <span className="font-mono">{short(slip.certificateId)}</span>, funded by the agent in{' '}
-              <a href={slip.issueTx} target="_blank" rel="noreferrer" className="text-indigo underline">
-                this transaction
-              </a>
-              . The slip is the only payment signed for it, and it pays only the demo seller.
+          <div className="grid items-start gap-5 md:grid-cols-[1fr_1.1fr]">
+            <section className="demo-panel grid gap-3 p-5 sm:p-6" aria-label="Your slip">
+              <p className="smallcaps text-xs text-ink-2">The agent’s slip</p>
+              <p className="font-display text-3xl font-semibold">0.01 USDC on {slip.chainName}</p>
+              <p className="break-all rounded-md border border-line bg-paper-2 p-3 font-mono text-xs leading-relaxed">
+                {slip.slip}
+              </p>
+              <p className="text-sm text-ink-2">
+                Budget <span className="font-mono">{short(slip.certificateId)}</span>, funded in{' '}
+                <a href={slip.issueTx} target="_blank" rel="noreferrer" className="text-indigo underline">
+                  this transaction
+                </a>
+                . It pays only the demo seller, and only once.
+              </p>
+              <button type="button" className="text-sm text-indigo underline sm:w-fit" onClick={() => setSlip(null)}>
+                Get another slip
+              </button>
+            </section>
+            <section className="demo-panel p-5 sm:p-6" aria-label="The shop’s counter">
+              {note ? (
+                <SlipView note={note} payload={slip.slip} embedded />
+              ) : (
+                <p role="alert" className="text-sm text-seal">
+                  That slip couldn’t be read. Please get another one.
+                </p>
+              )}
+            </section>
+          </div>
+          <section className="demo-panel grid gap-3 p-5 sm:p-6" aria-label="Carry it">
+            <h2 className="font-display text-2xl font-semibold">Optional: carry it to another device</h2>
+            <p className="text-sm text-ink-2">
+              A slip needs no internet to travel. Send it to a phone or laptop by QR code, sound, share, link or file,
+              and spend it there instead.
             </p>
-          </section>
-          <section className="sheet p-5" aria-label="Carry it">
-            <h2 className="mb-3 font-display text-2xl font-semibold">Carry it to another device</h2>
             <CarrySend
               payload={slip.slip}
               title="Flying Money payment slip, 0.01 USDC"
               fileName="flying-money-slip.txt"
             />
-            <p className="mt-4 text-sm text-ink-2">
-              On the other device, open the link (or, for sound and files, open{' '}
-              <Link href="/slip" className="text-indigo underline">
-                /slip
-              </Link>{' '}
-              and pick the same carrier). Only one device here?{' '}
-              <a href={`/slip#${slip.slip}`} className="text-indigo underline">
-                Spend it on this one
-              </a>
-              .
-            </p>
           </section>
-          <button type="button" className="text-sm text-indigo underline sm:w-fit" onClick={() => setSlip(null)}>
-            Get another slip
-          </button>
         </>
       )}
+      <MoreDemos current="slip" />
     </div>
   )
 }

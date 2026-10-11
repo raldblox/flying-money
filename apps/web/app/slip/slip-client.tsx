@@ -82,7 +82,17 @@ export function SlipClient() {
   return <SlipView note={note} payload={payload} />
 }
 
-function SlipView({ note, payload }: { note: SignedNote; payload: string }) {
+export function SlipView({
+  note,
+  payload,
+  embedded = false,
+}: {
+  note: SignedNote
+  payload: string
+  embedded?: boolean
+}) {
+  const Title = embedded ? 'h2' : 'h1'
+  const titleClass = embedded ? 'font-display text-3xl font-semibold' : 'mt-2 font-display text-4xl font-semibold'
   const chain = getChainById(note.chainId)
   const signer = recoverNoteSigner(note)
   const [name, setName] = useState('')
@@ -139,7 +149,7 @@ function SlipView({ note, payload }: { note: SignedNote; payload: string }) {
   if (kept)
     return (
       <>
-        <h1 className="mt-2 font-display text-4xl font-semibold">Paid. Here’s your certificate.</h1>
+        <Title className={titleClass}>Paid. Here’s your keepsake.</Title>
         <p className="mt-3 text-ink-2">
           The demo seller checked your slip on the spot and served you. It collects the money later, in one transaction
           for many slips; scan the code on the certificate to watch for it.
@@ -152,7 +162,7 @@ function SlipView({ note, payload }: { note: SignedNote; payload: string }) {
 
   return (
     <>
-      <h1 className="mt-2 font-display text-4xl font-semibold">{usd(note.cumulative)} USDC, ready to spend</h1>
+      <Title className={titleClass}>{usd(note.cumulative)} USDC, ready to spend</Title>
       <dl className="sheet mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 p-5 text-sm">
         <dt className="text-ink-2">Network</dt>
         <dd>{chain?.chain.name ?? `chain ${note.chainId}`} (test money)</dd>
@@ -201,19 +211,21 @@ function SlipView({ note, payload }: { note: SignedNote; payload: string }) {
         )}
       </section>
 
-      <section className="mt-10" aria-labelledby={`${id}-pass`}>
-        <h2 id={`${id}-pass`} className="font-display text-2xl font-semibold">
-          Or pass it on
-        </h2>
-        <p className="mt-2 text-sm text-ink-2">Send it to another device first, and spend it there.</p>
-        <div className="sheet mt-3 p-5">
-          <CarrySend
-            payload={passOn}
-            title={`Payment slip for ${usd(note.cumulative)} USDC`}
-            fileName="flying-money-slip.txt"
-          />
-        </div>
-      </section>
+      {!embedded && (
+        <section className="mt-10" aria-labelledby={`${id}-pass`}>
+          <h2 id={`${id}-pass`} className="font-display text-2xl font-semibold">
+            Or pass it on
+          </h2>
+          <p className="mt-2 text-sm text-ink-2">Send it to another device first, and spend it there.</p>
+          <div className="sheet mt-3 p-5">
+            <CarrySend
+              payload={passOn}
+              title={`Payment slip for ${usd(note.cumulative)} USDC`}
+              fileName="flying-money-slip.txt"
+            />
+          </div>
+        </section>
+      )}
     </>
   )
 }

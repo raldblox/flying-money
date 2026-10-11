@@ -18,15 +18,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { SettlementRecovery } from '@/components/app/settlement-recovery'
-import { CarrySend } from '@/components/carry/carry'
-import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { Keepsake, type KeepsakeData } from '@/components/carry/keepsake'
+import { CounterFlow } from '@/components/demo/counter-flow'
 import { Journey } from '@/components/demo/journey'
+import { MoreDemos } from '@/components/demo/more-demos'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { PROVERBS } from '@/lib/carry/proverbs'
-import { encodeReceipt } from '@/lib/carry/receipt'
-import { carriedPrice, slipForOrder } from '@/lib/carry/till'
 import { publicClient as collectionClient } from '@/lib/chain'
 import { usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, type Till } from '@/lib/till'
@@ -58,9 +56,6 @@ interface Budget {
   cert: CounterCertificate
   key: Hex
   issueTx: string
-  handOver: string
-  /** handed to the visitor's phone: this page no longer pays from it, so two copies never sign */
-  moved: boolean
 }
 interface Order {
   role: Role
@@ -109,7 +104,6 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
   const [paying, setPaying] = useState(false)
   const paymentLock = useRef(false)
   const fundingLock = useRef(false)
-  const [sellerView, setSellerView] = useState(false)
   const [collectedThrough, setCollectedThrough] = useState(0)
   const [restored, setRestored] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,8 +115,6 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
   const [interrupted, setInterrupted] = useState<Role | null>(null)
   const [armDeadPhone, setArmDeadPhone] = useState(false)
   const [badges, setBadges] = useState<Badge[]>([])
-  const [onPhone, setOnPhone] = useState(false)
-  const [mode, setMode] = useCarryMode()
   const [version, setVersion] = useState(0)
   const backing = useRef(new Map<string, string>())
   const store = useMemo(() => {
@@ -171,7 +163,6 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
         setBadges(saved.badges ?? [])
         setInterrupted(saved.interrupted ?? null)
         setCollectedThrough(saved.collectedThrough ?? 0)
-        setOnPhone(Boolean(saved.onPhone))
       }
       const st = sessionStorage.getItem(SKEY)
       if (st) for (const [k, val] of JSON.parse(st) as Array<[string, string]>) backing.current.set(k, val)
@@ -186,14 +177,14 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
     try {
       sessionStorage.setItem(
         'fm-demo-journey',
-        JSON.stringify({ order, last, bag, badges, interrupted, collectedThrough, onPhone }, (_key, value) =>
+        JSON.stringify({ order, last, bag, badges, interrupted, collectedThrough }, (_key, value) =>
           typeof value === 'bigint' ? value.toString() : value,
         ),
       )
     } catch {
       /* temporary mode: keep the current page usable */
     }
-  }, [restored, order, last, bag, badges, interrupted, collectedThrough, onPhone])
+  }, [restored, order, last, bag, badges, interrupted, collectedThrough])
   useEffect(() => {
     if (order) document.getElementById('payment-review')?.focus()
   }, [order])
@@ -216,7 +207,7 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
         if (!abort.signal.aborted)
           setAvailability({
             available: false,
-            message: 'Counter sponsorship could not be checked. Check again or watch the illustration.',
+            message: 'The sponsored budgets could not be checked right now. Please try again in a moment.',
           })
       })
     return () => abort.abort()
@@ -331,8 +322,6 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
           name: b.name,
           key: h.key,
           issueTx: b.issueTx,
-          handOver: b.handOver,
-          moved: false,
           cert: {
             chainId,
             contract: body.contract,
@@ -542,8 +531,20 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
 
   const tillsReady = Boolean(shopTill && staffTill)
   const total = cart.reduce((s, p) => s + p.price, 0n)
+  // what the two tills have accepted and collected so far, from their own books (refreshed after every payment)
+  const chainId = getChain(chain).chain.id
+  let accepted = 0n
+  let collected = 0n
+  for (const t of [shopTill, staffTill])
+    if (t)
+      for (const [key, r] of t.store.snapshot().certs)
+        if (key.startsWith(`${chainId}:`)) {
+          accepted += BigInt(r.consumed)
+          collected += BigInt(r.redeemed)
+        }
+  const done = Boolean(last && collectedThrough >= last.at)
   return (
-    <div className="mt-8 grid gap-6">
+    <div className="mt-6 grid gap-5">
       <Journey
         steps={['Claim budget', 'Choose & sign', 'Receive', 'Try offline', 'Collect']}
         optional={[3]}
@@ -551,59 +552,26 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
           ...(budgets ? [0] : []),
           ...(last ? [1, 2] : []),
           ...(badges.includes('offline') ? [3] : []),
-          ...(last && collectedThrough >= last.at ? [4] : []),
+          ...(done ? [4] : []),
         ]}
-        current={!budgets ? 0 : !last ? 1 : collectedThrough >= last.at ? 4 : badges.includes('offline') ? 3 : 2}
+        current={!budgets ? 0 : !last ? 1 : done ? 4 : badges.includes('offline') ? 3 : 2}
       />
-      {last && collectedThrough >= last.at && (
-        <section className="demo-panel p-5" aria-label="What you experienced">
-          <h2 className="font-display text-2xl font-semibold">You signed. The seller collected later.</h2>
-          <p className="mt-2 text-sm text-ink-2">
-            You paid from a sponsored budget without paying gas yourself. The seller accepted your signed payments, then
-            collected on-chain.
-            {badges.includes('offline')
-              ? ' You also paid while the till could not reach the blockchain.'
-              : ' The offline experiment is still available if you want to try it.'}
-          </p>
-          <a href="/demo" className={`${buttonClass('primary')} mt-4`}>
-            Let an agent shop for you
-          </a>
-        </section>
-      )}
-      {budgets && (
-        <div className="demo-panel flex flex-wrap items-center justify-between gap-3 p-4">
-          <div>
-            <p className="text-sm font-semibold">
-              {cut ? 'Till’s blockchain connection interrupted' : 'Till connected to the blockchain'}
-            </p>
-            <p className="mt-1 text-xs text-ink-2">
-              {last
-                ? 'Try a purchase while the till cannot reach the chain. Collection waits for reconnection.'
-                : 'Start with your first purchase. Then try the offline experiment.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            className={buttonClass('secondary')}
-            onClick={() => setConnection(!cut)}
-            disabled={!last || funding}
-          >
-            {cut ? 'Reconnect the till' : 'Try offline payment'}
-          </button>
-          {cut && (
-            <p className="w-full text-xs text-ink-2">
-              Demo scenario: this switch blocks the till’s blockchain reads. Your device stays online. Previously
-              checked budgets can still pay.
-            </p>
-          )}
-        </div>
-      )}
+      <CounterFlow
+        ready={Boolean(budgets)}
+        cut={cut}
+        accepted={accepted}
+        pending={accepted > collected ? accepted - collected : 0n}
+        pulse={version}
+        paying={paying}
+        canToggle={Boolean(budgets && last) && !funding}
+        onToggle={() => setConnection(!cut)}
+      />
 
       {funding && (
         <p role="status" className="rounded border border-line bg-paper p-4 text-sm">
           {fundingStage === 'checking'
-            ? 'Budgets funded and saved. Checking them with the till before you shop…'
-            : 'Creating temporary spending keys and funding your budgets. Waiting for testnet confirmation…'}
+            ? 'Budgets funded. The till is checking them, so it can accept your payments on its own later…'
+            : 'Funding your two test budgets on the network. This takes a few seconds…'}
         </p>
       )}
       {news && (
@@ -620,55 +588,24 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
         </p>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid items-start gap-5 lg:grid-cols-[1.15fr_1fr]">
         {/* ── the shop ── */}
         <section className="demo-panel grid content-start gap-4 p-5 sm:p-6" aria-labelledby="shop-t">
           <div className="flex items-baseline justify-between">
             <h2 id="shop-t" className="font-display text-3xl font-semibold">
-              Tea House <span className="text-base text-ink-2">· {sellerView ? 'seller view' : 'shop'}</span>
+              Tea House
             </h2>
             <span className="smallcaps text-xs text-ink-2">{getChain(chain).chain.name}</span>
           </div>
-          <p className="text-sm text-ink-2">
-            A tiny demo shop. Pick a keepsake to save, or try a pretend tea-house purchase. Prices are in test USDC.
-          </p>
-          {budgets && (
-            <label className="flex items-center gap-2 text-xs text-ink-2">
-              <input type="checkbox" checked={sellerView} onChange={(e) => setSellerView(e.target.checked)} /> Show
-              seller controls
-            </label>
-          )}
           {order ? (
-            <OrderView
-              order={order}
-              onPhone={onPhone}
-              mode={mode}
-              setMode={setMode}
-              till={tillOf(order.role)!}
-              chain={chain}
-              onPaidByPhone={(r, noteQr) => {
-                const b = budget(order.role)
-                if (!b || r.status === 'REJECTED') return
-                setLast({
-                  role: order.role,
-                  orderId: order.id,
-                  noteQr,
-                  price: order.price,
-                  items: order.items,
-                  status: r.status,
-                  at: Date.now(),
-                })
-                award(order.role === 'tips' ? 'tip' : 'first')
-                if (cutRef.current) award('offline')
-                setVersion((v) => v + 1)
-              }}
-              onDone={() => {
-                setOrder(null)
-                if (order.role === 'shop') setCart([])
-              }}
-            />
+            <RequestCard order={order} onCancel={() => setOrder(null)} />
           ) : (
             <>
+              <p className="text-sm text-ink-2">
+                {budgets
+                  ? 'Pick what you like. Prices are in test USDC.'
+                  : 'Claim your test budget first, then pick something from the shelf.'}
+              </p>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SHELF.map((p) => (
                   <li key={p.id}>
@@ -676,7 +613,7 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
                       type="button"
                       disabled={!budgets || funding || !tillsReady}
                       onClick={() => setCart((c) => [...c, { ...p, uid: crypto.randomUUID() }])}
-                      className="grid w-full place-items-center gap-1 rounded-md border border-line bg-paper p-3 text-center disabled:opacity-60 hover:border-seal focus-visible:outline-2 focus-visible:outline-indigo"
+                      className="grid w-full place-items-center gap-1 rounded-md border border-line bg-paper p-3 text-center enabled:hover:border-seal disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-indigo"
                     >
                       <span className="text-3xl" aria-hidden>
                         {p.icon}
@@ -687,15 +624,9 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
                   </li>
                 ))}
               </ul>
-              <div className="rounded-md border border-line p-3">
-                <p className="smallcaps text-xs text-ink-2">Cart</p>
-                {cart.length === 0 ? (
-                  <p className="text-sm text-ink-2">
-                    {budgets
-                      ? 'Choose an item above. The shop prepares your payment request when you review the basket.'
-                      : 'Claim your sponsored budget to start shopping.'}
-                  </p>
-                ) : (
+              {cart.length > 0 && (
+                <div className="rounded-md border border-line p-3">
+                  <p className="smallcaps text-xs text-ink-2">Your basket</p>
                   <ul className="mt-1 grid gap-1 text-sm">
                     {cart.map((p, i) => (
                       <li key={p.uid ?? p.id} className="flex justify-between">
@@ -712,17 +643,15 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
                       </li>
                     ))}
                   </ul>
-                )}
-                {cart.length > 0 && (
                   <button
                     type="button"
                     className={`${buttonClass('primary')} mt-3 w-full`}
                     onClick={() => checkout('shop', cart, total)}
                   >
-                    {sellerView ? 'Prepare request' : 'Review purchase'} · {usdc(total)} USDC
+                    Review purchase · {usdc(total)} USDC
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </section>
@@ -736,46 +665,39 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
             Your <span className="text-seal">demo wallet</span>
           </h2>
           {!budgets ? (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               <p className="text-sm text-ink-2">
-                Temporary spending keys, kept in this browser tab. They sign payments from your budgets; the money stays
-                in the contract. No personal wallet, app installation, or gas token needed.
+                No wallet app, no gas, nothing to install. We create two small test budgets for you; your wallet signs
+                payments from them, and the money stays in the contract.
               </p>
-              <div className="rounded border border-line bg-paper-2 p-4 text-sm">
-                <p className="font-semibold">Your sponsored spending permission</p>
-                <p className="mt-2">0.10 test USDC · Tea House only</p>
-                <p className="mt-1">0.05 test USDC · Mei’s tips only</p>
-                <p className="mt-2 text-xs text-ink-2">
-                  Separate budgets, valid for 3 days. Flying Money pays setup fees. You approve purchases by signing;
-                  the seller collects later.
-                </p>
-              </div>
-              <details className="text-sm">
-                <summary className="cursor-pointer text-ink-2">
-                  Change test network · {getChain(chain).chain.name}
-                </summary>
-                <div className="mt-3">
-                  <NetworkPicker
-                    networks={chains}
-                    value={chain}
-                    onChange={setChain}
-                    label="Network"
-                    disabled={funding}
-                  />
-                </div>
-              </details>
+              <ul className="grid gap-2 text-sm sm:grid-cols-2">
+                <li className="rounded-md border border-line bg-paper-2 p-3">
+                  <span className="font-display text-2xl font-semibold">0.10</span>{' '}
+                  <span className="text-ink-2">test USDC</span>
+                  <br />
+                  for the Tea House only
+                </li>
+                <li className="rounded-md border border-line bg-paper-2 p-3">
+                  <span className="font-display text-2xl font-semibold">0.05</span>{' '}
+                  <span className="text-ink-2">test USDC</span>
+                  <br />
+                  for tipping Mei only
+                </li>
+              </ul>
+              <NetworkPicker
+                networks={chains}
+                value={chain}
+                onChange={setChain}
+                label="Test network"
+                disabled={funding}
+              />
               {!funding && (
                 <div className="text-sm" role="status">
-                  <p>{availability?.message ?? 'Checking sponsored budget availability…'}</p>
+                  <p>{availability?.message ?? 'Checking that the sponsored budgets are available…'}</p>
                   {availability && !availability.available && (
-                    <div className="mt-2 flex flex-wrap gap-3">
-                      <button type="button" className="underline" onClick={() => setAvailabilityCheck((n) => n + 1)}>
-                        Check availability again
-                      </button>
-                      <a href="/demo#illustration" className="underline">
-                        Watch the payment illustration
-                      </a>
-                    </div>
+                    <button type="button" className="mt-1 underline" onClick={() => setAvailabilityCheck((n) => n + 1)}>
+                      Check again
+                    </button>
                   )}
                 </div>
               )}
@@ -787,14 +709,12 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
               >
                 {funding
                   ? fundingStage === 'checking'
-                    ? 'Checking your funded budgets…'
-                    : 'Preparing wallet & funding budgets…'
-                  : 'Set up wallet & claim demo budget'}
+                    ? 'The till is checking your budgets…'
+                    : 'Funding your budgets…'
+                  : 'Claim my test budgets'}
               </button>
-              <p role="status" className="text-xs text-ink-2">
-                {funding
-                  ? 'Setup uses real testnet transactions. Keep this tab open while confirmation arrives.'
-                  : 'The demo server creates these keys. Refresh can resume this tab; closing or clearing browser storage can lose access. This is not a permanent wallet.'}
+              <p className="text-xs text-ink-2">
+                We pay the setup fees. The keys live in this browser tab; refresh keeps them, closing the tab may not.
               </p>
             </div>
           ) : (
@@ -806,7 +726,6 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
               store={store}
               version={version}
               order={order}
-              onPhone={onPhone}
               interrupted={interrupted}
               bag={bag}
               chain={chain}
@@ -815,67 +734,63 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
               onCancel={(r) => void cancelOpen(r)}
               onTip={(amount) => checkout('tips', [], amount)}
               canTip={Boolean(last && last.role === 'shop' && !order)}
-              onMove={(r) => {
-                const next = budgets.map((b) => (b.role === r ? { ...b, moved: true } : b))
-                setBudgets(next)
-                saveVisitor(chain, next)
-                setOnPhone(true)
-              }}
             />
           )}
         </section>
       </div>
 
-      {budgets && last && (
-        <details className="demo-panel grid gap-3 p-5">
-          <summary className="cursor-pointer font-display text-2xl font-semibold">
-            Explore more: tips, retries & spending limits
-          </summary>
-          <ul className="my-4 flex flex-wrap gap-2" aria-label="What you’ve tried">
-            {(Object.keys(BADGES) as Badge[]).map((b) => (
-              <li key={b} className="rounded border border-line px-2 py-1 text-xs">
-                {badges.includes(b) ? 'Completed: ' : ''}
-                {BADGES[b]}
-              </li>
-            ))}
-          </ul>
-
-          <div className="grid gap-2 sm:grid-cols-2">
+      {budgets && (
+        <section className="demo-panel grid gap-3 p-5" aria-labelledby="twists-t">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="twists-t" className="font-display text-2xl font-semibold">
+              Now break it
+            </h2>
+            <p className="text-sm text-ink-2">
+              {last ? 'Each one is a real check by the till.' : 'These unlock after your first purchase.'}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
             <WhatIf
-              title="…the internet goes down?"
-              text="Cut the till’s connection (top), then buy something. It still checks the slip and accepts it: the budget was checked earlier and can’t be pulled back."
-              action={cut ? 'Reconnect' : 'Cut the connection'}
-              onClick={() => setConnection(!cut)}
-            />
-            <WhatIf
-              title="…the visitor’s phone dies mid-payment?"
+              title="The phone dies mid-payment"
               text={
                 armDeadPhone
-                  ? 'Armed: the next payment stops just after signing. Then resume it, or cancel it.'
-                  : 'The next payment stops right after the phone signs, before the till reads it. Then resume it with the same slip, or cancel it.'
+                  ? 'Armed. Your next payment stops right after signing. Then resume it or cancel it.'
+                  : 'The next payment stops right after your wallet signs. Resume it with the same slip, or cancel.'
               }
               action={armDeadPhone ? 'Armed' : 'Arm it'}
               onClick={() => setArmDeadPhone(true)}
+              disabled={!last}
             />
             <WhatIf
-              title="…someone pays twice with the same slip?"
-              text="Show the till the last slip again. It recognises the slip and gives the same answer: charged once."
+              title="Someone pays twice"
+              text="Show the till the last slip again. It recognises it and answers the same: charged once."
               action="Pay twice"
               onClick={() => void payTwice()}
               disabled={!last}
             />
             <WhatIf
-              title="…a thief steals the visitor’s key?"
-              text="The thief signs a slip with the Tea House budget and tries to pay Mei with it."
+              title="A thief steals the key"
+              text="The thief signs with the Tea House budget and tries to pay Mei with it. Refused."
               action="Be the thief"
               onClick={() => void thief()}
+              disabled={!last}
             />
           </div>
-          <p className="text-xs text-ink-2">
-            Spending past the budget? Put more in the cart than is left. The wallet won’t sign it, and the till wouldn’t
-            take it.
+          <p className="text-sm text-ink-2">
+            Also try overspending: put more in the basket than your budget has left. The wallet won’t sign it.
           </p>
-        </details>
+          <ul className="flex flex-wrap gap-2" aria-label="What you’ve tried">
+            {(Object.keys(BADGES) as Badge[]).map((b) => (
+              <li
+                key={b}
+                className={`rounded-full border px-3 py-1 text-xs ${badges.includes(b) ? 'border-celadon bg-celadon/15' : 'border-line text-ink-2'}`}
+              >
+                {badges.includes(b) ? '✓ ' : ''}
+                {BADGES[b]}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {budgets && last && shopTill && staffTill && (
@@ -890,10 +805,25 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
           onCollected={(at) => {
             setCollectedThrough(at)
             award('collect')
-            setNews({ tone: 'ok', text: 'Seller collection confirmed. Your accepted purchases are recorded below.' })
+            setNews({
+              tone: 'ok',
+              text: 'Collected. The sellers were paid on-chain, in one transaction, and you paid no gas.',
+            })
           }}
         />
       )}
+
+      {done && (
+        <section className="demo-panel p-5" aria-label="What you experienced">
+          <h2 className="font-display text-2xl font-semibold">You signed. The seller collected later.</h2>
+          <p className="mt-2 text-sm text-ink-2">
+            You paid from a sponsored budget without paying gas. The till accepted your signed payments
+            {badges.includes('offline') ? ', even while it couldn’t reach the blockchain,' : ''} and collected on-chain.
+          </p>
+        </section>
+      )}
+
+      <MoreDemos current="counter" />
     </div>
   )
 }
@@ -912,10 +842,10 @@ function WhatIf({
   disabled?: boolean
 }) {
   return (
-    <div className="grid content-between gap-2 rounded-md border border-line p-3">
+    <div className="grid content-between gap-3 rounded-md border border-line p-3">
       <div>
         <p className="font-medium">{title}</p>
-        <p className="text-sm text-ink-2">{text}</p>
+        <p className="mt-1 text-sm text-ink-2">{text}</p>
       </div>
       <button type="button" className={`${buttonClass('secondary')} sm:w-fit`} onClick={onClick} disabled={disabled}>
         {action}
@@ -933,7 +863,6 @@ function VisitorView(p: {
   store: { load: (c: CounterCertificate) => Promise<CounterState | null> }
   version: number
   order: Order | null
-  onPhone: boolean
   interrupted: Role | null
   bag: Array<{ item: Product; keepsake?: KeepsakeData }>
   chain: ChainKey
@@ -942,11 +871,9 @@ function VisitorView(p: {
   onCancel: (r: Role) => void
   onTip: (amount: bigint) => void
   canTip: boolean
-  onMove: (r: Role) => void
 }) {
   const [left, setLeft] = useState<Record<string, bigint>>({})
   const [open, setOpen] = useState<KeepsakeData | null>(null)
-  const [moving, setMoving] = useState<Role | null>(null)
   // biome-ignore lint/correctness/useExhaustiveDependencies: balances refresh after every payment (version)
   useEffect(() => {
     void (async () => {
@@ -957,13 +884,10 @@ function VisitorView(p: {
   }, [p.budgets, p.version, p.interrupted])
   const payingFrom = p.order ? p.budgets.find((b) => b.role === p.order!.role) : undefined
   const origin = typeof window === 'undefined' ? '' : window.location.origin
+  const keepsake = p.bag.find((entry) => entry.keepsake)?.keepsake
 
   return (
     <div className="grid gap-4">
-      <p className="text-xs text-ink-2">
-        Temporary demo wallet · keys kept in this tab. Refresh resumes where storage is available; this is not a
-        permanent wallet.
-      </p>
       <ul className="grid gap-2">
         {p.budgets.map((b) => (
           <li key={b.role} className="rounded-md border border-line p-3">
@@ -973,53 +897,13 @@ function VisitorView(p: {
                 {usdc(left[b.role] ?? b.cert.faceValue)} <span className="text-xs font-sans">test USDC</span>
               </span>
             </div>
-            <p className="mt-1 text-sm text-ink-2">
-              Available · only at {b.role === 'shop' ? 'Tea House' : 'Mei’s tip jar'}
-            </p>
-            <p className="mt-1 text-xs text-ink-2">Expires {utcDate(b.cert.expiresAt)}</p>
-            <details className="mt-2 text-xs">
-              <summary className="cursor-pointer text-indigo">Budget details & funding proof</summary>
-              <p className="mt-2 break-all">Seller: {b.cert.payee}</p>
-              <p className="mt-1 break-all">Budget: {b.cert.id}</p>
-              <a href={b.issueTx} target="_blank" rel="noreferrer" className="mt-2 inline-block text-indigo underline">
-                View funding transaction
+            <p className="mt-1 text-xs text-ink-2">
+              Only spendable at {b.role === 'shop' ? 'the Tea House' : 'Mei’s tip jar'} · ends{' '}
+              {utcDate(b.cert.expiresAt)} ·{' '}
+              <a href={b.issueTx} target="_blank" rel="noreferrer" className="text-indigo underline">
+                funding proof ↗
               </a>
-            </details>
-            {b.moved ? (
-              <p className="mt-1 text-xs font-medium">On your phone now. Pay from there.</p>
-            ) : p.last ? (
-              <button
-                type="button"
-                className="mt-3 min-h-11 text-sm text-indigo underline"
-                onClick={() => setMoving(b.role)}
-              >
-                Move it to my phone
-              </button>
-            ) : null}
-            {moving === b.role && !b.moved && (
-              <div className="mt-3 grid gap-2 border-t border-line pt-3">
-                <p className="text-sm">
-                  Scan this with your phone’s camera to open it in the Flying Money wallet, then tap Done. After that,
-                  this budget pays only from your phone (so two copies never pay at once).
-                </p>
-                <CarrySend
-                  payload={`${origin}/wallet#${b.handOver}`}
-                  href={`${origin}/wallet#${b.handOver}`}
-                  title={b.role === 'shop' ? 'Your Tea House budget' : 'Your tips budget'}
-                  carriers={['qr', 'share', 'link']}
-                />
-                <button
-                  type="button"
-                  className={`${buttonClass('primary')} sm:w-fit`}
-                  onClick={() => {
-                    p.onMove(b.role)
-                    setMoving(null)
-                  }}
-                >
-                  Done, it’s on my phone
-                </button>
-              </div>
-            )}
+            </p>
           </li>
         ))}
       </ul>
@@ -1028,8 +912,8 @@ function VisitorView(p: {
         <div role="alert" className="rounded-md border-l-4 border-amber bg-amber/10 p-3">
           <p className="font-medium">An open payment</p>
           <p className="text-sm text-ink-2">
-            The slip was signed and saved on the phone, but the till didn’t read it. Show the same slip again (it can’t
-            be charged twice), or cancel it (the till never saw it).
+            The slip was signed and saved, but the till didn’t read it. Show the same slip again (it can’t be charged
+            twice), or cancel it (the till never saw it).
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className={buttonClass('primary')} onClick={p.onResume} disabled={!p.order}>
@@ -1049,67 +933,45 @@ function VisitorView(p: {
           className="rounded-md border-2 border-seal bg-paper p-4 outline-offset-4"
         >
           <p className="font-display text-xl font-semibold">
-            {p.order.role === 'tips' ? 'Mei’s tip jar' : 'The Tea House'} · {usdc(p.order.price)} USDC
+            {p.order.role === 'tips' ? 'Mei’s tip jar' : 'The Tea House'} asks {usdc(p.order.price)} USDC
           </p>
-          {payingFrom.moved ? (
-            <p className="text-sm text-ink-2">This budget is on your phone: pay with it there (see the till).</p>
-          ) : (
-            <>
-              <p className="text-sm text-ink-2">
-                Your wallet signs a payment slip for this purchase. No blockchain transaction or gas payment is needed
-                from you.
-              </p>
-              <p className="mt-2 text-sm">{p.order.items.map((item) => item.name).join(', ') || 'Tip for Mei'}</p>
-              <p className="mt-2 text-sm text-ink-2">
-                Available: {usdc(left[payingFrom.role] ?? payingFrom.cert.faceValue)} USDC ·{' '}
-                {(left[payingFrom.role] ?? payingFrom.cert.faceValue) >= p.order.price
-                  ? `After payment: ${usdc((left[payingFrom.role] ?? payingFrom.cert.faceValue) - p.order.price)} USDC`
-                  : 'This purchase exceeds your available budget.'}
-              </p>
-              <button
-                type="button"
-                disabled={p.paying}
-                className={`${buttonClass('primary')} mt-3 w-full`}
-                onClick={p.onPay}
-              >
-                {p.paying ? 'Signing & checking…' : `Sign & pay ${usdc(p.order.price)} USDC`}
-              </button>
-            </>
-          )}
+          <p className="mt-1 text-sm">{p.order.items.map((item) => item.name).join(', ') || 'A tip for Mei'}</p>
+          <p className="mt-2 text-sm text-ink-2">
+            Your wallet signs a slip for this. No blockchain transaction and no gas from you. After paying you’ll have{' '}
+            {(left[payingFrom.role] ?? payingFrom.cert.faceValue) >= p.order.price
+              ? `${usdc((left[payingFrom.role] ?? payingFrom.cert.faceValue) - p.order.price)} USDC left.`
+              : 'less than nothing: this exceeds your budget, so the wallet will refuse.'}
+          </p>
+          <button
+            type="button"
+            disabled={p.paying}
+            className={`${buttonClass('primary')} mt-3 w-full`}
+            onClick={p.onPay}
+          >
+            {p.paying ? 'Signing & checking…' : `Sign & pay ${usdc(p.order.price)} USDC`}
+          </button>
         </div>
       )}
 
       {p.last && !p.order && (
         <section className="rounded border border-celadon bg-celadon/10 p-4" aria-label="Your latest receipt">
           <p className="smallcaps text-xs">Your latest receipt</p>
-          <p className="mt-2 font-display text-2xl font-semibold">
+          <p className="mt-1 font-display text-2xl font-semibold">
             {p.last.items.map((item) => item.name).join(', ') || 'Tip for Mei'}
           </p>
           <p className="mt-1 text-sm">
-            {p.last.role === 'shop' ? 'Tea House' : 'Mei'} · {usdc(p.last.price)} test USDC
+            {p.last.role === 'shop' ? 'Tea House' : 'Mei'} · {usdc(p.last.price)} test USDC ·{' '}
+            {p.last.status === 'GUARANTEED' ? 'accepted, covered by a checked budget' : 'accepted at the seller’s risk'}
           </p>
-          <p className="mt-2 text-sm font-medium">
-            {p.last.status === 'GUARANTEED'
-              ? 'Accepted · covered by a checked budget'
-              : 'Accepted at seller’s risk · budget unverified'}
+          <p className="mt-1 text-sm font-medium">
+            {p.collectedThrough >= p.last.at ? 'Collected on-chain ✓' : 'The seller collects it on-chain later.'}
           </p>
-          <p className="mt-1 text-sm">
-            {p.collectedThrough >= p.last.at ? 'Collected on-chain' : 'Awaiting seller collection'}
-          </p>
-          <details className="mt-2 text-xs">
-            <summary className="cursor-pointer">Receipt details</summary>
-            <p className="mt-2 break-all">Order {p.last.orderId}</p>
-            <p>{new Date(p.last.at).toLocaleString()}</p>
-          </details>
         </section>
       )}
-      {p.canTip && p.budgets.some((b) => b.role === 'tips') && (
-        <details className="rounded-md border border-line p-3">
-          <summary className="cursor-pointer font-medium">Tip Mei from your separate tips budget</summary>
+      {p.canTip && (
+        <div className="rounded-md border border-line p-3">
           <p className="font-medium">Tip Mei, who served you?</p>
-          <p className="text-xs text-ink-2">
-            A second seller, paid from a second earmarked budget: one payment choice per seller, each guaranteed.
-          </p>
+          <p className="text-xs text-ink-2">From your second budget: a different seller, a different guarantee.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {TIPS.map((t) => (
               <button key={t.toString()} type="button" className={buttonClass('secondary')} onClick={() => p.onTip(t)}>
@@ -1117,44 +979,28 @@ function VisitorView(p: {
               </button>
             ))}
           </div>
-        </details>
+        </div>
       )}
 
-      <div>
-        <p className="smallcaps text-xs text-ink-2">Your purchases · demo items</p>
-        {p.bag.find((entry) => entry.keepsake)?.keepsake && (
-          <button
-            type="button"
-            className={`${buttonClass('primary')} my-3 w-full`}
-            onClick={() => setOpen(p.bag.find((entry) => entry.keepsake)!.keepsake!)}
-          >
-            Open & save your keepsake
-          </button>
-        )}
-        {p.bag.length === 0 ? (
-          <p className="text-sm text-ink-2">Nothing yet.</p>
-        ) : (
+      {p.bag.length > 0 && (
+        <div>
+          <p className="smallcaps text-xs text-ink-2">Your purchases</p>
+          {keepsake && (
+            <button type="button" className={`${buttonClass('primary')} my-2 w-full`} onClick={() => setOpen(keepsake)}>
+              Open & save your keepsake
+            </button>
+          )}
           <ul className="mt-1 flex flex-wrap gap-2">
             {p.bag.map((x) => (
               <li key={x.item.uid ?? x.item.id}>
-                {x.keepsake ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-seal px-3 py-1 text-sm"
-                    onClick={() => setOpen(x.keepsake!)}
-                  >
-                    {x.item.icon} {x.item.name} (open)
-                  </button>
-                ) : (
-                  <span className="rounded-full border border-line px-3 py-1 text-sm">
-                    {x.item.icon} {x.item.name}
-                  </span>
-                )}
+                <span className={`rounded-full border px-3 py-1 text-sm ${x.keepsake ? 'border-seal' : 'border-line'}`}>
+                  {x.item.icon} {x.item.name}
+                </span>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </div>
+      )}
       {open && (
         <div className="grid gap-3 rounded-md border border-line p-3">
           <Keepsake
@@ -1171,72 +1017,17 @@ function VisitorView(p: {
   )
 }
 
-// ── the till, when the visitor pays from a phone ─────────────────────────────
-function OrderView(p: {
-  order: Order
-  onPhone: boolean
-  mode: ReturnType<typeof useCarryMode>[0]
-  setMode: ReturnType<typeof useCarryMode>[1]
-  till: Till
-  chain: ChainKey
-  onPaidByPhone: (r: CounterResult, noteQr: string) => void
-  onDone: () => void
-}) {
-  const [result, setResult] = useState<CounterResult | null>(null)
-  const [receipt, setReceipt] = useState<string | null>(null)
-  const busy = useRef(false)
-  const take = async (text: string) => {
-    if (busy.current || (result && result.status !== 'REJECTED') || !/^(https?:|fm[12])/.test(text)) return
-    busy.current = true
-    try {
-      const fm1 = slipForOrder(text, p.order.id)
-      const r = await p.till.counter.accept(fm1, p.order.price, p.order.id)
-      setResult(r)
-      if (r.status !== 'REJECTED' && r.requestId && r.certificateId) {
-        setReceipt(
-          encodeReceipt({
-            memo: r.requestId,
-            certificate: r.certificateId,
-            price: p.order.price,
-            status: r.status,
-            item: p.order.items.map((i) => i.name).join(', ') || 'A tip for Mei',
-          }),
-        )
-        p.onPaidByPhone(r, fm1)
-      }
-    } finally {
-      busy.current = false
-    }
-  }
+// ── the till's side of a purchase: the request, waiting for the visitor's wallet ──────────────────────────
+function RequestCard({ order, onCancel }: { order: Order; onCancel: () => void }) {
   return (
-    <div className="grid gap-3">
-      <p className="font-display text-xl font-semibold">
-        {p.order.role === 'tips' ? 'Tip for Mei' : p.order.items.map((i) => i.icon).join(' ')} · {usdc(p.order.price)}
+    <div className="grid gap-3 rounded-md border border-line bg-paper-2 p-4">
+      <p className="smallcaps text-xs text-ink-2">The till is asking</p>
+      <p className="font-display text-3xl font-semibold">
+        {order.role === 'tips' ? 'Tip for Mei' : order.items.map((i) => i.icon).join(' ')} · {usdc(order.price)}
       </p>
-      {!p.onPhone ? (
-        <p className="text-sm text-ink-2">Waiting for the visitor to pay, in their wallet.</p>
-      ) : (
-        <>
-          <ModePicker mode={p.mode} onChange={p.setMode} />
-          <CarryLink
-            mode={p.mode}
-            send={receipt ?? carriedPrice(p.order.qr)}
-            sendLabel={receipt ? 'Receipt for the phone' : `Price code for ${usdc(p.order.price)}`}
-            onText={(t) => void take(t)}
-          />
-          {result && (
-            <p className={`font-medium ${result.status === 'REJECTED' ? 'text-seal' : ''}`} role="status">
-              {result.status === 'GUARANTEED'
-                ? '✓ Accepted and guaranteed, no internet needed.'
-                : result.status === 'UNVERIFIED'
-                  ? 'Accepted at the till’s own risk.'
-                  : `Refused: ${result.reason}.`}
-            </p>
-          )}
-        </>
-      )}
-      <button type="button" className="text-sm text-indigo underline sm:w-fit" onClick={p.onDone}>
-        {result && result.status !== 'REJECTED' ? 'Next customer' : 'Cancel this order'}
+      <p className="text-sm text-ink-2">Approve it in your wallet: sign, and the till checks the slip on the spot.</p>
+      <button type="button" className="text-sm text-indigo underline sm:w-fit" onClick={onCancel}>
+        Cancel this order
       </button>
     </div>
   )

@@ -52,7 +52,7 @@ export async function GET(req: Request) {
         {
           available: false,
           reason: 'unavailable',
-          message: 'The sponsored agent is unavailable on this network. You can still watch the illustration.',
+          message: 'The sponsored agent is unavailable on this network. The preview on this page still plays.',
         },
         { headers },
       )
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
           available: false,
           reason: 'unfunded',
           message:
-            'The sponsor needs more test-network gas for setup or collection. You pay no gas yourself. Choose another network or watch the illustration.',
+            'The sponsor needs more test-network gas for setup or collection. You pay no gas yourself. Choose another network. The preview on this page still plays.',
         },
         { headers },
       )
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
             available: false,
             reason: 'unfunded',
             message:
-              'The sponsor needs more test funds on this network. Choose another network or watch the illustration.',
+              'The sponsor needs more test funds on this network. Choose another network. The preview on this page still plays.',
           },
       { headers },
     )
@@ -99,7 +99,7 @@ export async function GET(req: Request) {
       {
         available: false,
         reason: 'unavailable',
-        message: 'We could not check sponsorship right now. Check again or watch the illustration.',
+        message: 'We could not check sponsorship right now. Please check again in a moment.',
       },
       { headers },
     )

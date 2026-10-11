@@ -5,34 +5,50 @@ import { ButtonLink } from './section'
 
 const H1 = 'mt-4 font-display text-[2.6rem] font-semibold leading-[1.04] tracking-tight text-balance sm:text-[3.9rem]'
 
+/**
+ * The promise, led by what only Flying Money does: a payment is a signed slip that needs no connection, checked on the
+ * spot because the money is already set aside for that seller. It fills the first screen; the mountains sit behind it
+ * and fade out at both edges, so nothing is cropped or cut by a hard line.
+ */
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="relative overflow-hidden">
-      <InkMountains className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] w-full opacity-70" />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:pb-16 lg:pt-16">
+    <section
+      aria-labelledby="hero-title"
+      className="relative isolate flex min-h-[calc(100svh-5.75rem)] items-center overflow-hidden"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[56%] [mask-image:linear-gradient(to_bottom,transparent,black_28%,black_72%,transparent)]"
+      >
+        {/* the left of the picture fades out, so the text column stays clean */}
+        <div className="h-full w-full [mask-image:linear-gradient(to_right,transparent_8%,black_52%)]">
+          <InkMountains className="h-full w-full opacity-70" />
+        </div>
+      </div>
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pb-24 pt-8 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:pb-28 lg:pt-10">
         <div className="rise min-w-0">
-          <p className="smallcaps text-sm text-seal">For people, shops and AI agents</p>
+          <p className="smallcaps text-sm text-seal">
+            <span lang="zh-Hant">飛錢</span> Flying Money · money that flies, since 804
+          </p>
           <h1 id="hero-title" className={H1}>
-            Give a budget.
-            <br />
-            <em className="text-seal">Not your wallet.</em>
+            Payments that work <em className="text-seal">without the internet.</em>
           </h1>
           <p className="mt-5 max-w-xl text-xl leading-relaxed text-ink">
-            Let a person or an agent pay from money you set aside for one seller. You choose the amount and end date.
-            They pay with signed slips, within those limits.
+            Set money aside for one seller. A phone, an AI agent or a robot pays with signed slips the seller can check
+            on the spot, then collect later. <strong className="font-semibold">Give a budget, not your wallet.</strong>
           </p>
-          <p className="mt-4 max-w-xl text-ink-2">
-            Once a seller has checked the funded budget online, it can check payment slips offline and collect before
-            the budget expires.
+          <p className="mt-3 max-w-xl text-sm text-ink-2">
+            Once a seller has checked a funded budget online, it can verify its payment slips offline and collect before
+            the budget expires. Nobody who pays needs a crypto wallet.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <ButtonLink href="/#demos">Choose your demo →</ButtonLink>
-            <ButtonLink href="/how-it-works" variant="secondary">
-              How it works
+            <ButtonLink href="/demo/counter">Play the shop demo →</ButtonLink>
+            <ButtonLink href="/#demos" variant="secondary">
+              All three demos
             </ButtonLink>
           </div>
           <p className="mt-4 text-sm text-ink-2">
-            Two guided experiences · We provide test funds · No wallet to connect
+            About 2 minutes each · We supply the test funds · No wallet to connect
           </p>
           <p className="mt-6 text-xs leading-relaxed text-ink-2">
             Open source · Not yet audited · Live on {liveNetworks()} test networks
@@ -57,14 +73,20 @@ export function Hero() {
               ['Translation', 10],
             ]}
           />
-          <figcaption className="mt-3 min-h-[3.5rem] text-center font-display text-xl leading-snug text-ink">
-            An illustrated budget, spent one slip at a time.
+          <figcaption className="mt-3 text-center font-display text-xl leading-snug text-ink">
+            A budget, spent one slip at a time.
             <span className="mt-1 block font-sans text-xs text-ink-2">
-              Illustration only · Try a demo below to make real test-network payments.
+              An illustration. The demos below make real payments on test networks.
             </span>
           </figcaption>
         </figure>
       </div>
+      <a
+        href="#demos"
+        className="absolute inset-x-0 bottom-5 mx-auto w-fit rounded px-3 py-2 text-sm text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-indigo"
+      >
+        Choose a demo ↓
+      </a>
     </section>
   )
 }

@@ -1,5 +1,6 @@
 import { IconAgent, IconBowl, IconIssue, IconRedeem, IconSeal, IconServe } from '@/components/art/ink-icons'
 import { CodeTabs } from '@/components/code-tabs'
+import { DEMO_CARDS } from '@/components/demo/more-demos'
 import { Hero } from '@/components/hero'
 import { ButtonLink, Section, Sheet } from '@/components/section'
 import { type ExplorerStep, StepExplorer } from '@/components/step-explorer'
@@ -72,83 +73,38 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <Section
-        id="demos"
-        eyebrow="Choose a role · We supply the test funds"
-        title="Two ways to experience Flying Money."
-      >
+      <Section id="demos" eyebrow="Try it · we supply the test funds" title="Three ways to feel it work.">
         <p className="-mt-3 mb-7 max-w-2xl text-lg text-ink-2">
-          Visit a shop or put an agent to work. Each demo gives you a part to play, a payment to approve and a result
-          you can inspect.
+          Each demo gives you a part to play, a real payment on a test network, and a result you can inspect. No wallet
+          to connect, nothing to install.
         </p>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Sheet as="article" className="flex flex-col border-t-4 border-seal p-6 sm:p-8">
-            <div className="flex items-center justify-between gap-4">
-              <p className="smallcaps text-sm text-seal">01 · You are the shop visitor</p>
-              <IconBowl className="size-10 shrink-0 text-ink" />
-            </div>
-            <h3 className="mt-5 font-display text-3xl font-semibold">Buy a little. Learn a lot.</h3>
-            <p className="mt-3 text-ink-2">
-              Get a temporary browser wallet, claim a sponsored shop budget, then choose something from the tea house
-              and sign to pay.
-            </p>
-            <ol className="my-6 grid gap-3 border-y border-line py-5 text-sm">
-              <li>
-                <strong>1. Get ready.</strong> We supply test funds and cover setup fees.
-              </li>
-              <li>
-                <strong>2. Make it yours.</strong> Choose your basket and approve the payment.
-              </li>
-              <li>
-                <strong>3. See the proof.</strong> Inspect the receipt and the seller’s collection.
-              </li>
-            </ol>
-            <p className="mb-6 text-sm text-ink-2">
-              Try the optional offline mode to block the till’s blockchain reads after it has checked your budget. Your
-              device stays online for the demo.
-            </p>
-            <div className="mt-auto">
-              <ButtonLink href="/demo/counter">Enter the shop demo →</ButtonLink>
-            </div>
-            <p className="mt-3 text-xs text-ink-2">Temporary demo wallet · Sign to pay · No network fees for you</p>
-          </Sheet>
-          <Sheet as="article" className="flex flex-col border-t-4 border-indigo p-6 sm:p-8">
-            <div className="flex items-center justify-between gap-4">
-              <p className="smallcaps text-sm text-indigo">02 · You supervise the agent</p>
-              <IconAgent className="size-10 shrink-0 text-ink" />
-            </div>
-            <h3 className="mt-5 font-display text-3xl font-semibold">An agent asks. You decide.</h3>
-            <p className="mt-3 text-ink-2">
-              Borrow our scripted tea-trading agent. Review its plan to buy tea prices, weather and route information
-              from our demo oracle.
-            </p>
-            <ol className="my-6 grid gap-3 border-y border-line py-5 text-sm">
-              <li>
-                <strong>1. Review the plan.</strong> See the seller, purchases and spending limit.
-              </li>
-              <li>
-                <strong>2. Give permission.</strong> Approve the plan; we fund its test budget.
-              </li>
-              <li>
-                <strong>3. Read the result.</strong> Get its briefing, purchases and payment record.
-              </li>
-            </ol>
-            <p className="mb-6 text-sm text-ink-2">
-              A scripted journey with real test-network payments. Tea prices and routes are fictional demo data; weather
-              comes from a live service.
-            </p>
-            <div className="mt-auto">
-              <ButtonLink href="/demo">Meet your demo agent →</ButtonLink>
-            </div>
-            <p className="mt-3 text-xs text-ink-2">Sponsored agent · Approval before spending · No personal funds</p>
-          </Sheet>
-        </div>
+        <ul className="grid gap-6 lg:grid-cols-3">
+          {DEMO_CARDS.map(({ id, href, eyebrow, title, text, Icon, steps, cta, accent }) => (
+            <li key={id}>
+              <Sheet as="article" className={`flex h-full flex-col border-t-4 p-6 ${accent}`}>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="smallcaps text-xs text-ink-2">{eyebrow}</p>
+                  <Icon className="size-10 shrink-0 text-ink" />
+                </div>
+                <h3 className="mt-4 font-display text-3xl font-semibold">{title}</h3>
+                <p className="mt-2 text-ink-2">{text}</p>
+                <ol className="my-5 grid gap-2 border-y border-line py-4 text-sm" aria-label="What to expect">
+                  {steps.map((step, i) => (
+                    <li key={step} className="flex gap-3">
+                      <span className="font-mono text-xs text-seal">{String(i + 1).padStart(2, '0')}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-auto">
+                  <ButtonLink href={href}>{cta} →</ButtonLink>
+                </div>
+              </Sheet>
+            </li>
+          ))}
+        </ul>
         <p className="mt-6 text-sm text-ink-2">
-          Both demos need an initial connection and available sponsor funds. Setup checks availability before you begin.
-          Already explored them?{' '}
-          <a href="/demo/slip" className={textLink}>
-            Carry a slip between two devices →
-          </a>
+          The demos need a connection to start and sponsor funds to be available; each one checks before it begins.
         </p>
       </Section>
 
@@ -158,11 +114,9 @@ export default function Home() {
           seller, one spending key, an amount and an end date.
         </p>
         <StepExplorer steps={STEPS.map(({ Icon, ...s }) => ({ ...s, icon: <Icon /> }))} cast="agents" />
-        <details id="carriers" className="mt-8 border-y border-line py-5">
-          <summary className="cursor-pointer rounded font-display text-2xl font-semibold focus-visible:outline-2 focus-visible:outline-indigo">
-            How can a payment travel without internet?
-          </summary>
-          <div className="mt-5 max-w-3xl space-y-4 text-ink-2">
+        <div id="carriers" className="mt-8 border-y border-line py-6">
+          <h3 className="font-display text-2xl font-semibold">How can a payment travel without internet?</h3>
+          <div className="mt-4 max-w-3xl space-y-4 text-ink-2">
             <p>
               A payment slip contains a budget reference, a running total and a signature in about 150 bytes. The seller
               verifies the same proof whether it arrives by QR code, sound, a link or a local connection.
@@ -183,7 +137,7 @@ export default function Home() {
               Read the offline requirements →
             </a>
           </div>
-        </details>
+        </div>
       </Section>
 
       <Section id="guarantees" eyebrow="Control has clear boundaries" title="Know what you’re approving.">

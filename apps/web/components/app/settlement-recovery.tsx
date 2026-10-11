@@ -110,7 +110,7 @@ export function SettlementRecovery({
               (job.hash
                 ? `Waiting for network confirmation (${job.confirmations}/${job.requiredConfirmations}).`
                 : sponsored
-                  ? 'Checking the sponsor’s saved collection. No additional transaction will be sent.'
+                  ? 'We handle collection for this demo, so there is nothing for you to do. It is being checked, and no extra transaction will be sent.'
                   : 'No transaction hash was saved. Check your wallet activity before continuing.')}
           </p>
           {job.hash ? (
@@ -123,7 +123,7 @@ export function SettlementRecovery({
               View transaction
             </a>
           ) : sponsored ? (
-            <p className="text-sm text-ink-2">Keep this collection open or return later to check its status.</p>
+            <p className="text-sm text-ink-2">You can leave and come back: the status will be here.</p>
           ) : (
             <>
               <label className="grid gap-1 text-sm">

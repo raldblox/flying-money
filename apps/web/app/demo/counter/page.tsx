@@ -31,8 +31,8 @@ export default function CounterDemoPage() {
         The <em className="text-seal">offline</em> counter.
       </h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
-        Buy a little something. Then try it with the till offline. We provide the test budget; you choose an item and
-        sign the payment. No wallet extension or gas token needed.
+        Shop at a tea house with money we set aside for you. Then cut the till’s internet and keep paying: it still
+        accepts your payments, and collects later. No wallet app, no gas.
       </p>
 
       {payee ? (
@@ -40,8 +40,8 @@ export default function CounterDemoPage() {
       ) : (
         <div className="sheet mt-8 p-6">
           <p>The sponsored counter is unavailable right now.</p>
-          <a className="mt-3 inline-block underline" href="/demo#illustration">
-            Watch the payment illustration
+          <a className="mt-3 inline-block underline" href="/demo">
+            Try the agent demo instead
           </a>
         </div>
       )}
