@@ -1,4 +1,4 @@
-import { getChainById } from '@flying-money/chains'
+import { getChain, getChainById } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
 import {
   createIdempotency,
@@ -14,6 +14,7 @@ import { registerExactEvmScheme } from '@x402/evm/exact/client'
 import { type Context, Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { LocalAccount } from 'viem'
+import { createLedger, type Ledger } from './ledger.js'
 import { guardedFetch } from './net-guard.js'
 import { type Delivered, memoryOutcomes, type OutcomeStore } from './outcomes.js'
 import { assertPublicTarget, BlockedTargetError, type TargetPolicy } from './ssrf.js'
@@ -42,6 +43,12 @@ export interface BridgeConfig {
   trustProxy?: boolean
   /** The float's USDC balance on a network (base units). When set, a quote is refused while the float can't cover it. */
   floatBalance?: (network: string) => Promise<bigint>
+  /** Activity log behind GET /status (a JSONL file via BRIDGE_LEDGER_FILE keeps it across restarts). */
+  ledger?: Ledger
+  /** The bridge wallet's ETH balance on a network, for the monitoring view (gas for collecting). */
+  gasBalance?: (network: string) => Promise<bigint>
+  /** Public name shown on /status and in the app's bridge view. */
+  label?: string
   /** Durable record of what each request returned, so a restart never pays a site twice. Default: memory. */
   outcomes?: OutcomeStore
   /** Test hook: replaces the guarded upstream fetch. */
@@ -71,6 +78,7 @@ export function createBridge(config: BridgeConfig) {
   const doFetch = config.fetch ?? (config.target?.allowLocal ? fetch : guardedFetch())
   const limiter = config.rateLimiter ?? memoryRateLimiter()
   const outcomes = config.outcomes ?? memoryOutcomes()
+  const ledger = config.ledger ?? createLedger()
   const quoteLimit = config.quoteLimitPerMinute ?? 60
   const MAX_QUOTES = 500
   const ttl = config.quoteTtlMs ?? 60_000
@@ -230,6 +238,59 @@ export function createBridge(config: BridgeConfig) {
     }),
   )
 
+  // Public monitoring view: everything an owner, an agent or a judge needs to check the bridge, nothing secret.
+  app.get('/status', async (c) => {
+    const t = ledger.totals()
+    const networks = await Promise.all(
+      config.upstreamNetworks.map(async (network) => {
+        const usdcBalance = config.floatBalance ? await config.floatBalance(network).catch(() => null) : null
+        const gas = config.gasBalance ? await config.gasBalance(network).catch(() => null) : null
+        return { network, usdc: usdcBalance?.toString() ?? null, gas: gas?.toString() ?? null }
+      }),
+    )
+    // signed by agents and accepted, not yet collected on-chain: what the contract owes this wallet
+    let owed = 0n
+    for (const key of config.accepts) {
+      const id = getChain(key).chain.id
+      for (const p of await config.store.pendingRedemptions(id).catch(() => []))
+        owed += p.note.cumulative > p.redeemedOnChain ? p.note.cumulative - p.redeemedOnChain : 0n
+    }
+    const last = ledger.recent(1)[0]
+    const lastPrice = last?.price ? BigInt(last.price) : 1_000n
+    const usdcTotal = networks.reduce((a, n) => a + BigInt(n.usdc ?? '0'), 0n)
+    const calls = lastPrice > 0n ? usdcTotal / lastPrice : 0n
+    const health = usdcTotal === 0n ? 'empty' : calls < 20n ? 'low' : 'ok'
+    c.header('access-control-allow-origin', '*')
+    c.header('cache-control', 'no-store')
+    return c.json({
+      name: config.label ?? 'Flying Money x402 bridge',
+      wallet: config.float.address,
+      budgetChains: config.accepts,
+      limits: {
+        maxPerCall: config.maxUpstreamAmount.toString(),
+        feeBps: config.feeBps ?? 0,
+        quotesPerMinute: quoteLimit,
+      },
+      balances: networks,
+      liquidity: {
+        health,
+        coversCalls: calls.toString(),
+        basedOnPrice: lastPrice.toString(),
+        note: 'The bridge pays each site from its own wallet first, then collects the budget from the contract. It can only pay while its wallet holds USDC.',
+      },
+      owedByContract: owed.toString(),
+      totals: {
+        paid: t.paid,
+        failed: t.failed,
+        spentOnSites: t.spent.toString(),
+        chargedToAgents: t.charged.toString(),
+        collected: t.collected.toString(),
+        since: t.since,
+      },
+      recent: ledger.recent(25),
+    })
+  })
+
   app.all('/fetch', paid, async (c) => {
     const url = await target(c.req.query('url'))
     const method = c.req.method
@@ -258,7 +319,26 @@ export function createBridge(config: BridgeConfig) {
       (rid
         ? await jobs.runOnce(rid, async () => {
             const d = await run()
-            if (d.status >= 200 && d.status < 300) await outcomes.set(rid, d)
+            const q = quotes.get(`${method} ${url.href}`)
+            const ok = d.status >= 200 && d.status < 300
+            if (q) {
+              let tx: string | undefined
+              try {
+                tx = d.settle ? (JSON.parse(atob(d.settle)) as { transaction?: string }).transaction : undefined
+              } catch {
+                tx = undefined
+              }
+              ledger.add({
+                at: now(),
+                kind: ok ? 'paid' : 'failed',
+                host: url.hostname,
+                network: q.accepted.network,
+                amount: q.upstream.toString(),
+                price: q.price.toString(),
+                ...(tx ? { tx } : {}),
+              })
+            }
+            if (ok) await outcomes.set(rid, d)
             return d
           })
         : await run())
@@ -275,5 +355,5 @@ export function createBridge(config: BridgeConfig) {
     })
   })
 
-  return { app, server: paid.server, float: config.float.address }
+  return { app, server: paid.server, float: config.float.address, ledger }
 }

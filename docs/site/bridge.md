@@ -68,12 +68,43 @@ BRIDGE_FLOAT_KEY=0x… BRIDGE_CHAINS=base-sepolia BRIDGE_DEV=1 npx tsx packages/
 | `BRIDGE_STATE_FILE` | JSON file remembering what each paid request returned, so a restart never pays a site twice |
 | `BRIDGE_TRUST_PROXY` | `1` to take the client address from `X-Forwarded-For` (only behind your own proxy) |
 | `BRIDGE_REDEEM_MIN`, `BRIDGE_REDEEM_MAX_AGE` | Collect budgets when this much USDC (default 0.05) or this many seconds (default 600) are waiting |
+| `BRIDGE_NOTES_FILE` | Durable file for the notes the bridge has accepted (one self-hosted process). Required on a mainnet unless Redis or Upstash is set |
+| `BRIDGE_LEDGER_FILE` | Activity log (one JSON line per payment or collection) behind `GET /status`, kept across restarts |
+| `BRIDGE_LABEL` | The name shown on `/status` and on the app's bridge page |
 | `REDIS_URL` or Upstash | Durable store (required unless `BRIDGE_DEV=1`); `BRIDGE_REDEEM=1` also collects budgets automatically |
 
 `GET /` on the bridge returns its payee address and limits. Safeguards: it dials only public addresses, checked again at
 connect time (so a name that re-resolves to an internal address is refused), follows no redirects, refuses credentials in
 URLs and anything that is not https, pays only the real USDC of a network you list (never a token a site names), limits
 quotes per client (each can reach a site), and refuses a quote while its wallet balance can't cover it.
+
+## Liquidity: why the bridge wallet needs USDC
+
+Yes: the bridge **pays the site first and collects from the contract later**, so its wallet must already hold USDC to
+pay with. It also needs a little of the network's fee token (ETH on Base) to send the collection transactions.
+
+- **How much:** at least what it pays out between collections. Example: at 0.001 USDC per call, 1,000 calls is 1 USDC. A
+  quiet personal bridge needs a few USDC; set `BRIDGE_REDEEM_MIN` and `BRIDGE_REDEEM_MAX_AGE` so it collects often and
+  the wallet refills.
+- **What is at risk:** the bridge is repaid from a budget the owner already locked in the contract, up to what the agent
+  signed, so a collected call costs it nothing. The risks are timing and forgetting: USDC it paid out but has not yet
+  collected, and notes it never collects before the budget's end date (the money then returns to the owner and the bridge
+  has paid for nothing). Collect before the end date.
+- **When it runs short:** the bridge refuses a quote it can't fund, before the agent signs anything, and `GET /status`
+  reports `health: low` or `empty`.
+- **No wallet balance needed?** A bridge could collect first and pay after, but that costs a collection transaction per
+  call. This prototype keeps a balance instead.
+
+## Check a bridge (transparency and monitoring)
+
+Every bridge serves `GET /status` (public, read-only, no secrets): its wallet, the networks it pays on, its limits,
+balances, a `liquidity` health (`ok`, `low`, `empty`), what the contract still owes it (`owedByContract`), totals paid
+and collected, and the last 25 payments and collections with their transaction hashes. No agent address, note or request
+content is included.
+
+The app shows the same on a page anyone can open: **[/bridge](/bridge)** (`/bridge?url=<bridge address>`). It also reads
+the bridge's wallet balance, the budgets made out to it and the collected totals **directly from the chain**, and warns
+if the bridge's reported balance disagrees with the chain. Trust the chain over the bridge.
 
 ## Give an agent access
 

@@ -8,6 +8,7 @@ import { savePlace } from '@/lib/contacts'
 import { relTime, short, usdc } from '@/lib/fmt'
 import { type BudgetState, budgetState, STATUS_LABEL } from '@/lib/glossary'
 import { useAccountCtx } from './context'
+import { MoneyPath } from './money-path'
 
 // one status map and threshold everywhere (§22.3)
 export { type BudgetState, budgetState } from '@/lib/glossary'
@@ -131,6 +132,14 @@ export function BudgetRow({ cert, onChanged }: { cert: Certificate; onChanged: (
             <span className="ml-2 text-xs text-ink-2">Give this address a name so you can recognise it next time.</span>
           </div>
         ))}
+      <details className="border-t border-line px-4 py-2">
+        <summary className="min-h-9 cursor-pointer text-sm font-medium text-indigo hover:underline focus-visible:outline-2 focus-visible:outline-indigo">
+          Where this money is
+        </summary>
+        <div className="py-3">
+          <MoneyPath cert={cert} chain={chain} seller={place} agent={who ?? short(cert.spender)} />
+        </div>
+      </details>
       {state !== 'closed' && (
         <div className="border-t border-line px-4 py-2">
           <button

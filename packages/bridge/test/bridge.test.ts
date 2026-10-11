@@ -270,4 +270,31 @@ describe('bridge hardening', () => {
     const theirs = lines('../../mcp/src/net-guard.ts')
     expect(mine).toEqual(theirs)
   })
+
+  it('GET /status is a public monitoring view: balances, health, what is owed, totals and recent payments', async () => {
+    const up = upstream()
+    const { bridge, note, call, float } = setup(up, { floatBalance: async () => 5_000n, gasBalance: async () => 123n })
+    let st = await (await bridge.app.request('http://bridge.test/status')).json()
+    expect(st).toMatchObject({ wallet: float.address, owedByContract: '0', totals: { paid: 0, failed: 0 } })
+    expect(st.balances[0]).toMatchObject({ usdc: '5000', gas: '123' })
+    expect(st.liquidity).toMatchObject({ health: 'low', coversCalls: '5' }) // 5,000 / 1,000 per call
+
+    expect((await call(await note(1000n))).status).toBe(200)
+    const res = await bridge.app.request('http://bridge.test/status')
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    st = await res.json()
+    expect(st.totals).toMatchObject({ paid: 1, failed: 0, spentOnSites: '1000', chargedToAgents: '1000' })
+    expect(st.owedByContract).toBe('1000') // accepted from the agent, not yet collected on-chain
+    expect(st.recent[0]).toMatchObject({ kind: 'paid', host: 'api.example.test', amount: '1000' })
+    // nothing that identifies an agent or carries a note leaks into the public view
+    expect(JSON.stringify(st)).not.toMatch(/fm1\.|0x[0-9a-fA-F]{64}/)
+  })
+
+  it('reports a failed purchase in the log and an empty wallet as unhealthy', async () => {
+    const up = upstream({ failAfterPay: true })
+    const { bridge, note, call } = setup(up, { floatBalance: async () => 0n })
+    expect((await call(await note(1000n))).status).toBe(503) // quote refused: nothing to pay with
+    const st = await (await bridge.app.request('http://bridge.test/status')).json()
+    expect(st.liquidity.health).toBe('empty')
+  })
 })

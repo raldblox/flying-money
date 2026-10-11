@@ -8,6 +8,8 @@
 //   BRIDGE_ALLOW_HOSTS        optional comma list: reach only these hostnames
 //   BRIDGE_REDEEM_MIN / _MAX_AGE  collect when this much (USDC, default 0.05) or this many seconds (default 600) are waiting
 //   BRIDGE_NOTES_FILE         durable file for the seller's accepted notes (one self-hosted process; Redis/Upstash for several)
+//   BRIDGE_LEDGER_FILE        activity log (JSONL) behind GET /status, kept across restarts
+//   BRIDGE_LABEL              the name shown on /status and in the app's bridge view
 //   BRIDGE_STATE_FILE         JSON file remembering what each paid request returned (so a restart never pays a site twice)
 //   BRIDGE_TRUST_PROXY=1      take the client address from X-Forwarded-For (only behind your own proxy)
 //   PORT                      default 8790
@@ -21,6 +23,7 @@ import { createPublicClient, erc20Abi, http, parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createBridge } from './bridge.js'
 import { fileNoteStore } from './file-store.js'
+import { createLedger } from './ledger.js'
 import { fileOutcomes, memoryOutcomes } from './outcomes.js'
 
 const env = process.env
@@ -62,7 +65,18 @@ for (const k of chains) {
   )
 }
 
+const ledger = createLedger(env.BRIDGE_LEDGER_FILE)
+const gasReaders = new Map<string, () => Promise<bigint>>()
+for (const k of chains) {
+  const c = getChain(k)
+  const pub = createPublicClient({ chain: c.chain, transport: http(rpcUrl(k, env)) })
+  gasReaders.set(`eip155:${c.chain.id}`, () => pub.getBalance({ address: float.address }))
+}
+
 const bridge = createBridge({
+  ledger,
+  gasBalance: async (network) => (await gasReaders.get(network)?.()) ?? 0n,
+  ...(env.BRIDGE_LABEL ? { label: env.BRIDGE_LABEL } : {}),
   outcomes: env.BRIDGE_STATE_FILE ? fileOutcomes(env.BRIDGE_STATE_FILE) : memoryOutcomes(),
   trustProxy: env.BRIDGE_TRUST_PROXY === '1',
   floatBalance: async (network) => (await readers.get(network)?.()) ?? 0n,
@@ -91,7 +105,16 @@ if (env.BRIDGE_REDEEM === '1') {
       maxAgeSeconds: Number(env.BRIDGE_REDEEM_MAX_AGE ?? 600),
       safetyBeforeExpiry: 3600,
     },
-    onRedeemed: (e) => console.log(`collected ${e.paid} from budget ${e.certificateId} (tx ${e.txHash})`),
+    onRedeemed: (e) => {
+      ledger.add({
+        at: Date.now(),
+        kind: 'collected',
+        network: `eip155:${e.chainId}`,
+        amount: e.paid.toString(),
+        tx: e.txHash,
+      })
+      console.log(`collected ${e.paid} from budget ${e.certificateId} (tx ${e.txHash})`)
+    },
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),
   })
 }
