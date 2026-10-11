@@ -27,6 +27,8 @@ export interface FlyingMoneyMcpConfig {
   approvalBase?: string
   /** The address budgets are issued to, shown so the agent can tell its owner (never the key). */
   spendingAddress?: string
+  /** The owner's x402 bridge (FM_BRIDGE_URL): ordinary x402 sites are paid through it from a budget for the bridge. */
+  bridgeUrl?: string
   fetch?: typeof fetch
   /** Lists sellers announcing themselves on the local network (default: mDNS, `discoverSellers`). */
   discover?: (seconds: number) => Promise<FoundSeller[]>
@@ -66,6 +68,7 @@ export const INSTRUCTIONS = [
   '- Your owner funds a budget from their own wallet: an amount set aside for ONE seller, spendable only by your key, until an end date. You can’t go over it, top it up or send it anywhere else. That is why it is safe to give you.',
   '- When a paid service needs a budget, ask once (fm_request_budget) and explain in plain words what approving means: the amount is set aside for that one seller; it can’t be cancelled before the end date (that is what lets the seller trust it); whatever you don’t spend goes back to them after the end date; you will stay inside it. Suggest an amount that fits the task, not the most you could use.',
   '- Check prices with fm_quote before paying, and never pay in a loop. Failed requests are not charged.',
+  '- Some paid sites are ordinary x402 sites that know nothing about Flying Money. When your owner runs a bridge (FM_BRIDGE_URL), fm_quote and fm_paid_fetch pay them through it, from a budget made for the bridge. Ask for that budget the same way (fm_request_budget): it lets you pay any x402 site up to its amount, so suggest a small one.',
   '- No internet? fm_discover lists sellers announcing themselves on the local network; you can pay those too.',
   '- Use test networks and test money. Arc mainnet is live too, with immutable caps (100 USDC per budget, 1,000 USDC in total), but the contract is not audited: use it only if your owner explicitly asks.',
 ].join('\n')
@@ -75,6 +78,9 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   // public internet only unless the caller supplies its own fetch (audit F6)
   const doFetch = cfg.fetch ?? guardedFetch()
   const maxBody = cfg.maxBodyChars ?? 8000
+  const viaBridge = (u: string) => `${(cfg.bridgeUrl ?? '').replace(/\/$/, '')}/fetch?url=${encodeURIComponent(u)}`
+  /** An ordinary x402 (or other non-Flying-Money) payment wall: only these go through the bridge. */
+  const isForeign402 = (res: Response) => res.status === 402 && !res.headers.get(OFFER_HEADER)
   const server = new McpServer({ name: 'flying-money', version: '0.1.1' }, { instructions: INSTRUCTIONS })
 
   const certificates = () =>
@@ -158,14 +164,26 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     },
     async ({ url }) => {
       try {
-        const res = await doFetch(httpUrl(url), { redirect: 'manual' })
+        let res = await doFetch(httpUrl(url), { redirect: 'manual' })
         if (res.status !== 402)
           return json({ paid: false, price: '0.00', status: res.status, note: 'No payment needed.' })
+        let viaBridgeNote: string | undefined
+        if (isForeign402(res) && cfg.bridgeUrl) {
+          // a regular x402 site: ask the bridge what it would charge (the site's price plus the bridge's fee)
+          res = await doFetch(viaBridge(url), { redirect: 'manual' })
+          if (res.status !== 402) {
+            const detail = await res.text()
+            return json({ paid: false, via: 'bridge', status: res.status, bridgeSays: detail.slice(0, 500) }, true)
+          }
+          viaBridgeNote =
+            'This is a regular x402 site. You would pay it through your owner’s bridge (the price includes its fee).'
+        }
         const h = res.headers.get(OFFER_HEADER)
         if (!h) return json({ paid: false, status: 402, note: 'Payment required, but not with Flying Money.' }, true)
         const o = decodeOffer(h)
         return json({
           paid: false,
+          ...(viaBridgeNote ? { via: 'bridge', note: viaBridgeNote } : {}),
           price: usdc(o.price),
           accepts: o.accepts.map((a) => ({
             chain: getChainById(a.chainId)?.key ?? a.chainId,
@@ -231,6 +249,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       },
     },
     async ({ url, method, body, max_price }) => {
+      let bridged = false
       try {
         const target = httpUrl(url)
         const init: RequestInit = {
@@ -244,7 +263,14 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         // the saved state must be loaded first, or a fresh process reports the running total as this call's price
         await fm.ready
         const before = new Map(fm.status().map((c) => [c.id, c.spentLocal]))
-        const res = await fm.fetch(target, init, maxPrice !== undefined ? { maxPrice } : {})
+        let res = await fm.fetch(target, init, maxPrice !== undefined ? { maxPrice } : {})
+        let via: 'bridge' | undefined
+        if (isForeign402(res) && cfg.bridgeUrl) {
+          // the site wants x402 (or something else we don't speak): let the owner's bridge pay it from our budget
+          via = 'bridge'
+          bridged = true
+          res = await fm.fetch(new URL(viaBridge(url)), init, maxPrice !== undefined ? { maxPrice } : {})
+        }
         for (const c of fm.status()) {
           const prev = before.get(c.id) ?? 0n
           if (c.spentLocal > prev) payment = { price: c.spentLocal - prev, cumulative: c.spentLocal }
@@ -253,6 +279,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         return json(
           {
             status: res.status,
+            ...(via ? { via } : {}),
             body: t.length > maxBody ? `${t.slice(0, maxBody)}…` : t,
             ...(payment ? { payment: { price: usdc(payment.price), cumulative: usdc(payment.cumulative) } } : {}),
             budget: certificates().map((c) => ({ id: c.id, remaining: c.remaining })),
@@ -274,7 +301,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
                   : e instanceof PendingUnresolvedError
                     ? 'A previous payment is still being confirmed; it will be resent, never re-signed. Try again shortly.'
                     : `Request failed: ${(e as Error).message}`
-        if (e instanceof NoCertificateError) return noCertificate(e.offer, target(url))
+        if (e instanceof NoCertificateError) return noCertificate(e.offer, target(url), bridged)
         return text(msg, true)
       }
     },
@@ -289,12 +316,19 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
   }
 
   /** §21.3: a structured error the model can act on, instead of prose. */
-  function noCertificate(offer: Offer, service: string) {
+  function noCertificate(offer: Offer, service: string, viaBridgeFlag = false) {
     const acc = offer.accepts[0]
     return json(
       {
         error: 'no_certificate',
         service,
+        ...(viaBridgeFlag
+          ? {
+              via: 'bridge',
+              bridgeNote:
+                'This site is paid through your owner’s bridge. A budget for the bridge’s address lets you pay any x402 site up to its amount.',
+            }
+          : {}),
         chain: acc ? (getChainById(acc.chainId)?.key ?? String(acc.chainId)) : undefined,
         payee: acc?.payee,
         price: usdc(offer.price),
@@ -385,7 +419,13 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     async ({ url, amount, days, reason }) => {
       if (!cfg.canRequest) return text('No owner is configured (FM_OWNER), so no budget can be requested.', true)
       try {
-        const probe = await doFetch(httpUrl(url), { method: 'GET' })
+        let probe = await doFetch(httpUrl(url), { method: 'GET' })
+        let budgetOrigin = target(url)
+        if (isForeign402(probe) && cfg.bridgeUrl) {
+          // a regular x402 site: the budget is for the bridge that pays it, so the owner sees the bridge as the payee
+          probe = await doFetch(viaBridge(url), { method: 'GET' })
+          budgetOrigin = target(cfg.bridgeUrl)
+        }
         if (probe.status !== 402) return text(`That URL did not ask for payment (HTTP ${probe.status}).`, true)
         const h = probe.headers.get(OFFER_HEADER)
         const offer = h ? decodeOffer(h) : parseOffer((await probe.json()) as Record<string, unknown>)
@@ -394,7 +434,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           amount: parseUnits(amount, 6),
           days,
           reason,
-          origin: target(url),
+          origin: budgetOrigin,
         })
         await offerApproval(r)
         return json(describe(r))

@@ -30,6 +30,7 @@ Key rules for agents:
 - [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
 - [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
 - [MCP server](${base}/docs/mcp.md): tools fm_status, fm_explain, fm_discover, fm_quote, fm_paid_fetch, fm_request_budget, fm_request_status
+- [Pay any x402 site](${base}/docs/bridge.md): a bridge you run lets an agent pay ordinary x402 sites from its budget (prototype, test networks)
 - [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox
 - [Sellers](${base}/docs/server.md): accept notes with middleware; the redeemer
 - [People & shops](${base}/docs/shops.md): the QR counter flow

@@ -194,6 +194,14 @@ set \`FM_ALLOW_LAN=1\`.
 3. Give your owner the link it returns. They review it and approve it at ${site}/app/requests. Then call
    \`fm_request_status\` to see whether it was approved, and retry the call.
 
+## Ordinary x402 sites (prototype)
+
+Most paid sites speak plain x402 and have never heard of Flying Money. If your owner runs a bridge, they set
+\`FM_BRIDGE_URL\` next to \`FM_OWNER\`, and you use the same tools: \`fm_quote\` and \`fm_paid_fetch\` pay an x402
+site through the bridge and say \`"via": "bridge"\`. With no budget for the bridge yet, \`fm_paid_fetch\` answers
+\`no_certificate\` with the bridge as payee: call \`fm_request_budget\` once, with a small amount, and wait. See
+[${site}/docs/bridge](${site}/docs/bridge).
+
 ## Rules
 
 - You can pay only the seller a budget names, never more than its amount, and never after its end date.

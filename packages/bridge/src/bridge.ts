@@ -167,6 +167,22 @@ export function createBridge(config: BridgeConfig) {
     return c.json({ error: 'bridge error', reason: 'internal' }, 500)
   })
 
+  // what an owner (or an agent) needs to know before funding a budget for this bridge
+  app.get('/', (c) =>
+    c.json({
+      name: 'Flying Money x402 bridge',
+      what: 'Pays ordinary x402 sites on behalf of an agent, from a Flying Money budget whose payee is this bridge.',
+      payee: config.float.address,
+      budgetChains: config.accepts,
+      upstreamNetworks: config.upstreamNetworks,
+      maxPerCall: config.maxUpstreamAmount.toString(),
+      feeBps: config.feeBps ?? 0,
+      use: 'GET /fetch?url=<x402 site>, paying with a Flying Money note (Flying-Money-Note) for the quoted price',
+      limits:
+        'Only the exact USDC scheme. A budget for this payee can be spent only here; unspent money returns to its funder after the end date.',
+    }),
+  )
+
   app.all('/fetch', paid, async (c) => {
     const url = await target(c.req.query('url'))
     const method = c.req.method

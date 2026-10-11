@@ -48,7 +48,8 @@
     "@flying-money/oracle": "workspace:*",
     "@flying-money/server": "workspace:*",
     "bonjour-service": "1.4.4",
-    "hono": "^4.13.8"
+    "hono": "^4.13.8",
+    "@flying-money/bridge": "workspace:*"
   },
   "bin": {
     "flying-money-mcp": "./dist/bin.js"

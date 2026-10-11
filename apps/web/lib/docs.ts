@@ -15,6 +15,7 @@ export const DOCS = [
   { slug: 'client', group: 'Reference' },
   { slug: 'server', group: 'Reference' },
   { slug: 'mcp', group: 'Reference' },
+  { slug: 'bridge', group: 'Reference' },
   { slug: 'guarantees', group: 'About' },
   { slug: 'glossary', group: 'About' },
   { slug: 'faq', group: 'About' },

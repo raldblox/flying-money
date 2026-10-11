@@ -56,6 +56,7 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 | `FM_MAX_PRICE` | Per-request cap in USDC (default `0.05`) |
 | `FM_STORE` | Durable outbox file (default `~/.flying-money/outbox.json`) |
 | `FM_ALLOW_LAN` | `1` to pay sellers on this machine and the local network (never link-local addresses). Off by default: only public services, or sellers found with `fm_discover` in the same session |
+| `FM_BRIDGE_URL` | Your owner's x402 bridge: ordinary x402 sites are then paid through it from a budget for the bridge (`"via": "bridge"` in the result). See [Pay any x402 site](/docs/bridge) |
 
 Prefer to build from source? Run `pnpm install && pnpm build` in the repository and use `node /path/to/flying-money/packages/mcp/dist/bin.js` in place of `npx -y @flying-money/mcp`.
 

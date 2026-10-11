@@ -15,6 +15,8 @@ export interface McpEnvConfig {
   canRequest: boolean
   /** Public internet only (audit F6): used by the tools and by the payment client alike. */
   fetch: typeof fetch
+  /** The owner's x402 bridge, when configured (FM_BRIDGE_URL). */
+  bridgeUrl?: string
   /** Where the owner reviews requests (for URL-mode elicitation). */
   approvalBase: string
   /** The address budgets are issued to (public; the key itself is never exposed). */
@@ -40,6 +42,7 @@ export const DEFAULT_REQUEST_LINK_BASE = 'https://useflyingmoney.vercel.app'
  *   FM_REQUEST_LINK_BASE where approval links open (default https://useflyingmoney.vercel.app)
  *   FM_OWNER_GRANT       the owner's permission to ask (fm1, from the site); requests then go to the owner's inbox
  *   FM_RELAY_URL         the inbox (default <FM_REQUEST_LINK_BASE>/api/requests)
+ *   FM_BRIDGE_URL        your owner's x402 bridge: ordinary x402 sites are then paid through it (see docs/site/bridge.md)
  *   RPC_<CHAIN>          optional RPC overrides
  *   FM_ALLOW_HOSTS       host:port pairs that may be private, e.g. a local Oracle (localhost:8787); default none
  *   FM_ALLOW_LAN         1: also pay sellers on this machine and the local network (never link-local); default off
@@ -75,7 +78,11 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     ? undefined
     : loadOrCreateAgentKey(env.FM_KEY_FILE?.trim() || join(dirname(storePath), 'agent-key'))
   const spender = privateKeyToAccount((given ?? made?.key) as Hex)
-  const fetch = guardedFetch({ allowHosts: allowHostsFromEnv(env.FM_ALLOW_HOSTS), allowLan: env.FM_ALLOW_LAN === '1' })
+  const bridgeUrl = env.FM_BRIDGE_URL?.trim() || undefined
+  if (bridgeUrl && !/^https?:\/\//.test(bridgeUrl)) throw new Error('FM_BRIDGE_URL must be an http(s) URL')
+  // the bridge is the owner's own service, named explicitly, so it may be on this machine or network
+  const allowHosts = [...allowHostsFromEnv(env.FM_ALLOW_HOSTS), ...(bridgeUrl ? [new URL(bridgeUrl).host] : [])]
+  const fetch = guardedFetch({ allowHosts, allowLan: env.FM_ALLOW_LAN === '1' })
   const client = createFlyingMoneyClient({
     fetch,
     chains: chains as ChainKey[],
@@ -104,6 +111,7 @@ export function configFromEnv(env: Record<string, string | undefined> = process.
     client,
     maxPricePerRequest,
     canRequest: Boolean(owner),
+    ...(bridgeUrl ? { bridgeUrl } : {}),
     fetch,
     approvalBase: env.FM_REQUEST_LINK_BASE ?? DEFAULT_REQUEST_LINK_BASE,
     spendingAddress: spender.address,
