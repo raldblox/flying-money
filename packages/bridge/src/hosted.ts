@@ -126,10 +126,10 @@ export function hostedBridgeFromEnv(
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),
   })
 
-  async function maintain() {
+  async function maintain(opts: { force?: boolean } = {}) {
     const swept = await bridge.server.sweep()
-    await redeemer.tick()
-    return { swept: swept.resolved, running: swept.running }
+    await redeemer.tick(opts.force ? { force: true } : undefined)
+    return { swept: swept.resolved, running: swept.running, forced: Boolean(opts.force) }
   }
   const afterServe = coalesce(maintain, (e) => console.error(`maintenance failed: ${e.message}`))
 
@@ -143,7 +143,8 @@ export function hostedBridgeFromEnv(
   bridge.app.get('/api/cron/collect', async (c) => {
     if (!env.CRON_SECRET) return c.json({ error: 'CRON_SECRET is not set on this deployment' }, 503)
     if (!secretOk(c.req.header('authorization'))) return c.json({ error: 'unauthorized' }, 401)
-    return c.json(await maintain())
+    // ?force=1 collects everything owed now, ignoring the policy thresholds (still authenticated)
+    return c.json(await maintain({ force: c.req.query('force') === '1' }))
   })
 
   // a one-file skill for agents, served by the bridge itself
