@@ -24,7 +24,8 @@ interface Status {
   name: string
   wallet: Hex
   budgetChains: string[]
-  limits: { maxPerCall: string; feeBps: number; quotesPerMinute: number }
+  limits: { maxPerCall: string; feeBps: number; feeFlat?: string; quotesPerMinute: number }
+  economics?: { feesEarned: string; collections: number; collectionGasSpentWei: string }
   balances: Array<{ network: string; usdc: string | null; gas: string | null }>
   liquidity: { health: 'ok' | 'low' | 'empty'; coversCalls: string; basedOnPrice: string; note: string }
   owedByContract: string
@@ -193,10 +194,20 @@ export function BridgeMonitor() {
               <Fact label="Owed to it by the contract">{usdc(BigInt(s.owedByContract))} USDC</Fact>
               <Fact label="Paid to sites">{usdc(BigInt(s.totals.spentOnSites))} USDC</Fact>
               <Fact label="Collected from budgets">{usdc(BigInt(s.totals.collected))} USDC</Fact>
+              {s.economics && (
+                <>
+                  <Fact label="Fees earned">{usdc(BigInt(s.economics.feesEarned))} USDC</Fact>
+                  <Fact label={`Collection fees paid (${s.economics.collections})`}>
+                    {eth(BigInt(s.economics.collectionGasSpentWei))} ETH
+                  </Fact>
+                </>
+              )}
             </dl>
             <p className="mt-4 text-sm text-ink-2">
               {s.liquidity.note} It pays at most {usdc(BigInt(s.limits.maxPerCall))} USDC per call, adds a{' '}
-              {s.limits.feeBps / 100}% fee, and has made {s.totals.paid} payment{s.totals.paid === 1 ? '' : 's'}
+              {s.limits.feeBps / 100}% fee
+              {s.limits.feeFlat && BigInt(s.limits.feeFlat) > 0n ? ` plus ${usdc(BigInt(s.limits.feeFlat))} USDC` : ''},
+              and has made {s.totals.paid} payment{s.totals.paid === 1 ? '' : 's'}
               {s.totals.failed > 0 ? ` (${s.totals.failed} failed and were not charged)` : ''}.
             </p>
           </Sheet>

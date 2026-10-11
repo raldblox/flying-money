@@ -13,12 +13,23 @@ export interface LedgerEntry {
   price?: string
   /** the site's settlement transaction, or the collection transaction */
   tx?: string
+  /** collected: what sending the collection transaction cost the bridge, in wei of the network's fee token */
+  gas?: string
 }
 
 export interface Ledger {
   add(e: LedgerEntry): void
   recent(n: number): LedgerEntry[]
-  totals(): { paid: number; failed: number; spent: bigint; charged: bigint; collected: bigint; since: number }
+  totals(): {
+    paid: number
+    failed: number
+    spent: bigint
+    charged: bigint
+    collected: bigint
+    collections: number
+    gas: bigint
+    since: number
+  }
 }
 
 /** Activity log kept in memory and, with a path, appended to a JSONL file so a restart keeps the history. */
@@ -47,15 +58,21 @@ export function createLedger(path?: string, now: () => number = Date.now): Ledge
       let spent = 0n
       let charged = 0n
       let collected = 0n
+      let collections = 0
+      let gas = 0n
       for (const e of entries) {
         if (e.kind === 'paid') {
           paid++
           spent += BigInt(e.amount)
           charged += BigInt(e.price ?? e.amount)
         } else if (e.kind === 'failed') failed++
-        else collected += BigInt(e.amount)
+        else {
+          collected += BigInt(e.amount)
+          collections++
+          gas += BigInt(e.gas ?? 0)
+        }
       }
-      return { paid, failed, spent, charged, collected, since: entries[0]?.at ?? since }
+      return { paid, failed, spent, charged, collected, collections, gas, since: entries[0]?.at ?? since }
     },
   }
 }

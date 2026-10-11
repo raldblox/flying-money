@@ -297,4 +297,23 @@ describe('bridge hardening', () => {
     const st = await (await bridge.app.request('http://bridge.test/status')).json()
     expect(st.liquidity.health).toBe('empty')
   })
+
+  it('quotes the upstream price plus a percentage fee and a flat fee, and reports what it earns against what collecting costs', async () => {
+    const up = upstream({ amount: '1000' })
+    const { bridge, note, call } = setup(up, { feeBps: 100, feeFlat: 200n })
+    const quote = await call()
+    expect(decodeOffer(quote.headers.get(OFFER_HEADER) as string).price).toBe(1210n) // 1000 + 10 (1%) + 200 flat
+    expect((await call(await note(1210n))).status).toBe(200)
+    bridge.ledger.add({
+      at: Date.now(),
+      kind: 'collected',
+      network: 'eip155:31337',
+      amount: '1210',
+      tx: '0x01',
+      gas: '486000000000',
+    })
+    const st = await (await bridge.app.request('http://bridge.test/status')).json()
+    expect(st.limits).toMatchObject({ feeBps: 100, feeFlat: '200' })
+    expect(st.economics).toMatchObject({ feesEarned: '210', collections: 1, collectionGasSpentWei: '486000000000' })
+  })
 })

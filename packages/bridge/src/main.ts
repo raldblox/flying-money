@@ -4,9 +4,12 @@
 //   BRIDGE_CHAINS             Flying Money chains whose budgets it accepts, comma-separated (default base-sepolia)
 //   BRIDGE_UPSTREAM_NETWORKS  CAIP-2 networks it will pay on (default: the chains above, as eip155:<id>)
 //   BRIDGE_MAX_UPSTREAM       most it pays any site per call, in USDC (default 0.05)
+//   BRIDGE_REDEEMER_KEY       optional gas-only key that sends the collection transactions (the money still goes to the bridge wallet)
+//   BRIDGE_FEE_FLAT           flat fee per call on top, in USDC (default 0); it pays for collecting
+//   BRIDGE_REDEEM_SAFETY      collect any budget this many seconds before it ends (default 21600)
 //   BRIDGE_FEE_BPS            fee on top of the site's price, basis points (default 0)
 //   BRIDGE_ALLOW_HOSTS        optional comma list: reach only these hostnames
-//   BRIDGE_REDEEM_MIN / _MAX_AGE  collect when this much (USDC, default 0.05) or this many seconds (default 600) are waiting
+//   BRIDGE_REDEEM_MIN / _MAX_AGE  collect when this much (USDC, default 1) is owed or has waited this many seconds (default 86400)
 //   BRIDGE_NOTES_FILE         durable file for the seller's accepted notes (one self-hosted process; Redis/Upstash for several)
 //   BRIDGE_LEDGER_FILE        activity log (JSONL) behind GET /status, kept across restarts
 //   BRIDGE_LABEL              the name shown on /status and in the app's bridge view
@@ -87,6 +90,7 @@ const bridge = createBridge({
   upstreamNetworks,
   maxUpstreamAmount: parseUnits(env.BRIDGE_MAX_UPSTREAM ?? '0.05', 6),
   feeBps: Number(env.BRIDGE_FEE_BPS ?? 0),
+  feeFlat: parseUnits(env.BRIDGE_FEE_FLAT ?? '0', 6),
   ...(dev && env.BRIDGE_ALLOW_LOCAL === '1'
     ? { target: { allowLocal: true } } // local testing only: lets the bridge call a site on this machine
     : env.BRIDGE_ALLOW_HOSTS
@@ -98,21 +102,37 @@ if (env.BRIDGE_REDEEM === '1') {
   startRedeemer({
     chains,
     store: sellerStore.store,
-    redeemerAccount: float,
+    // a separate gas-only key can send the collection transactions, so the bridge wallet's key never sends a transaction
+    redeemerAccount: env.BRIDGE_REDEEMER_KEY ? privateKeyToAccount(env.BRIDGE_REDEEMER_KEY as `0x${string}`) : float,
     env,
     policy: {
-      minAmount: parseUnits(env.BRIDGE_REDEEM_MIN ?? '0.05', 6),
-      maxAgeSeconds: Number(env.BRIDGE_REDEEM_MAX_AGE ?? 600),
-      safetyBeforeExpiry: 3600,
+      // one collection (about $0.001 of gas on Base) covers every call on a budget, so wait until there is enough owed,
+      // or a day has passed, or a budget is close to its end date (never miss that one)
+      minAmount: parseUnits(env.BRIDGE_REDEEM_MIN ?? '1', 6),
+      maxAgeSeconds: Number(env.BRIDGE_REDEEM_MAX_AGE ?? 86_400),
+      safetyBeforeExpiry: Number(env.BRIDGE_REDEEM_SAFETY ?? 21_600),
     },
     onRedeemed: (e) => {
-      ledger.add({
+      const entry = {
         at: Date.now(),
-        kind: 'collected',
+        kind: 'collected' as const,
         network: `eip155:${e.chainId}`,
         amount: e.paid.toString(),
         tx: e.txHash,
-      })
+      }
+      // what this collection cost: execution gas plus, on a rollup, the fee for posting it to Ethereum
+      const key = chains.find((k) => getChain(k).chain.id === e.chainId)
+      const reader = key ? readers.get(`eip155:${e.chainId}`) : undefined
+      if (key && reader) {
+        const pub = createPublicClient({ chain: getChain(key).chain, transport: http(rpcUrl(key, env)) })
+        pub
+          .getTransactionReceipt({ hash: e.txHash })
+          .then((r) => {
+            const l1 = (r as unknown as { l1Fee?: bigint }).l1Fee ?? 0n
+            ledger.add({ ...entry, gas: (r.gasUsed * r.effectiveGasPrice + l1).toString() })
+          })
+          .catch(() => ledger.add(entry))
+      } else ledger.add(entry)
       console.log(`collected ${e.paid} from budget ${e.certificateId} (tx ${e.txHash})`)
     },
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),

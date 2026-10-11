@@ -33,6 +33,8 @@ export interface BridgeConfig {
   maxUpstreamAmount: bigint
   /** Added to the upstream price, in basis points (0 = pass-through). */
   feeBps?: number
+  /** A flat fee per call on top, in USDC base units. It covers the collection gas, spread over a budget's calls. */
+  feeFlat?: bigint
   /** How long a quote stays valid (ms). Default 60 s. */
   quoteTtlMs?: number
   target?: TargetPolicy
@@ -94,7 +96,7 @@ export function createBridge(config: BridgeConfig) {
     const id = /^eip155:(\d+)$/.exec(network)?.[1]
     return id ? getChainById(Number(id))?.usdc : undefined
   }
-  const fee = (amount: bigint) => (amount * BigInt(config.feeBps ?? 0) + 9_999n) / 10_000n
+  const fee = (amount: bigint) => (amount * BigInt(config.feeBps ?? 0) + 9_999n) / 10_000n + (config.feeFlat ?? 0n)
 
   /** Calls the target; follows no redirects (a redirect could point at an internal address). */
   async function upstream(
@@ -269,6 +271,7 @@ export function createBridge(config: BridgeConfig) {
       limits: {
         maxPerCall: config.maxUpstreamAmount.toString(),
         feeBps: config.feeBps ?? 0,
+        feeFlat: (config.feeFlat ?? 0n).toString(),
         quotesPerMinute: quoteLimit,
       },
       balances: networks,
@@ -279,6 +282,13 @@ export function createBridge(config: BridgeConfig) {
         note: 'The bridge pays each site from its own wallet first, then collects the budget from the contract. It can only pay while its wallet holds USDC.',
       },
       owedByContract: owed.toString(),
+      // what the bridge keeps (fees charged) against what collecting costs it (gas, in wei of the fee token)
+      economics: {
+        feesEarned: (t.charged - t.spent).toString(),
+        collections: t.collections,
+        collectionGasSpentWei: t.gas.toString(),
+        note: 'Fees earned are USDC. Collection gas is paid in the network fee token (ETH on Base). One collection covers every call on a budget.',
+      },
       totals: {
         paid: t.paid,
         failed: t.failed,
