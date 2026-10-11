@@ -176,7 +176,7 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
             return json({ paid: false, via: 'bridge', status: res.status, bridgeSays: detail.slice(0, 500) }, true)
           }
           viaBridgeNote =
-            'This is a regular x402 site. You would pay it through your owner’s bridge (the price includes its fee).'
+            'This is a regular x402 site. You would pay it through your owner’s bridge (the price includes its fee). The budget you need is one made for the bridge’s address (the payee below), not for the site: one such budget pays any x402 site through the bridge.'
         }
         const h = res.headers.get(OFFER_HEADER)
         if (!h) return json({ paid: false, status: 402, note: 'Payment required, but not with Flying Money.' }, true)
@@ -437,7 +437,16 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
           origin: budgetOrigin,
         })
         await offerApproval(r)
-        return json(describe(r))
+        return json({
+          ...describe(r),
+          ...(budgetOrigin !== target(url)
+            ? {
+                forSite: url,
+                bridgeNote:
+                  'This budget is for your owner’s bridge (the service above), which pays that site for you. It can then pay any x402 site the bridge allows, up to its amount, so ask for a small one.',
+              }
+            : {}),
+        })
       } catch (e) {
         return text(`Could not create the request: ${(e as Error).message}`, true)
       }
@@ -454,6 +463,8 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     },
     async ({ requestId }) => {
       try {
+        // a fresh process (one-shot CLI calls, a restarted agent) must load its saved requests first
+        await fm.ready
         return json(describe(await fm.requestStatus(requestId as Hex)))
       } catch (e) {
         return text(`Could not check the request: ${(e as Error).message}`, true)

@@ -160,4 +160,34 @@ describe('MCP: ordinary x402 sites through the owner’s bridge', () => {
     expect(r.json.status).toBe(402)
     expect(paidCalls()).toBe(0)
   })
+
+  it('fm_request_status waits for the saved state to load, so a fresh process finds its own request', async () => {
+    let loaded = false
+    const fake = {
+      ready: new Promise<void>((r) =>
+        setTimeout(() => {
+          loaded = true
+          r()
+        }, 30),
+      ),
+      requestStatus: async () => {
+        if (!loaded) throw new Error('unknown request 0x01')
+        return {
+          requestId: '0x01',
+          status: 'asked',
+          chain: 'anvil',
+          via: 'link',
+          link: 'https://example.test/approve',
+          request: { origin: BRIDGE, amount: 20_000n, validFor: 259_200n, payee: '0x0' },
+        }
+      },
+    }
+    const server = createFlyingMoneyMcp({ client: fake as never, maxPricePerRequest: 1n, canRequest: true })
+    const [a, b] = InMemoryTransport.createLinkedPair()
+    const client = new Client({ name: 'tester-agent', version: '1.0.0' })
+    await Promise.all([server.connect(a), client.connect(b)])
+    const r = await client.callTool({ name: 'fm_request_status', arguments: { requestId: '0x01' } })
+    expect(r.isError).toBeFalsy()
+    expect((r.content as Array<{ text: string }>)[0]?.text).toContain('"status": "asked"')
+  })
 })

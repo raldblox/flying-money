@@ -250,6 +250,29 @@ export interface FlyingMoneyClient {
   requests(): BudgetRequest[]
 }
 
+/** eth_getLogs over [from, latest]; when the node refuses the range, walks it in smaller pieces. */
+async function getLogsWalking<F extends Record<string, unknown>>(pub: PublicClient, filter: F, from: bigint) {
+  type Logs = Array<{ args?: unknown }>
+  const run = (fromBlock: bigint, toBlock?: bigint) =>
+    pub.getLogs({
+      ...(filter as object),
+      fromBlock,
+      ...(toBlock !== undefined ? { toBlock } : {}),
+    } as never) as Promise<Logs>
+  try {
+    return await run(from)
+  } catch (e) {
+    if (!/range|limit|too many|exceed|10000|block/i.test(String((e as Error).message))) throw e
+  }
+  const head = await pub.getBlockNumber()
+  const out: Logs = []
+  for (let start = from, step = 150n; start <= head; start += step) {
+    const end = start + step - 1n < head ? start + step - 1n : head
+    out.push(...(await run(start, end)))
+  }
+  return out
+}
+
 export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): FlyingMoneyClient {
   const doFetch = config.fetch ?? globalThis.fetch.bind(globalThis)
   const nowS = () => BigInt(Math.floor(config.now ? config.now() : Date.now() / 1000))
@@ -786,7 +809,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
       found = await adopt(r.chain, r.request.certificateId)
       if (found && !fundsRequest(r, found)) found = null
     } else {
-      const logs = await pub.getLogs({
+      const logsFilter = {
         address: ch.flyingMoney,
         event: {
           type: 'event',
@@ -801,8 +824,9 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
           ],
         },
         args: { funder: r.request.owner, payee: r.request.payee },
-        fromBlock: r.fromBlock,
-      })
+      } as const
+      // public RPCs cap eth_getLogs ranges (often 200 to 10,000 blocks): try the whole range, then walk it in pieces
+      const logs = await getLogsWalking(pub, logsFilter, r.fromBlock)
       for (const log of logs) {
         const a = log.args as { id: Hex; spender: Hex; faceValue: bigint }
         if (!sameAddress(a.spender, config.spender.address) || a.faceValue <= 0n) continue
