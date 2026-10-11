@@ -26,6 +26,7 @@ import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { PROVERBS } from '@/lib/carry/proverbs'
 import { publicClient as collectionClient } from '@/lib/chain'
+import { usePreferredChain } from '@/lib/chain-param'
 import { usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, type Till } from '@/lib/till'
 import { parseHandOver } from '@/lib/wallet'
@@ -91,7 +92,13 @@ const VKEY = 'fm-demo-visitor'
 const SKEY = 'fm-demo-visitor-state'
 
 export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork[]; shopPayee: Hex; staffPayee: Hex }) {
-  const [chain, setChain] = useState<ChainKey>(chains[0]?.key ?? 'arbitrum-sepolia')
+  const [chain, setChain] = usePreferredChain(
+    chains.map((c) => c.key),
+    chains[0]?.key ?? 'arbitrum-sepolia',
+  )
+  // the restore effect below runs once on mount; it calls the latest setter through a ref
+  const setChainRef = useRef(setChain)
+  setChainRef.current = setChain
   const [availability, setAvailability] = useState<{ available: boolean; message: string } | null>(null)
   const [availabilityCheck, setAvailabilityCheck] = useState(0)
   const [budgets, setBudgets] = useState<Budget[] | null>(null)
@@ -142,7 +149,7 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
           chain: ChainKey
           budgets: Array<Omit<Budget, 'cert'> & { cert: Record<string, string | number> }>
         }
-        setChain(saved.chain)
+        setChainRef.current(saved.chain)
         setBudgets(
           saved.budgets.map((b) => ({
             ...b,

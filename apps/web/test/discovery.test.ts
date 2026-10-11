@@ -15,7 +15,17 @@ describe('discovery for crawlers and agents', () => {
   })
   it('the sitemap lists agent.md, llms.txt, llms-full.txt and the x402 docs in both forms', () => {
     const urls = sitemap().map((e) => e.url)
-    for (const p of ['/agent.md', '/llms.txt', '/llms-full.txt', '/docs/x402', '/docs/x402.md', '/docs/bridge.md'])
+    for (const p of [
+      '/networks',
+      '/mainnet',
+      '/testnet',
+      '/agent.md',
+      '/llms.txt',
+      '/llms-full.txt',
+      '/docs/x402',
+      '/docs/x402.md',
+      '/docs/bridge.md',
+    ])
       expect(
         urls.some((u) => u.endsWith(p)),
         p,

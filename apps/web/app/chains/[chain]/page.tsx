@@ -42,8 +42,8 @@ export default async function ChainPage({ params }: { params: Promise<{ chain: s
   return (
     <article className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
       <p className="smallcaps text-sm text-seal">
-        <a href="/chains" className="underline">
-          Deployments
+        <a href="/networks" className="underline">
+          Networks
         </a>{' '}
         · {c.key} · chain id {c.chain.id}
       </p>
@@ -110,15 +110,43 @@ export default async function ChainPage({ params }: { params: Promise<{ chain: s
 
       <h2 className="mt-12 font-display text-3xl font-semibold">Try it on {c.chain.name}</h2>
       {c.flyingMoney ? (
-        <div className="mt-4 flex flex-wrap gap-3">
-          <ButtonLink href={`/demo${q}`}>Watch an agent pay</ButtonLink>
-          <ButtonLink href={`/app${q}`} variant="secondary">
-            Give a budget
-          </ButtonLink>
-          <ButtonLink href={`/shops${q}`} variant="secondary">
-            Shops
-          </ButtonLink>
-        </div>
+        <>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {c.mainnet ? (
+              <>
+                <ButtonLink href={`/app/give${q}`}>Give a budget · real USDC</ButtonLink>
+                <ButtonLink href={`/app/connect${q}`} variant="secondary">
+                  Connect an assistant
+                </ButtonLink>
+                <ButtonLink href={`/app${q}`} variant="secondary">
+                  Open the app
+                </ButtonLink>
+              </>
+            ) : (
+              <>
+                <ButtonLink href={`/demo/counter${q}`}>Try the shop demo</ButtonLink>
+                <ButtonLink href={`/demo${q}`} variant="secondary">
+                  Watch an agent pay
+                </ButtonLink>
+                <ButtonLink href={`/app${q}`} variant="secondary">
+                  Give a budget
+                </ButtonLink>
+                <ButtonLink href={`/shops${q}`} variant="secondary">
+                  Shops
+                </ButtonLink>
+              </>
+            )}
+          </div>
+          {c.mainnet && (
+            <p className="mt-3 text-sm text-ink-2">
+              Real USDC, capped and not audited. The demos run on test networks only.{' '}
+              <a className="text-indigo underline" href="/testnet">
+                See the test networks
+              </a>
+              .
+            </p>
+          )}
+        </>
       ) : (
         <p className="mt-3 text-ink-2">
           Not deployed on {c.chain.name} yet. It is the same contract source and protocol as every other chain; see{' '}

@@ -26,7 +26,7 @@ const groups = [
     links: [
       ['/how-it-works', 'How it works'],
       ['/guarantees', 'Promises and limits'],
-      ['/chains', 'Networks and deployments'],
+      ['/networks', 'Networks (mainnet and test)'],
       ['/story', 'The Flying Money story'],
     ],
   },

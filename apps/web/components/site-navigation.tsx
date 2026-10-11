@@ -8,6 +8,7 @@ import { ThemeSwitcher } from './theme-switcher'
 
 const items = [
   { href: '/#demos', label: 'Try the demos' },
+  { href: '/networks', label: 'Networks' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/docs', label: 'Build with it' },
 ]

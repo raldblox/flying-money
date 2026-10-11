@@ -32,6 +32,7 @@ Key rules for agents:
 - [Protocol](${base}/docs/protocol.md): EIP-712 types, headers, seller and buyer algorithms
 - [Contract](${base}/docs/contract.md): functions, events, errors, caps, invariants
 - [MCP server](${base}/docs/mcp.md): tools fm_status, fm_explain, fm_discover, fm_quote, fm_paid_fetch, fm_request_budget, fm_request_status
+- [Networks](${base}/networks): find your chain; mainnets (real money, capped) and test networks apart, each with its contract and where to start (also ${base}/mainnet and ${base}/testnet)
 - [x402](${base}/docs/x402.md): the two ways Flying Money works with x402, and which to use
 - [Pay any x402 site](${base}/docs/bridge.md): a bridge you run lets an agent pay ordinary x402 sites from its budget (prototype, test networks)
 - [Client SDK](${base}/docs/client.md): the buyer side and its durable outbox

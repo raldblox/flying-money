@@ -8,6 +8,7 @@ import { MoreDemos } from '@/components/demo/more-demos'
 import { NetworkPicker, type PickerNetwork } from '@/components/network-picker'
 import { buttonClass } from '@/components/section'
 import { decodeCarried } from '@/lib/carry/codec'
+import { usePreferredChain } from '@/lib/chain-param'
 import { short } from '@/lib/fmt'
 
 interface Slip {
@@ -20,7 +21,10 @@ interface Slip {
 }
 
 export function SlipDemo({ chains }: { chains: PickerNetwork[] }) {
-  const [chain, setChain] = useState<ChainKey>(chains[0]?.key ?? 'arbitrum-sepolia')
+  const [chain, setChain] = usePreferredChain(
+    chains.map((c) => c.key),
+    chains[0]?.key ?? 'arbitrum-sepolia',
+  )
   const [slip, setSlip] = useState<Slip | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

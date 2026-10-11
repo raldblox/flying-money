@@ -66,6 +66,8 @@ That's the stance to take, and to explain to your owner when it comes up:
   pay no gas; the budget is the cap. Prototype, test networks.
 - Sellers on the local network, with no internet: \`fm_discover\`.
 
+Every network, with its contract and caps, is listed at ${site}/networks (mainnets at ${site}/mainnet, test networks at ${site}/testnet).
+
 Use test networks and test money. Arc and Base mainnet are live too, with immutable caps (Arc 100 USDC per budget and 1,000 in total; Base 1,000 and 10,000), but the contract is not audited: use it only if your owner explicitly asks.
 
 Use your judgement: these are the facts you need, not a script. Adapt the steps to the app you run in and to your
