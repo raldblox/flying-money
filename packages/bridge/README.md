@@ -5,7 +5,7 @@ money and pays no gas; the budget is the cap. Private package (not on npm yet), 
 
 - Overview: [docs/site/x402.md](../../docs/site/x402.md) · Setup and settings: [docs/site/bridge.md](../../docs/site/bridge.md)
 - Design and results: the bridge is a normal Flying Money seller whose product is "an x402 call". It reads the site's own
-  402, quotes its price as a Flying Money offer, and pays the site from its float; collecting the budget refills the float.
+  402, quotes its price as a Flying Money offer, and pays the site from its own wallet; collecting the budget refills that wallet.
 
 ```bash
 # from a checkout of the repo

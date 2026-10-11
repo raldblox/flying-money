@@ -11,15 +11,40 @@ asking the site to change anything: your agent keeps its budget, and the bridge 
 
 **Status: prototype, test networks only.** Tested end to end on Base Sepolia, including a real third-party x402 site (`x402.org/protected`) paid through the bridge by an agent that followed only the tool guidance. Not audited.
 
+## How the money moves
+
+Three different things happen, and only two of them move money. Using a 0.001 USDC call as the example:
+
+1. **Signing (no money moves).** The agent's key signs a *note*: a short message that says "I authorize paying up to 0.001
+   USDC in total on this budget". Nothing goes on-chain. A note is a promise that only the contract can turn into money.
+2. **Paying the site (money moves, from the bridge wallet).** The bridge wallet pays the site's address 0.001 USDC right
+   away, using the site's own x402 payment (a signed USDC `transferWithAuthorization` that the site's facilitator submits).
+   This is plain USDC leaving the bridge wallet's balance. The bridge wallet had to hold that USDC already.
+3. **Collecting (money moves, from the contract).** Later the bridge sends the agent's signed note to the contract. The
+   contract checks the signature and does a normal USDC `transfer` of 0.001 from the budget to the bridge wallet, which
+   refills the balance used in step 2.
+
+So the site is paid from the bridge wallet, not from the contract. The contract's job is to make sure the bridge
+wallet gets repaid, and only up to what the agent signed. The rest of the budget stays locked in the contract until
+the owner takes it back after the end date.
+
+```
+owner wallet --lock 0.05--> contract                   (once, the budget)
+agent key ----signs note 0.001----> bridge             (no money moves)
+bridge wallet --pays 0.001--> site's address           (x402 payment)
+contract --0.001 transfer--> bridge wallet             (collecting, later)
+contract --remaining 0.049--> owner wallet             (after the end date)
+```
+
 ## How it works
 
-1. You run a bridge (`flying-money-bridge`). It has its own wallet, the **float**, which pays sites and is also the
-   **payee** of budgets made for it.
+1. You run a bridge (`flying-money-bridge`). It has its own ordinary wallet, the **bridge wallet**, which pays sites and is
+   also the **payee** of budgets made for it. You keep a small USDC balance in it, like a prepaid balance.
 2. You give your agent a budget whose payee is the bridge, spendable by the agent's key. It can only be spent at the
    bridge, up to its amount, until its end date.
 3. The agent calls a site as usual. The bridge reads the site's own 402, quotes its price (plus an optional fee) as a
-   Flying Money offer, the agent signs a note for exactly that, and the bridge pays the site from its float.
-4. The agent gets the site's real answer. Later the bridge collects the budget in one transaction, which refills the float.
+   Flying Money offer, the agent signs a note for exactly that, and the bridge pays the site from its wallet.
+4. The agent gets the site's real answer. Later the bridge collects the budget in one transaction, which refills the bridge wallet.
 
 The agent never holds money, never pays gas, and never signs more than the quoted price. A site that fails after the
 bridge paid it is credited back to the budget. Nothing about the contract changes.
@@ -34,7 +59,7 @@ BRIDGE_FLOAT_KEY=0x… BRIDGE_CHAINS=base-sepolia BRIDGE_DEV=1 npx tsx packages/
 
 | Setting | Meaning |
 |---|---|
-| `BRIDGE_FLOAT_KEY` | The bridge's wallet. Fund it with a little USDC on each network it pays on. |
+| `BRIDGE_FLOAT_KEY` | The key of the bridge wallet (the name says "float", meaning its prepaid balance). Fund it with a little USDC on each network it pays on. |
 | `BRIDGE_CHAINS` | Networks whose budgets it accepts (default `base-sepolia`) |
 | `BRIDGE_UPSTREAM_NETWORKS` | Networks it will pay sites on (default: the same networks) |
 | `BRIDGE_MAX_UPSTREAM` | Most it pays any site per call, in USDC (default 0.05) |
@@ -48,7 +73,7 @@ BRIDGE_FLOAT_KEY=0x… BRIDGE_CHAINS=base-sepolia BRIDGE_DEV=1 npx tsx packages/
 `GET /` on the bridge returns its payee address and limits. Safeguards: it dials only public addresses, checked again at
 connect time (so a name that re-resolves to an internal address is refused), follows no redirects, refuses credentials in
 URLs and anything that is not https, pays only the real USDC of a network you list (never a token a site names), limits
-quotes per client (each can reach a site), and refuses a quote while its float can't cover it.
+quotes per client (each can reach a site), and refuses a quote while its wallet balance can't cover it.
 
 ## Give an agent access
 

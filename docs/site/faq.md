@@ -12,7 +12,7 @@ It works with x402 in two ways. Sellers can list Flying Money as an x402 scheme 
 Yes, through your own bridge: set `FM_BRIDGE_URL`, and `fm_paid_fetch` pays the site from a budget made for the bridge. The agent holds no money and pays no gas, and the budget is the cap. See [Pay any x402 site](/docs/bridge).
 
 **Is the x402 bridge a cross-chain bridge?**
-No. It bridges *protocols*, not chains: it pays an x402 site on the network the site names, from its own float on that network.
+No. It bridges *protocols*, not chains: it pays an x402 site on the network the site names, from its own wallet on that network. See [how the money moves](/docs/bridge#how-the-money-moves).
 
 **Why not payment channels?**
 It is a one-way channel in spirit. The differences: anyone can redeem, the spending key is separate from the funder, there is no close negotiation, and it comes as an HTTP-native SDK for agents.
