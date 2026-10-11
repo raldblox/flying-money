@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import robots from '@/app/robots'
 import sitemap from '@/app/sitemap'
+import nextConfig from '../next.config'
 
 vi.mock('server-only', () => ({}))
 
@@ -19,5 +20,14 @@ describe('discovery for crawlers and agents', () => {
         urls.some((u) => u.endsWith(p)),
         p,
       ).toBe(true)
+  })
+
+  it('every docs page is reachable as raw Markdown (the rewrite pattern accepts every slug, digits included)', async () => {
+    const { DOCS } = await import('@/lib/docs')
+    const rules = (await (nextConfig as { rewrites?: () => Promise<Array<{ source: string }>> }).rewrites?.()) ?? []
+    const rule = rules.find((r) => r.source.startsWith('/docs/:slug'))
+    expect(rule).toBeTruthy()
+    const re = new RegExp(`^${(rule as { source: string }).source.replace(/:slug(\(.*?\))/, '$1')}$`)
+    for (const d of DOCS) expect(re.test(`/docs/${d.slug}.md`), d.slug).toBe(true)
   })
 })

@@ -27,7 +27,7 @@ const config: NextConfig = {
   async rewrites() {
     return [
       { source: '/.well-known/flying-money.json', destination: '/api/well-known' },
-      { source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/md/:slug' },
+      { source: '/docs/:slug([a-z0-9-]+)\\.md', destination: '/docs/md/:slug' },
     ]
   },
   async headers() {
