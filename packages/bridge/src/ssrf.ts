@@ -1,5 +1,6 @@
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { isBlockedAddress } from './net-guard.js'
 
 export class BlockedTargetError extends Error {
   constructor(public reason: string) {
@@ -9,37 +10,7 @@ export class BlockedTargetError extends Error {
 }
 
 /** True for loopback, private, link-local (incl. cloud metadata), CGNAT, multicast and other non-public addresses. */
-export function isPrivateAddress(ip: string): boolean {
-  if (isIP(ip) === 4) {
-    const [a, b] = ip.split('.').map(Number) as [number, number]
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 192 && b === 0) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    )
-  }
-  const v6 = ip.toLowerCase()
-  const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  if (mapped) return isPrivateAddress(mapped[1] as string)
-  return (
-    v6 === '::' ||
-    v6 === '::1' ||
-    v6.startsWith('fc') ||
-    v6.startsWith('fd') ||
-    v6.startsWith('fe8') ||
-    v6.startsWith('fe9') ||
-    v6.startsWith('fea') ||
-    v6.startsWith('feb') ||
-    v6.startsWith('ff')
-  )
-}
+export const isPrivateAddress = isBlockedAddress
 
 export interface TargetPolicy {
   /** Tests only: allow http:// and loopback/private targets. Never set this on a deployed bridge. */

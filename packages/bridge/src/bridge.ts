@@ -1,12 +1,21 @@
+import { getChainById } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
-import { createIdempotency, type FlyingMoneyServerConfig, type NoteStore } from '@flying-money/server'
+import {
+  createIdempotency,
+  type FlyingMoneyServerConfig,
+  memoryRateLimiter,
+  type NoteStore,
+  type RateLimiter,
+} from '@flying-money/server'
 import { flyingMoney } from '@flying-money/server/hono'
 import { x402Client, x402HTTPClient } from '@x402/core/client'
 import type { PaymentRequired, PaymentRequirements } from '@x402/core/types'
 import { registerExactEvmScheme } from '@x402/evm/exact/client'
-import { Hono } from 'hono'
+import { type Context, Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { LocalAccount } from 'viem'
+import { guardedFetch } from './net-guard.js'
+import { type Delivered, memoryOutcomes, type OutcomeStore } from './outcomes.js'
 import { assertPublicTarget, BlockedTargetError, type TargetPolicy } from './ssrf.js'
 
 export interface BridgeConfig {
@@ -26,7 +35,16 @@ export interface BridgeConfig {
   /** How long a quote stays valid (ms). Default 60 s. */
   quoteTtlMs?: number
   target?: TargetPolicy
-  /** Test hook: replaces global fetch for upstream calls. */
+  /** Free quote calls per client per minute (each can reach a site). Default 60. */
+  quoteLimitPerMinute?: number
+  rateLimiter?: RateLimiter
+  /** Trust X-Forwarded-For for the client id (only behind your own proxy). */
+  trustProxy?: boolean
+  /** The float's USDC balance on a network (base units). When set, a quote is refused while the float can't cover it. */
+  floatBalance?: (network: string) => Promise<bigint>
+  /** Durable record of what each request returned, so a restart never pays a site twice. Default: memory. */
+  outcomes?: OutcomeStore
+  /** Test hook: replaces the guarded upstream fetch. */
   fetch?: typeof fetch
   /** Unix milliseconds. */
   now?: () => number
@@ -41,22 +59,20 @@ interface Quote {
   expires: number
 }
 
-interface Delivered {
-  status: number
-  type: string | null
-  text: string
-  settle: string | null
-}
-
 const FORWARD_HEADERS = ['accept', 'content-type', 'accept-language']
 const MAX_BODY = 1_000_000
 
-const refuse = (error: string, reason: string, status: 422 | 502 = 422): never => {
+const refuse = (error: string, reason: string, status: 422 | 429 | 502 | 503 = 422): never => {
   throw new HTTPException(status, { res: Response.json({ error, reason }, { status }) })
 }
 
 export function createBridge(config: BridgeConfig) {
-  const doFetch = config.fetch ?? fetch
+  // Upstream calls dial only public addresses, checked again at connect time (DNS rebinding); redirects are never followed.
+  const doFetch = config.fetch ?? (config.target?.allowLocal ? fetch : guardedFetch())
+  const limiter = config.rateLimiter ?? memoryRateLimiter()
+  const outcomes = config.outcomes ?? memoryOutcomes()
+  const quoteLimit = config.quoteLimitPerMinute ?? 60
+  const MAX_QUOTES = 500
   const ttl = config.quoteTtlMs ?? 60_000
   const now = config.now ?? (() => Date.now())
   const jobs = createIdempotency()
@@ -66,6 +82,10 @@ export function createBridge(config: BridgeConfig) {
   registerExactEvmScheme(x402, { signer: config.float as never })
   const http = new x402HTTPClient(x402)
 
+  const usdcFor = (network: string) => {
+    const id = /^eip155:(\d+)$/.exec(network)?.[1]
+    return id ? getChainById(Number(id))?.usdc : undefined
+  }
   const fee = (amount: bigint) => (amount * BigInt(config.feeBps ?? 0) + 9_999n) / 10_000n
 
   /** Calls the target; follows no redirects (a redirect could point at an internal address). */
@@ -108,10 +128,19 @@ export function createBridge(config: BridgeConfig) {
   }
 
   /** The price of a call is what the target asks (read from its own 402) plus the fee. */
-  async function quote(method: string, url: URL, headers: Headers, body: Uint8Array): Promise<Quote | null> {
+  async function quote(
+    method: string,
+    url: URL,
+    headers: Headers,
+    body: Uint8Array,
+    client: string,
+  ): Promise<Quote | null> {
     const key = `${method} ${url.href}`
     const hit = quotes.get(key)
     if (hit && hit.expires > now()) return hit
+    // every quote that misses the cache calls the site: limit them per client
+    const rl = await limiter.hit('bridge-quote', client, quoteLimit, 60)
+    if (!rl.ok) return refuse('too many quotes; slow down', 'rate-limited', 429)
     const res = await upstream(method, url, headers, body)
     if (res.status !== 402) return null
     let required: PaymentRequired
@@ -124,7 +153,13 @@ export function createBridge(config: BridgeConfig) {
     } catch {
       return refuse('the target answered 402 but not in a form the bridge understands', 'upstream-402-unparsable', 502)
     }
-    const payable = required.accepts.filter((a) => a.scheme === 'exact' && config.upstreamNetworks.includes(a.network))
+    // only the real USDC of a network we list: never an arbitrary token a site names
+    const payable = required.accepts.filter(
+      (a) =>
+        a.scheme === 'exact' &&
+        config.upstreamNetworks.includes(a.network) &&
+        usdcFor(a.network)?.toLowerCase() === a.asset.toLowerCase(),
+    )
     const accepted = payable.find((a) => BigInt(a.amount) <= config.maxUpstreamAmount)
     if (!accepted) {
       return refuse(
@@ -135,6 +170,8 @@ export function createBridge(config: BridgeConfig) {
       )
     }
     const upstreamAmount = BigInt(accepted.amount)
+    if (config.floatBalance && (await config.floatBalance(accepted.network)) < upstreamAmount)
+      return refuse('this bridge’s float is too low to pay that right now; tell its owner', 'float-low', 503)
     const q: Quote = {
       paymentRequired: required,
       accepted,
@@ -142,6 +179,7 @@ export function createBridge(config: BridgeConfig) {
       price: upstreamAmount + fee(upstreamAmount),
       expires: now() + ttl,
     }
+    if (quotes.size >= MAX_QUOTES) quotes.delete(quotes.keys().next().value as string)
     quotes.set(key, q)
     return q
   }
@@ -153,13 +191,22 @@ export function createBridge(config: BridgeConfig) {
     ...(config.env ? { env: config.env } : {}),
     ...(config.readCertificate ? { readCertificate: config.readCertificate } : {}),
     ...(config.minRemainingLifetime !== undefined ? { minRemainingLifetime: config.minRemainingLifetime } : {}),
-    requestStatus: async (rid) => jobs.status(rid),
+    requestStatus: async (rid) => {
+      const s = jobs.status(rid)
+      return s === 'not-started' && (await outcomes.get(rid)) ? 'done' : s
+    },
     price: async (c) => {
       const url = await target(c.req.query('url'))
-      const q = await quote(c.req.method, url, c.req.raw.headers, await readBody(c.req.raw))
+      const q = await quote(c.req.method, url, c.req.raw.headers, await readBody(c.req.raw), clientId(c))
       return q ? q.price : 0n // a target that asks for nothing is relayed free of charge
     },
   })
+
+  const clientId = (c: Context) =>
+    config.trustProxy
+      ? (c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'proxy')
+      : ((c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined)?.incoming?.socket
+          ?.remoteAddress ?? 'local')
 
   const app = new Hono()
   app.onError((e, c) => {
@@ -189,7 +236,7 @@ export function createBridge(config: BridgeConfig) {
     const body = await readBody(c.req.raw)
     const ctx = c.get('flyingMoney') as { requestId?: Hex } | undefined
     const run = async (): Promise<Delivered> => {
-      const q = await quote(method, url, c.req.raw.headers, body)
+      const q = await quote(method, url, c.req.raw.headers, body, clientId(c))
       if (!q) {
         const r = await upstream(method, url, c.req.raw.headers, body)
         return { status: r.status, type: r.headers.get('content-type'), text: await r.text(), settle: null }
@@ -205,7 +252,16 @@ export function createBridge(config: BridgeConfig) {
       }
     }
     // one upstream payment per requestId, however often the agent resends the same note (S1)
-    const out = ctx?.requestId ? await jobs.runOnce(ctx.requestId, run) : await run()
+    const rid = ctx?.requestId
+    const out =
+      (rid ? await outcomes.get(rid) : undefined) ??
+      (rid
+        ? await jobs.runOnce(rid, async () => {
+            const d = await run()
+            if (d.status >= 200 && d.status < 300) await outcomes.set(rid, d)
+            return d
+          })
+        : await run())
     if (out.status < 200 || out.status >= 300) {
       // a failed purchase is not charged: the Flying Money server turns a >=400 answer into credit (S3)
       return c.json({ error: 'the target did not deliver', upstreamStatus: out.status, reason: 'upstream-failed' }, 502)

@@ -9,7 +9,7 @@ Most paid APIs speak plain [x402](https://docs.x402.org): the buyer signs a USDC
 have never heard of Flying Money, and an agent's spending key holds no money. The **bridge** closes that gap without
 asking the site to change anything: your agent keeps its budget, and the bridge pays the site on its behalf.
 
-**Status: prototype, test networks only** (Base Sepolia is tested end to end). Not audited.
+**Status: prototype, test networks only.** Tested end to end on Base Sepolia, including a real third-party x402 site (`x402.org/protected`) paid through the bridge by an agent that followed only the tool guidance. Not audited.
 
 ## How it works
 
@@ -38,10 +38,15 @@ BRIDGE_FLOAT_KEY=0x… BRIDGE_CHAINS=base-sepolia BRIDGE_DEV=1 npx tsx packages/
 | `BRIDGE_MAX_UPSTREAM` | Most it pays any site per call, in USDC (default 0.05) |
 | `BRIDGE_FEE_BPS` | Fee on top of the site's price, in basis points (default 0) |
 | `BRIDGE_ALLOW_HOSTS` | Only reach these hostnames |
+| `BRIDGE_STATE_FILE` | JSON file remembering what each paid request returned, so a restart never pays a site twice |
+| `BRIDGE_TRUST_PROXY` | `1` to take the client address from `X-Forwarded-For` (only behind your own proxy) |
+| `BRIDGE_REDEEM_MIN`, `BRIDGE_REDEEM_MAX_AGE` | Collect budgets when this much USDC (default 0.05) or this many seconds (default 600) are waiting |
 | `REDIS_URL` or Upstash | Durable store (required unless `BRIDGE_DEV=1`); `BRIDGE_REDEEM=1` also collects budgets automatically |
 
-`GET /` on the bridge returns its payee address and limits. It refuses private and internal addresses, redirects,
-credentials in URLs and anything that is not https.
+`GET /` on the bridge returns its payee address and limits. Safeguards: it dials only public addresses, checked again at
+connect time (so a name that re-resolves to an internal address is refused), follows no redirects, refuses credentials in
+URLs and anything that is not https, pays only the real USDC of a network you list (never a token a site names), limits
+quotes per client (each can reach a site), and refuses a quote while its float can't cover it.
 
 ## Give an agent access
 

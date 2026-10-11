@@ -6,16 +6,20 @@
 //   BRIDGE_MAX_UPSTREAM       most it pays any site per call, in USDC (default 0.05)
 //   BRIDGE_FEE_BPS            fee on top of the site's price, basis points (default 0)
 //   BRIDGE_ALLOW_HOSTS        optional comma list: reach only these hostnames
+//   BRIDGE_REDEEM_MIN / _MAX_AGE  collect when this much (USDC, default 0.05) or this many seconds (default 600) are waiting
+//   BRIDGE_STATE_FILE         JSON file remembering what each paid request returned (so a restart never pays a site twice)
+//   BRIDGE_TRUST_PROXY=1      take the client address from X-Forwarded-For (only behind your own proxy)
 //   PORT                      default 8790
 //   BRIDGE_DEV=1              memory store; with BRIDGE_ALLOW_LOCAL=1 it may also call sites on this machine (tests only)
 //   REDIS_URL / KV_REST_API_*  durable store (required unless BRIDGE_DEV=1); BRIDGE_REDEEM=1 also collects budgets
 //                              automatically (needs gas on the budget chain)
-import { type ChainKey, getChain, isChainKey } from '@flying-money/chains'
+import { type ChainKey, getChain, isChainKey, rpcUrl } from '@flying-money/chains'
 import { memoryStore, sellerStoreFromEnv, startRedeemer } from '@flying-money/server'
 import { serve } from '@hono/node-server'
-import { parseUnits } from 'viem'
+import { createPublicClient, erc20Abi, http, parseUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { createBridge } from './bridge.js'
+import { fileOutcomes, memoryOutcomes } from './outcomes.js'
 
 const env = process.env
 const key = env.BRIDGE_FLOAT_KEY?.trim()
@@ -34,7 +38,20 @@ const sellerStore = dev
   ? { store: memoryStore(), durable: false }
   : sellerStoreFromEnv({ env, payee: float.address, accepts: chains, requireDurable: true })
 
+/** The float's USDC balance on each network it pays on, so it refuses a quote it could not fund. */
+const readers = new Map<string, () => Promise<bigint>>()
+for (const k of chains) {
+  const c = getChain(k)
+  const pub = createPublicClient({ chain: c.chain, transport: http(rpcUrl(k, env)) })
+  readers.set(`eip155:${c.chain.id}`, () =>
+    pub.readContract({ address: c.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [float.address] }),
+  )
+}
+
 const bridge = createBridge({
+  outcomes: env.BRIDGE_STATE_FILE ? fileOutcomes(env.BRIDGE_STATE_FILE) : memoryOutcomes(),
+  trustProxy: env.BRIDGE_TRUST_PROXY === '1',
+  floatBalance: async (network) => (await readers.get(network)?.()) ?? 0n,
   accepts: chains,
   float,
   store: sellerStore.store,
@@ -55,7 +72,11 @@ if (env.BRIDGE_REDEEM === '1') {
     store: sellerStore.store,
     redeemerAccount: float,
     env,
-    policy: { minAmount: 50_000n, maxAgeSeconds: 600, safetyBeforeExpiry: 3600 },
+    policy: {
+      minAmount: parseUnits(env.BRIDGE_REDEEM_MIN ?? '0.05', 6),
+      maxAgeSeconds: Number(env.BRIDGE_REDEEM_MAX_AGE ?? 600),
+      safetyBeforeExpiry: 3600,
+    },
     onRedeemed: (e) => console.log(`collected ${e.paid} from budget ${e.certificateId} (tx ${e.txHash})`),
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),
   })

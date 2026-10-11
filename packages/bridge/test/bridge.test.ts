@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { getChain, setLocalDeployment } from '@flying-money/chains'
 import {
   type Certificate,
@@ -12,10 +13,11 @@ import {
   RECEIPT_HEADER,
   signNote,
 } from '@flying-money/core'
-import { memoryStore } from '@flying-money/server'
+import { memoryRateLimiter, memoryStore } from '@flying-money/server'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 import { describe, expect, it } from 'vitest'
 import { assertPublicTarget, createBridge, isPrivateAddress, viaBridge } from '../src/index.js'
+import { memoryOutcomes } from '../src/outcomes.js'
 
 const CONTRACT: Hex = '0x00000000000000000000000000000000000f1f1f'
 const USDC: Hex = '0x00000000000000000000000000000000000c0c0c'
@@ -195,5 +197,77 @@ describe('bridge: an ordinary x402 endpoint paid from a Flying Money budget', ()
       expect(await res.json()).toMatchObject({ reason: 'target-refused' })
     }
     expect(up.state.unpaid + up.state.paid).toBe(0)
+  })
+})
+
+describe('bridge hardening', () => {
+  it('refuses a token that is not the real USDC of the network, whatever the site names', async () => {
+    const up = upstream()
+    const fetchFn = (async (i: URL | RequestInfo, init?: RequestInit) => {
+      const r = await up.fetchFn(i, init)
+      if (r.status !== 402) return r
+      const required = JSON.parse(atob(r.headers.get('payment-required') as string))
+      required.accepts[0].asset = '0x000000000000000000000000000000000000dEaD'
+      return new Response('{}', { status: 402, headers: { 'payment-required': btoa(JSON.stringify(required)) } })
+    }) as typeof fetch
+    const { call } = setup({ state: up.state, fetchFn })
+    const res = await call()
+    expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ reason: 'upstream-unsupported' })
+  })
+
+  it('refuses a quote while the float cannot cover it, before the agent signs anything', async () => {
+    const { call } = setup(upstream(), { floatBalance: async () => 999n })
+    const res = await call()
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({ reason: 'float-low' })
+    const ok = setup(upstream(), { floatBalance: async () => 1000n })
+    expect((await ok.call()).status).toBe(402) // enough: an ordinary quote
+  })
+
+  it('limits quotes per client, since each one can reach a site', async () => {
+    const up = upstream()
+    const { bridge } = setup(up, { quoteLimitPerMinute: 2, rateLimiter: memoryRateLimiter(), quoteTtlMs: 0 })
+    const ask = (n: number) => bridge.app.request(viaBridge('http://bridge.test', `${TARGET}?n=${n}`))
+    expect((await ask(1)).status).toBe(402)
+    expect((await ask(2)).status).toBe(402)
+    const third = await ask(3)
+    expect(third.status).toBe(429)
+    expect(await third.json()).toMatchObject({ reason: 'rate-limited' })
+  })
+
+  it('a restart does not pay the site twice: the stored outcome is replayed for the same note', async () => {
+    const up = upstream()
+    const store = memoryStore()
+    const outcomes = memoryOutcomes()
+    const first = setup(up, { store, outcomes })
+    const header = await first.note(1000n)
+    expect((await first.call(header)).status).toBe(200)
+    expect(up.state.paid).toBe(1)
+    // a new bridge process: empty in-memory jobs, but the same seller store, outcomes, certificate and float
+    const second = createBridge({
+      accepts: ['anvil'],
+      float: first.float,
+      store,
+      outcomes,
+      readCertificate: async () => ({ ...first.cert }),
+      upstreamNetworks: [UPSTREAM_NETWORK],
+      maxUpstreamAmount: 50_000n,
+      fetch: up.fetchFn,
+      target: { allowLocal: true },
+      now: () => 1_800_000_000 * 1000,
+    })
+    const again = await second.app.request(viaBridge('http://bridge.test', TARGET), {
+      headers: { [NOTE_HEADER]: header },
+    })
+    expect(again.status).toBe(200)
+    expect(up.state.paid).toBe(1)
+  })
+
+  it('keeps its own copy of the connect-time address guard identical to the MCP one', () => {
+    const lines = (file: string) => readFileSync(new URL(file, import.meta.url), 'utf8').split(/\r?\n/)
+    const mine = lines('../src/net-guard.ts').slice(1)
+    const theirs = lines('../../mcp/src/net-guard.ts')
+    expect(mine).toEqual(theirs)
   })
 })
