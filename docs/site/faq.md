@@ -6,7 +6,13 @@ description: x402, payment channels, chains, bridges, tokens, freezing, privacy 
 # FAQ
 
 **Is this x402?**
-It uses HTTP 402, but it's a *prefunded tab*: one settlement for many requests, instead of a payment per request. It could become a scheme alongside x402. We don't claim compatibility yet.
+It works with x402 in two ways. Sellers can list Flying Money as an x402 scheme (`x402: true`), and an agent can pay *any* ordinary x402 site from a capped budget through a bridge you run yourself. A Flying Money note is not an x402 batch voucher, and we don't claim to be one; it is a prefunded budget that can't be cancelled early. Both paths are prototypes on test networks. See [x402](/docs/x402).
+
+**Can my agent pay normal x402 sites?**
+Yes, through your own bridge: set `FM_BRIDGE_URL`, and `fm_paid_fetch` pays the site from a budget made for the bridge. The agent holds no money and pays no gas, and the budget is the cap. See [Pay any x402 site](/docs/bridge).
+
+**Is the x402 bridge a cross-chain bridge?**
+No. It bridges *protocols*, not chains: it pays an x402 site on the network the site names, from its own float on that network.
 
 **Why not payment channels?**
 It is a one-way channel in spirit. The differences: anyone can redeem, the spending key is separate from the funder, there is no close negotiation, and it comes as an HTTP-native SDK for agents.
@@ -15,7 +21,7 @@ It is a one-way channel in spirit. The differences: anyone can redeem, the spend
 Any EVM chain. Today the same contract runs on the Arbitrum, Base, Ethereum, Monad and Tempo test networks, and on Arc mainnet under immutable caps (100 USDC per budget, 1,000 USDC in total), with that chain's USDC (OUSD on Tempo testnet). On Tempo and Arc, even gas is paid in stablecoins. Adding a chain is one registry entry. See [Deployments](/chains).
 
 **Do certificates move between chains?**
-No, and nothing is bridged. A seller can accept notes on several chains; each chain settles independently. No bridge risk.
+No, and no funds are bridged between chains. A seller can accept notes on several chains; each chain settles independently. No cross-chain bridge risk. (The [x402 bridge](/docs/bridge) is a different thing: a payer-side service for paying ordinary x402 sites.)
 
 **Where's the token?**
 There isn't one, by design. Everything settles in USDC.

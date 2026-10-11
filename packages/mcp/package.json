@@ -17,7 +17,8 @@
     "eip-712",
     "arbitrum",
     "budget",
-    "mcp"
+    "mcp",
+    "x402"
   ],
   "type": "module",
   "sideEffects": false,

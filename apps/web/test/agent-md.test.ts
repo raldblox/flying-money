@@ -61,4 +61,16 @@ describe('/agent.md', () => {
       'Set up Flying Money payments for me. Read https://example.test/agent.md and follow it. My wallet is 0x8dB423F3b8991865030BcE381F7A50EC517c7c50.',
     )
   })
+
+  it('tells the agent what it can pay, including ordinary x402 sites through the owner’s bridge', () => {
+    expect(md).toMatch(/## What you can pay/)
+    expect(md).toMatch(/Ordinary x402 sites/)
+    expect(md).toContain('FM_BRIDGE_URL')
+    expect(md).toContain('"via": "bridge"')
+    expect(md).toContain('https://x402.org/protected')
+    expect(md).toContain('https://example.test/docs/bridge')
+    // the bridge is a prototype on test networks, and the agent is told to ask once and stop polling
+    expect(md).toMatch(/Prototype, test networks/)
+    expect(md).toMatch(/stop polling once it says approved/)
+  })
 })

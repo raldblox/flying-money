@@ -127,6 +127,27 @@ export function ConnectAgent() {
           .
         </p>
       </section>
+
+      <section className="mt-10 max-w-2xl" aria-labelledby="x402-t">
+        <h2 id="x402-t" className="font-display text-2xl font-semibold">
+          Paid sites that use x402
+        </h2>
+        <p className="mt-3 text-ink-2">
+          Many paid websites use x402, a common way to pay a web API. They have never heard of Flying Money, and your
+          assistant doesn’t need them to. If you run a small bridge, your assistant can pay those sites from the same
+          kind of budget you approve here, with no wallet of its own, and the budget is still the limit. This is a
+          prototype that works on test networks only.
+        </p>
+        <p className="mt-3 text-sm text-ink-2">
+          <Link href="/docs/x402" className="text-indigo underline">
+            How x402 works with Flying Money
+          </Link>{' '}
+          ·{' '}
+          <Link href="/docs/bridge" className="text-indigo underline">
+            Run a bridge
+          </Link>
+        </p>
+      </section>
     </div>
   )
 }

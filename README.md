@@ -102,6 +102,8 @@ Collect with the redeemer (`startRedeemer`): one `redeemMany` for up to 20 notes
 
 **x402 V2.** Add `x402: true` and the same middleware also speaks [x402](https://docs.x402.org): every 402 carries a standard `PAYMENT-REQUIRED` header with the [`flying-money` scheme](docs/design/x402-flying-money-scheme.md), and slips arriving in `PAYMENT-SIGNATURE` pass exactly the same checks. The buyer SDK and MCP server pay x402-only sellers too. It's live on the demo seller.
 
+**Pay any x402 site.** Most x402 sites have never heard of Flying Money, and an agent's spending key holds no money. The [x402 bridge](docs/site/bridge.md) (`packages/bridge`, self-hosted, prototype) lets an agent pay them anyway: the owner makes a small budget for the bridge, set `FM_BRIDGE_URL`, and `fm_paid_fetch` pays the site through it. The agent holds no money and pays no gas; the budget is the cap. Tested on Base Sepolia against a real third-party x402 site. Overview: [x402](docs/site/x402.md).
+
 ## Guarantees
 
 | Party | Guarantee | Conditions |

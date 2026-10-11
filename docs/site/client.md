@@ -43,6 +43,9 @@ interface FlyingMoneyClient {
 `PAYMENT-REQUIRED`: the slip travels in `PAYMENT-SIGNATURE` and the receipt comes back in `PAYMENT-RESPONSE`. The
 same rules hold: resends after a failure reuse the same slip. A 402 offering only other x402 schemes is returned as is.
 
+To pay *ordinary* x402 sites (ones that don't list `flying-money`), call them through a [bridge](/docs/bridge): the URL is
+`<bridge>/fetch?url=<encoded site URL>` and `fm.fetch` pays it from a budget made for the bridge. See [x402](/docs/x402).
+
 ## Stores
 
 - `fileStore(path)`: JSON file, written to a temp file, fsynced, then renamed over the old one. A crash leaves the old or the new state, never a torn file.

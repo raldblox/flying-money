@@ -195,7 +195,8 @@ export default function Home() {
             <h3 className="font-display text-2xl font-semibold">For developers</h3>
             <p className="mt-3 text-ink-2">
               Add paid requests to an agent with the client SDK, accept payments with seller middleware, or connect an
-              assistant through MCP.
+              assistant through MCP. Works with x402 too: sellers can list it as a scheme, and agents can pay ordinary
+              x402 sites through a bridge you run.
             </p>
             <div className="mt-3 flex flex-wrap gap-x-5">
               <a className={textLink} href="/docs/agents">
@@ -203,6 +204,9 @@ export default function Home() {
               </a>
               <a className={textLink} href="/docs/server">
                 Build a seller →
+              </a>
+              <a className={textLink} href="/docs/x402">
+                x402 →
               </a>
             </div>
           </div>

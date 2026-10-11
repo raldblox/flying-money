@@ -60,6 +60,26 @@ There is **no tool to give or top up a budget**, and no tool returns the spendin
 
 Prefer to build from source? Run `pnpm install && pnpm build` in the repository and use `node /path/to/flying-money/packages/mcp/dist/bin.js` in place of `npx -y @flying-money/mcp`.
 
+## Pay ordinary x402 sites (prototype)
+
+Most paid APIs speak plain [x402](/docs/x402) and have never heard of Flying Money. If your owner runs a
+[bridge](/docs/bridge), add `FM_BRIDGE_URL` next to `FM_OWNER`:
+
+```bash
+claude mcp add flying-money -e FM_OWNER=0xYourWallet -e FM_BRIDGE_URL=http://127.0.0.1:8790 -- npx -y @flying-money/mcp
+```
+
+The same tools do the work, and no new tool is needed:
+
+- `fm_quote` on an x402 site returns the bridge's price (the site's price plus its fee), `"via": "bridge"`, and what to do next.
+- `fm_paid_fetch` pays it from a budget made for the **bridge's address** (one small budget pays any x402 site the bridge
+  allows) and returns the site's answer with `"via": "bridge"`.
+- With no such budget it answers `no_certificate` naming the bridge as the payee; call `fm_request_budget` once with the
+  site's URL, then `fm_request_status` until approved.
+
+`max_price`, the per-request cap and the budget's amount all still apply. Without `FM_BRIDGE_URL`, an x402 site is
+reported as unpaid, never paid some other way. Test networks only; see [x402](/docs/x402).
+
 ## Claude Desktop
 
 In `claude_desktop_config.json`:

@@ -61,6 +61,18 @@ can freeze funds; chain liveness is assumed at redemption; a payee running sever
 | Chain analysis | Flows, amounts, times and random spender addresses are public; names are not | Fresh keys for people; names never on-chain |
 | Fake shop in Places | A funder could lock money for a scammer | Places added by in-person QR scan or the seller's own-domain `/.well-known/flying-money.json`; typed addresses labelled unverified |
 
+### x402 bridge (prototype, `packages/bridge`)
+
+| Threat | Result | Control |
+|---|---|---|
+| Whoever runs the bridge is the budget's payee | They can redeem the whole face value of a budget made for them before its end date | Self-host; keep budgets small and short; a hosted bridge is out of scope until it has a legal review |
+| The bridge is used to reach internal services (SSRF, DNS rebinding) | Refused | Public addresses only, checked again at connect time; no redirects; https only; no credentials in URLs; optional host allowlist |
+| A site names another token or asks too much | Refused before the agent signs | Only the real USDC of a listed network; per-call ceiling; a quote the float can't fund is refused |
+| A resent note or a restart pays a site twice | Paid once | One upstream payment per request id (S1), stored outcomes (`BRIDGE_STATE_FILE`) |
+| A site fails after the bridge paid | The budget is credited back, not charged | Failed service releases the reservation (S3) |
+| Quote spam reaches third-party sites through the bridge | Limited | Per-client quote rate limit; quotes cached for 60 s |
+| A site's response is hostile content | The agent receives it as data | Treat responses as untrusted; the bridge never executes them |
+
 **Out of scope:** paying strangers offline; strong privacy; freezing a certificate early (by design); disputes and refunds.
 
 ## Contract test evidence (`contracts/`)

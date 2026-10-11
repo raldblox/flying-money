@@ -26,6 +26,8 @@ bridge paid it is credited back to the budget. Nothing about the contract change
 
 ## Run a bridge
 
+From a checkout of the repository (the bridge is not on npm yet):
+
 ```bash
 BRIDGE_FLOAT_KEY=0x… BRIDGE_CHAINS=base-sepolia BRIDGE_DEV=1 npx tsx packages/bridge/src/main.ts
 ```
@@ -57,8 +59,8 @@ quotes per client (each can reach a site), and refuses a quote while its float c
    payee. The agent calls `fm_request_budget` **once** (for any x402 site URL); the owner approves a small budget for
    the bridge in the app. After that the agent can pay any x402 site the bridge allows, up to the budget.
 
-Developers: `viaBridge(bridgeUrl, siteUrl)` from `@flying-money/bridge` builds the URL, and a normal
-`createFlyingMoneyClient` pays it.
+Developers: the URL is `<bridge>/fetch?url=<encoded site URL>`, and a normal `createFlyingMoneyClient` pays it with
+`fm.fetch`. The bridge lives in the repo (`packages/bridge`) and is not published to npm yet.
 
 ## What it trusts, and what it can't do
 

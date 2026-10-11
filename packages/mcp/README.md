@@ -2,7 +2,11 @@
 
 Docs: https://useflyingmoney.vercel.app/agent.md · Reference: [docs/site/mcp.md](../../docs/site/mcp.md)
 
+
+
 An MCP server that lets any MCP-capable agent (Claude Desktop or Claude Code, Hermes-based agents, and others) pay APIs from a budget its owner gives it, and ask its owner for one. The budget's limits are enforced on-chain, not by the prompt.
+
+It can also pay *ordinary x402 sites* through a bridge you run yourself: set `FM_BRIDGE_URL` and the same tools do the work (prototype, test networks). See [x402](../../docs/site/x402.md).
 
 ## Start it with one setting
 

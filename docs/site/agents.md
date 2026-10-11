@@ -57,6 +57,32 @@ console.log(fm.status()) // remaining budget per certificate
 
 `fm.fetch` behaves like `fetch`. When the server answers `402` with a `Flying-Money-Offer` header, the client signs a payment slip for the price, saves it, and retries with a `Flying-Money-Note` header. You get the paid response.
 
+## Paying ordinary x402 sites
+
+Most paid APIs speak plain [x402](/docs/x402) and have never heard of Flying Money. They don't need to. Run a
+[bridge](/docs/bridge), make a small budget for it, and pay through it from the same client:
+
+```ts
+import { createFlyingMoneyClient, fileStore } from '@flying-money/client'
+import type { Hex } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+
+const bridge = 'http://127.0.0.1:8790' // GET <bridge>/ shows its payee address and limits
+const fm = createFlyingMoneyClient({
+  chains: ['base-sepolia'],
+  spender: privateKeyToAccount(process.env.AGENT_KEY as Hex),
+  store: fileStore('.flying-money.json'),
+  certificates: [process.env.BRIDGE_BUDGET as Hex], // a budget whose payee is the bridge
+  maxPricePerRequest: 50_000n,
+})
+
+const res = await fm.fetch(`${bridge}/fetch?url=${encodeURIComponent('https://x402.org/protected')}`)
+console.log(res.status)
+```
+
+With the MCP server it is one setting, `FM_BRIDGE_URL`: `fm_quote` and `fm_paid_fetch` then pay x402 sites for the agent
+(`"via": "bridge"` in the result). The bridge lives in the repo (`packages/bridge`) and is not on npm yet. Prototype, test networks. See [x402](/docs/x402).
+
 ## Python, Go or any other language
 
 There is no native SDK outside TypeScript yet, but your agent can still pay. The MCP package runs each tool as a one-shot command that prints its result on stdout, so any language can call it as a subprocess (Node 22+ must be installed). The exit code is 1 when the tool reports an error, for example `{"error":"no_certificate",…}` when there is no budget yet. The spending key, the payment log and approved budgets are kept on disk between calls (`~/.flying-money/`, or `FM_KEY_FILE` / `FM_STORE`), so a crash or a retry never pays twice.

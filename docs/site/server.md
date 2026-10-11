@@ -46,7 +46,8 @@ Pass `x402: true` to also speak [x402](https://docs.x402.org) V2: every 402 then
 advertising the [`flying-money` scheme](https://github.com/raldblox/flying-money/blob/main/docs/design/x402-flying-money-scheme.md),
 and a slip may arrive in `PAYMENT-SIGNATURE` instead of `Flying-Money-Note`. It goes through exactly the same checks.
 Responses add `PAYMENT-RESPONSE` with the receipt. A request carrying both payment headers is refused. Add
-`PAYMENT-SIGNATURE` to your CORS `allowHeaders` for browser clients.
+`PAYMENT-SIGNATURE` to your CORS `allowHeaders` for browser clients. Overview of every way Flying Money works with x402:
+[x402](/docs/x402).
 
 ## Stores
 
