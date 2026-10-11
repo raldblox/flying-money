@@ -3,15 +3,9 @@ import { encode } from 'uqr'
 import { buttonClass } from '@/components/section'
 
 /** What the seller returned for the paid slip (the Oracle's /v1/certificate). */
-export interface KeepsakeData {
-  serial: string
-  name: string
-  issuedAt: string
-  paid: string
-  chainId: number
-  certificateId: string
-  proverb: { text: string; source: string }
-}
+export type { KeepsakeData } from '@flying-money/browser/wallet-history'
+
+import type { KeepsakeData } from '@flying-money/browser/wallet-history'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 

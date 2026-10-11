@@ -9,6 +9,66 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./wallet": {
+      "types": "./dist/wallet.d.ts",
+      "import": "./dist/wallet.js"
+    },
+    "./wallet-backup": {
+      "types": "./dist/wallet-backup.d.ts",
+      "import": "./dist/wallet-backup.js"
+    },
+    "./wallet-history": {
+      "types": "./dist/wallet-history.d.ts",
+      "import": "./dist/wallet-history.js"
+    },
+    "./handover": {
+      "types": "./dist/handover.d.ts",
+      "import": "./dist/handover.js"
+    },
+    "./till": {
+      "types": "./dist/till.d.ts",
+      "import": "./dist/till.js"
+    },
+    "./settlement": {
+      "types": "./dist/settlement.d.ts",
+      "import": "./dist/settlement.js"
+    },
+    "./background": {
+      "types": "./dist/background.d.ts",
+      "import": "./dist/background.js"
+    },
+    "./storage-health": {
+      "types": "./dist/storage-health.d.ts",
+      "import": "./dist/storage-health.js"
+    },
+    "./carry/codec": {
+      "types": "./dist/carry/codec.d.ts",
+      "import": "./dist/carry/codec.js"
+    },
+    "./carry/receipt": {
+      "types": "./dist/carry/receipt.d.ts",
+      "import": "./dist/carry/receipt.js"
+    },
+    "./carry/till": {
+      "types": "./dist/carry/till.d.ts",
+      "import": "./dist/carry/till.js"
+    },
+    "./carry/channel": {
+      "types": "./dist/carry/channel.d.ts",
+      "import": "./dist/carry/channel.js"
+    },
+    "./carry/sound": {
+      "types": "./dist/carry/sound.d.ts",
+      "import": "./dist/carry/sound.js"
+    },
+    "./carry/qr-stream": {
+      "types": "./dist/carry/qr-stream.d.ts",
+      "import": "./dist/carry/qr-stream.js"
+    },
+    "./carry/delivery": {
+      "types": "./dist/carry/delivery.d.ts",
+      "import": "./dist/carry/delivery.js"
     }
   },
   "files": [
@@ -21,6 +81,15 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",
-    "viem": "^2.56.8"
+    "viem": "^2.56.8",
+    "@flying-money/chains": "workspace:*",
+    "@flying-money/core": "workspace:*",
+    "@flying-money/client": "workspace:*",
+    "@flying-money/server": "workspace:*",
+    "ggwave": "0.4.0",
+    "jsqr": "^1.4.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5"
   }
 }

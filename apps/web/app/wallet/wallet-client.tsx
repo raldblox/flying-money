@@ -5,7 +5,6 @@ import {
   abandonCounterPayment,
   type CounterState,
   certificateMatches,
-  confirmCounterPayment,
   counterBalance,
   InsufficientBudgetError,
   NoCertificateError,
@@ -33,20 +32,22 @@ import { loadCertificate } from '@/lib/chain'
 import { dayLabel, short, usdc, utcDate } from '@/lib/fmt'
 import { toPickerNetworks } from '@/lib/networks'
 import { unsealKey, validPin } from '@/lib/pin-vault'
-import { holdLock } from '@/lib/till'
 import {
   AddError,
   addCertificate,
   checkPin,
+  confirmPayment,
   draftKey,
   dropDraft,
   exportBackup,
   type HandOver,
   hasPin,
   importBackup,
+  initialize,
   listDrafts,
   listEntries,
   newDraftKey,
+  openWallet,
   parseHandOver,
   setPin,
   toCounterCert,
@@ -54,7 +55,7 @@ import {
   walletStore,
 } from '@/lib/wallet'
 import { backupNeedsPassphrase, openBackup, validBackupPassphrase } from '@/lib/wallet-backup'
-import { listPayments, recordPayment, type WalletPayment } from '@/lib/wallet-history'
+import { listPayments, type WalletPayment } from '@/lib/wallet-history'
 
 type Entry = WalletEntry & { state: CounterState | null }
 type View =
@@ -91,12 +92,13 @@ export function Wallet() {
   useEffect(() => {
     let release: (() => void) | undefined
     let gone = false
-    holdLock('fm-wallet')
+    openWallet()
       .then(async (r) => {
         if (gone) return r() // unmounted while waiting: let the next mount take the lock
         release = r
         const h = parseHandOver(window.location.hash)
         if (h) setView({ k: 'handover', h })
+        await initialize()
         const list = await listEntries()
         setEntries(list)
         setPayments(await listPayments())
@@ -806,14 +808,14 @@ function ShowNote({
   }, [onClose])
 
   // the till's receipt, read face to face, settles the question "did the shop accept it?" by itself
+  const [saveError, setSaveError] = useState('')
   const onReceipt = async (t: string) => {
     if (paid) return
     const r = decodeReceipt(t)
-    if (!r || !receiptFor(r, note.memo, note.certificateId)) return
-    await confirmCounterPayment(walletStore(), c)
+    if (!r || r.price !== price || !receiptFor(r, note.memo, note.certificateId)) return
     const k = r.keepsake
     const chain = getChainById(note.chainId)
-    await recordPayment({
+    await confirmPayment(c, {
       id: note.memo,
       certificateId: note.certificateId,
       chain: (chain?.key ?? entry.chain) as ChainKey,
@@ -834,7 +836,7 @@ function ShowNote({
             },
           }
         : {}),
-    }).catch(() => {})
+    })
     navigator.vibrate?.(80)
     setPaid(r)
   }
@@ -888,6 +890,7 @@ function ShowNote({
       aria-labelledby="note-t"
     >
       <div className="mx-auto max-w-md">
+        {saveError && <p role="alert">{saveError}</p>}
         <p className="smallcaps mt-2 text-sm text-[#8a2a24]">Hold this up to the till</p>
         <h1
           id="note-t"
@@ -903,7 +906,11 @@ function ShowNote({
             mode={mode}
             send={tillSlip(noteQr)}
             sendLabel={`Your payment slip for ${usdc(price)} USDC`}
-            onText={(t) => void onReceipt(t)}
+            onText={(t) =>
+              void onReceipt(t).catch((e) =>
+                setSaveError(`Could not save the receipt: ${e.message}. Keep this payment open and try again.`),
+              )
+            }
           />
         </div>
         <TestNote className="mt-3 text-left" />
@@ -915,16 +922,19 @@ function ShowNote({
               type="button"
               className={buttonClass('primary')}
               onClick={async () => {
-                await confirmCounterPayment(walletStore(), c)
-                await recordPayment({
-                  id: note.memo,
-                  certificateId: note.certificateId,
-                  chain: entry.chain,
-                  at: Date.now(),
-                  price: price.toString(),
-                  status: 'CONFIRMED',
-                }).catch(() => {})
-                await onClose()
+                try {
+                  await confirmPayment(c, {
+                    id: note.memo,
+                    certificateId: note.certificateId,
+                    chain: entry.chain,
+                    at: Date.now(),
+                    price: price.toString(),
+                    status: 'CONFIRMED',
+                  })
+                  await onClose()
+                } catch (e) {
+                  setSaveError(`Could not save: ${(e as Error).message}. Keep this payment open and retry.`)
+                }
               }}
             >
               Yes, accepted

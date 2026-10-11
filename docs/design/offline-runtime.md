@@ -1,6 +1,6 @@
 # Offline runtime and recovery boundaries
 
-Source review and first implementation pass: 10 October 2026.
+Implementation and recovery integration: 11 October 2026.
 
 Flying Money applications should compose a shared payment engine, durable local state, and replaceable transport and
 settlement adapters. The PWA is one host for these primitives. The demo supplies sponsored budgets and a story; it
@@ -17,8 +17,8 @@ must use the same acceptance and accounting rules as an actual till.
 | Seller acceptance, idempotency, risk limits, reconciliation | `packages/server/src/counter.ts` and store implementations | Shared already |
 | Browser storage, PIN vault, exclusive access, reconnect scheduling | `packages/browser` | Extracted in this pass; adopted by the web wallet and till |
 | Observed collection accounting | `packages/server/src/reconcile-redemptions.ts` | Added in this pass; used by real and demo tills |
-| Wallet schema, backup and history presentation | `apps/web/lib/wallet*` | Still app-owned |
-| QR, sound, share, file and same-origin tab delivery | `apps/web/lib/carry`, carry components | Still app-owned; next extraction boundary |
+| Wallet schema, atomic payment/history, validated backup restore | `packages/browser/wallet*` | Shared; web modules are host adapters |
+| Payload codecs, sound/QR framing and same-origin tab delivery | `packages/browser/carry/*` | Shared; React and permission prompts stay in the host |
 | Install experience and offline page cache | `apps/web` manifest, worker and components | Host-specific; hardened in this pass |
 
 No new ledger is introduced. Both demo and real tills use `openTill`, `createCounter`, and the same persistent store.
@@ -55,36 +55,32 @@ retry is needed. See [MDN: Navigator.onLine](https://developer.mozilla.org/en-US
 Shell preparation does not make online funding, certificate issuance, oracle requests, or settlement work offline.
 The worker deliberately excludes API, RPC, cross-origin, and non-GET requests. Device storage is not a backup.
 
-## Next work, in priority order
+## Durable recovery now implemented
 
-1. **Persist browser settlement jobs.** Save transaction hashes, network, certificate keys and confirmation progress
-   before showing submission. Handle refresh, replacement, revert, partial batch success and reorg policy explicitly.
-   This pass recovers observed chain balances after reopening, but does not introduce a browser transaction outbox.
-2. **Finish the browser ownership lifecycle.** Give all manual operations a shared cancellation/drain contract,
-   including an in-flight acceptance during navigation. Automatic recovery is drained here; every manual operation
-   must get the same lifecycle guarantees before claiming a fully managed standalone runtime.
-3. **Extract carrier adapters.** Move pure codecs and delivery interfaces into a package; keep camera, microphone,
-   React views and permission prompts in host adapters. Separate transport delivery acknowledgement from a verified
-   seller receipt. Test duplicated, reordered, interrupted and truncated messages against the same pending note.
-4. **Extract the wallet repository.** Version the existing schema without changing database names; expose atomic
-   payment/history operations, backup/import validation, storage health and persistence requests. Preserve migration
-   fixtures from real older formats before shipping changes.
-5. **Make install/update/storage recovery a first-class journey.** Show an available update without interrupting a
-   pending payment. Add quota, eviction, failed-open, and upgrade-blocked tests; request persistent storage with
-   truthful grant status. See [MDN: persist](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist).
-6. **Validate installed devices.** Test Android Chrome and iOS Safari standalone mode, physical airplane mode,
-   overnight suspension, process termination, two-device carriers, and a version upgrade with a pending payment.
+- `settlementJournal` writes an intent before broadcast, records submitted and replacement hashes, and blocks overlapping unresolved collections. Reloads observe the saved transaction; they never send again. Canonical receipts are checked against their block and require two observed confirmations by default. A missing previously observed receipt becomes `needs-attention`. This is a confirmation policy, not irreversible finality.
+- Real till collection exposes saved jobs, explorer links and explicit resolution for an intent with no hash. A supplied replacement hash must target Flying Money and include the saved certificate IDs. The ledger continues to use observed redeemed amounts, including partial batches.
+- The sponsored counter records its collection ID in durable server storage before sending and saves the returned hash before responding. Repeating an ID cannot send another transaction. The browser recovers a lost response through a read-only status endpoint. If a server dies between broadcast and recording its hash, the record remains unresolved; it must be investigated rather than automatically resent.
+- `openTill` drains acceptance, reconciliation, certificate caching and writes before releasing ownership. `openWalletRepository` holds the wallet lock through started repository writes and refuses late writes after closing.
+- Wallet confirmation uses the existing client transition and commits its resulting state and history atomically. Export reads a consistent snapshot. Restore validates all records before a single transaction imports them. Database names, encrypted key format, and v1/v2 backup containers are preserved; a schema marker rejects newer unsupported versions.
+- Carrier implementations now live in the browser package. `preparedDelivery` fixes the payload across retries. Delivery acknowledgements are not seller acceptance or on-chain settlement. Face-to-face receipt codes retain their existing trust model.
+- The production service worker bundles the same till and settlement engines. Background Sync checks saved records where supported; it does not unlock keys, sign, or submit collection transactions. UI and worker share the same exclusive till lock. The counter demo's simulated connection cut disables worker registration for its tills.
+- Offline status exposes installation guidance, a user-triggered persistent-storage request with truthful grant status, and a waiting-update notice. Updates do not forcibly take over an active payment.
 
-Background Sync is a possible wake-up adapter for compatible browsers, not the source of truth or a signing service.
-It has limited browser support, so closed-app automatic sync cannot be promised everywhere. A worker must not unlock
-a PIN vault or create a new spending decision. See
-[MDN: Background Synchronization](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API).
+Background Sync has limited browser support and the OS controls scheduling. Reopening the app remains the fallback.
+See [MDN: Background Synchronization](https://developer.mozilla.org/en-US/docs/Web/API/Background_Synchronization_API)
+and [MDN: persistent storage](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/persist).
+
+## Physical-device release checklist
+
+Still requires Android Chrome and iOS Safari installed-mode verification: airplane mode, overnight suspension,
+process termination, two-device QR/sound delivery, and updating with a pending payment. Automated desktop browser
+checks cannot establish these results. Clearing origin storage or losing the device still requires a backup.
 
 ## Verification
 
-Regression tests cover missing Web Locks, recovery serialization/retry/drain, chain-observed redemption amounts,
+Regression tests cover atomic rollback/concurrency, failed-open retry, unchanged pending payloads in legacy/encrypted restores, settlement duplicate guards/replacements/reverts/reorg observation, carrier retry/cancellation, missing Web Locks, recovery serialization/retry/drain, chain-observed redemption amounts,
 cross-application cache isolation, wrong-route fallback, and RSC/HTML separation. The production PWA suite exercises
-actual browser offline reload, persisted wallet setup, uncached routes and a second tab. Run it after a production
+actual browser offline reload, persisted wallet setup, uncached routes, a second tab, and worker execution after the wallet page closes (an empty saved till; not an OS wake-up guarantee). Run it after a production
 build using `pnpm --filter @flying-money/web e2e:pwa`; the normal development-server suite does not enable the worker.
 
 These automated checks do not establish physical-device behavior, full closed-app sync, or an audited security

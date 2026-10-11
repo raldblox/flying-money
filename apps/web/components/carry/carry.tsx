@@ -1,4 +1,5 @@
 'use client'
+import { preparedDelivery } from '@flying-money/browser/carry/delivery'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { QrCode } from '@/components/qr'
 import { QrScanner } from '@/components/qr-scanner'
@@ -133,11 +134,16 @@ export function CarrySend({
             setBusy(true)
             try {
               const { playText } = await import('@/lib/carry/sound')
-              await playText(
-                payload,
-                (i, n) => setStatus(`Playing part ${i} of ${n}…`),
-                carrier === 'ultrasound' ? 'ultrasound' : 'audible',
-              )
+              await preparedDelivery(payload).send({
+                send: async (saved) => {
+                  await playText(
+                    saved,
+                    (i, n) => setStatus(`Playing part ${i} of ${n}…`),
+                    carrier === 'ultrasound' ? 'ultrasound' : 'audible',
+                  )
+                  return 'unacknowledged'
+                },
+              })
               setStatus('Sent. If the other device didn’t hear it, play it again, a little closer or louder.')
             } catch (e) {
               setStatus(`Couldn’t play sound here: ${(e as Error).message}`)

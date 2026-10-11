@@ -9,7 +9,8 @@
         "dist/**",
         "out/**",
         ".next/**",
-        "!.next/cache/**"
+        "!.next/cache/**",
+        "public/recovery-worker.js"
       ]
     },
     "typecheck": {

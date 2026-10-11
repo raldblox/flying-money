@@ -12,7 +12,8 @@
       "!contracts/out",
       "!contracts/cache",
       "!**/*.json",
-      "!docs"
+      "!docs",
+      "!apps/web/public/recovery-worker.js"
     ]
   },
   "formatter": {

@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { Hex, PublicClient, TransactionReceipt } from 'viem'
 import { short } from '@/lib/fmt'
 import { txErrorMessage } from '@/lib/tx-errors'
@@ -25,6 +25,7 @@ const LABEL: Record<TxPhase, string> = {
 }
 
 export function useTx(publicClient: PublicClient | undefined) {
+  const observer = useRef<((hash: Hex) => Promise<void>) | undefined>(undefined)
   const [state, setState] = useState<TxState>({ phase: 'idle' })
 
   /** Once a hash is known, "retry" means checking its status, never sending again (§12.4). */
@@ -32,8 +33,21 @@ export function useTx(publicClient: PublicClient | undefined) {
     async (hash: Hex): Promise<TransactionReceipt | null> => {
       if (!publicClient) return null
       setState({ phase: 'confirming', hash })
+      let replacementWrite: Promise<void> | undefined
+      let replacementError: unknown
       try {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash,
+          timeout: 120_000,
+          onReplaced: ({ transaction }) => {
+            hash = transaction.hash
+            replacementWrite = observer.current?.(hash).catch((error) => {
+              replacementError = error
+            })
+          },
+        })
+        await replacementWrite
+        if (replacementError) throw replacementError
         if (receipt.status !== 'success') {
           setState({ phase: 'failed', hash, receipt, error: 'The transaction reverted.' })
           return null
@@ -50,15 +64,20 @@ export function useTx(publicClient: PublicClient | undefined) {
 
   /** `send` must return the tx hash once the wallet has broadcast it. Never reports success before the receipt. */
   const run = useCallback(
-    async (send: () => Promise<Hex>): Promise<TransactionReceipt | null> => {
+    async (
+      send: () => Promise<Hex>,
+      onSubmitted?: (hash: Hex) => Promise<void>,
+    ): Promise<TransactionReceipt | null> => {
+      observer.current = onSubmitted
       if (!publicClient) return null
       setState({ phase: 'preparing' })
-      let hash: Hex
+      let hash: Hex | undefined
       try {
         setState({ phase: 'awaiting-wallet' })
         hash = await send()
+        await onSubmitted?.(hash)
       } catch (e) {
-        setState({ phase: 'failed', error: friendly(e) })
+        setState({ phase: 'failed', hash, error: friendly(e) })
         return null
       }
       setState({ phase: 'submitted', hash })

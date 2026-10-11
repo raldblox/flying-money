@@ -31,14 +31,15 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
+    "@flying-money/abi": "workspace:*",
     "@flying-money/chains": "workspace:*",
+    "@flying-money/core": "workspace:*",
     "@types/node": "^26.6.2",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.15",
     "turbo": "^2.11.3",
     "typescript": "7.0.2",
     "viem": "^2.56.8",
-    "vitest": "^5.0.1",
-    "@flying-money/abi": "workspace:*",
-    "@flying-money/core": "workspace:*"
+    "vitest": "^5.0.1"
   }
 }

@@ -1,4 +1,5 @@
 'use client'
+import { settlementJournal, settlementPending } from '@flying-money/browser/settlement'
 import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
 import {
   abandonCounterPayment,
@@ -16,6 +17,7 @@ import type { CounterResult } from '@flying-money/server/browser'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { SettlementRecovery } from '@/components/app/settlement-recovery'
 import { CarrySend } from '@/components/carry/carry'
 import { CarryLink, ModePicker, useCarryMode } from '@/components/carry/carry-link'
 import { Keepsake, type KeepsakeData } from '@/components/carry/keepsake'
@@ -25,6 +27,7 @@ import { buttonClass } from '@/components/section'
 import { PROVERBS } from '@/lib/carry/proverbs'
 import { encodeReceipt } from '@/lib/carry/receipt'
 import { carriedPrice, slipForOrder } from '@/lib/carry/till'
+import { publicClient as collectionClient } from '@/lib/chain'
 import { usdc, utcDate } from '@/lib/fmt'
 import { newOrderId, openTill, type Till } from '@/lib/till'
 import { parseHandOver } from '@/lib/wallet'
@@ -347,7 +350,7 @@ export function Store({ chains, shopPayee, staffPayee }: { chains: PickerNetwork
         for (const t of [shopTill, staffTill]) {
           let seen = null
           for (let i = 0; i < 20 && !seen; i++) {
-            seen = await t.counter.server.certificate(chainId, b.certificateId, true).catch(() => null)
+            seen = await t.cacheCertificate(chainId, b.certificateId, true).catch(() => null)
             if (!seen) await new Promise((r) => setTimeout(r, 1000))
           }
           if (!seen)
@@ -1278,20 +1281,45 @@ function Books({
     setMsg(null)
     try {
       for (const { till } of tills) await till.counter.reconcile().catch(() => {})
-      const pending = []
+      const pending: Array<{ till: Till; pr: import('@flying-money/server/browser').PendingRedemption }> = []
       for (const { till } of tills)
         for (const pr of await till.store.pendingRedemptions(chainId)) pending.push({ till, pr })
       if (pending.length === 0) {
         setMsg({ text: 'Nothing new to collect: everything accepted is already collected.' })
         return
       }
-      const res = await fetch('/api/demo/counter/collect', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chain, notes: pending.map(({ pr }) => encodeHeader(pr.note)) }),
-      })
+      const journal = settlementJournal()
+      const saved = (await journal.list()).find(
+        (job) =>
+          job.chain === chain &&
+          settlementPending(job) &&
+          job.keys.some((key) => pending.some(({ pr }) => pr.key === key)),
+      )
+      const job =
+        saved ?? (await journal.prepare({ chain, payee: tills[0]!.till.payee, keys: pending.map(({ pr }) => pr.key) }))
+      const sendRequest = () =>
+        fetch('/api/demo/counter/collect', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: job.id, chain, notes: pending.map(({ pr }) => encodeHeader(pr.note)) }),
+        })
+      let res = saved ? await fetch(`/api/demo/counter/collect?id=${job.id}`) : await sendRequest()
+      // Only this explicit Collect action retries admission, using the same idempotency key.
+      if (saved && res.status === 404) res = await sendRequest()
       const body = (await res.json()) as { tx?: string; hash?: Hex; collected?: number; error?: string; note?: string }
-      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
+      if (!res.ok) {
+        if (!saved && [400, 403, 429, 503].includes(res.status)) await journal.cancel(job.id)
+        throw new Error(body.error ?? `HTTP ${res.status}`)
+      }
+      if (body.hash) {
+        await journal.submitted(job.id, body.hash)
+        const receipt = await collectionClient(chain).waitForTransactionReceipt({ hash: body.hash, timeout: 60_000 })
+        if (receipt.status !== 'success') throw new Error('Collection reverted. The accepted payments are still saved.')
+      } else if (saved)
+        throw new Error(
+          'The collection started, but its hash is not available yet. Check again shortly; no new transaction was sent.',
+        )
+      else await journal.cancel(job.id)
       let waiting = 0
       for (const { till } of tills) waiting += (await till.syncCollected(body.hash)).waiting
       if (waiting > 0)
@@ -1326,6 +1354,7 @@ function Books({
       <h2 id="books-t" className="font-display text-2xl font-semibold">
         Seller collection
       </h2>
+      {tills[0] && <SettlementRecovery chain={chain} payee={tills[0].till.payee} sponsored />}
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="text-ink-2">

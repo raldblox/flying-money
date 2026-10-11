@@ -1,7 +1,8 @@
 // Flying Money offline shell. Cached pages can reopen offline; funding and collection require a connection.
 // Pages: network first, cached copy when offline. Build assets (/_next/static, immutable) and images: cache first.
 // Never cached: /api/* (live demo, well-known), non-GET requests, and anything cross-origin (RPC calls).
-const CACHE = 'fm-shell-v5'
+if (typeof importScripts === 'function') importScripts('/recovery-worker.js')
+const CACHE = 'fm-shell-v6'
 const SHELL = ['/wallet', '/shop', '/slip', '/carry', '/demo/counter', '/demo/slip']
 // the logo, the app icons and the manifest: without them an offline page or the installed app shows blank icons
 const STATIC = [

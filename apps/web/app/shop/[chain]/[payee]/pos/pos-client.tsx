@@ -1,11 +1,13 @@
 'use client'
 import { flyingMoneyAbi } from '@flying-money/abi'
 import type { RecoveryState } from '@flying-money/browser'
+import { settlementJournal } from '@flying-money/browser/settlement'
 import { type ChainKey, getChain } from '@flying-money/chains'
 import type { CounterResult, PendingRedemption, RejectReason, UnverifiedRecord } from '@flying-money/server/browser'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { type Hex, parseUnits } from 'viem'
 import { useAccount, useBalance, useChainId, usePublicClient, useWalletClient } from 'wagmi'
+import { SettlementRecovery } from '@/components/app/settlement-recovery'
 import { TxStatus, useTx } from '@/components/app/tx'
 import { WalletButton } from '@/components/app/wallet-button'
 import { CarryReceive, CarrySend } from '@/components/carry/carry'
@@ -181,7 +183,9 @@ export function Pos({ chainKey, payee, initialName }: { chainKey: ChainKey; paye
       </div>
       <div id="till-panel" role="tabpanel" aria-labelledby={`till-tab-${tab}`} className="mt-6">
         {tab === 'sell' && <Sell till={till} />}
-        {tab === 'ledger' && <Ledger till={till} chainKey={chainKey} online={online} revision={revision} />}
+        {tab === 'ledger' && (
+          <Ledger till={till} chainKey={chainKey} payee={payee} online={online} revision={revision} />
+        )}
         {tab === 'settings' && <Settings till={till} />}
       </div>
     </div>
@@ -465,11 +469,13 @@ function ResultCard({ result, onAgain, onNext }: { result: CounterResult; onAgai
 
 // ── Ledger: accepted by you → collected on-chain ─────────────────────────────────
 function Ledger({
+  payee: tillPayee,
   till,
   chainKey,
   online,
   revision,
 }: {
+  payee: Hex
   till: Till
   chainKey: ChainKey
   online: boolean
@@ -518,23 +524,40 @@ function Ledger({
   async function collect() {
     if (!wallet || !publicClient || !address || pending.length === 0) return
     const batch = pending
-    const r = await tx.run(async () => {
-      const { request } = await publicClient.simulateContract({
-        account: address,
-        address: chain.flyingMoney!,
-        abi: flyingMoneyAbi,
-        functionName: 'redeemMany',
-        args: [
-          batch.map((p) => ({
-            certificateId: p.note.certificateId,
-            cumulative: p.note.cumulative,
-            memo: p.note.memo,
-            signature: p.note.sig,
-          })),
-        ],
-      })
-      return wallet.writeContract({ ...request, chain: chain.chain })
-    })
+    const journal = settlementJournal()
+    let jobId: string | undefined
+    const r = await tx.run(
+      async () => {
+        const job = await journal.prepare({ chain: chainKey, payee: tillPayee, keys: batch.map((p) => p.key) })
+        jobId = job.id
+        const { request } = await publicClient.simulateContract({
+          account: address,
+          address: chain.flyingMoney!,
+          abi: flyingMoneyAbi,
+          functionName: 'redeemMany',
+          args: [
+            batch.map((p) => ({
+              certificateId: p.note.certificateId,
+              cumulative: p.note.cumulative,
+              memo: p.note.memo,
+              signature: p.note.sig,
+            })),
+          ],
+        })
+        try {
+          return await wallet.writeContract({ ...request, chain: chain.chain })
+        } catch (error) {
+          await journal.attention(
+            job.id,
+            'The wallet did not return a transaction hash. Check wallet activity before trying again.',
+          )
+          throw error
+        }
+      },
+      async (hash) => {
+        if (jobId) await journal.submitted(jobId, hash)
+      },
+    )
     if (r) {
       const result = await till.syncCollected(r.transactionHash)
       setCollected(
@@ -571,6 +594,7 @@ function Ledger({
 
   return (
     <div className="grid gap-8">
+      <SettlementRecovery chain={chainKey} payee={tillPayee} />
       <section className="sheet p-6" aria-labelledby="collect-t">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -587,7 +611,11 @@ function Ledger({
         <button
           type="button"
           className={`${buttonClass('primary')} mt-4`}
-          disabled={Boolean(collectBlock) || !wallet || tx.state.phase === 'confirming'}
+          disabled={
+            Boolean(collectBlock) ||
+            !wallet ||
+            ['preparing', 'awaiting-wallet', 'submitted', 'confirming'].includes(tx.state.phase)
+          }
           aria-describedby="collect-why"
           onClick={() => void collect()}
         >

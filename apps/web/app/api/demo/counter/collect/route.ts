@@ -4,9 +4,11 @@ import { flyingMoneyAbi } from '@flying-money/abi'
 import { keyFromEnv } from '@flying-money/agent'
 import { getChain, isChainKey, rpcUrl } from '@flying-money/chains'
 import { decodeNote, type Hex, readCertificate } from '@flying-money/core'
-import { createPublicClient, createWalletClient, http, isAddressEqual, parseEventLogs } from 'viem'
+import { createPublicClient, createWalletClient, http, isAddressEqual } from 'viem'
+import { demoCollectionsFromEnv } from '@/lib/demo-collections'
 import { demoFunderAddress } from '@/lib/demo-fund'
 import { demoGuardFromEnv } from '@/lib/demo-guard'
+import { validRunId } from '@/lib/demo-runs'
 import { SITE } from '@/lib/site'
 
 export const runtime = 'nodejs'
@@ -15,8 +17,30 @@ export const maxDuration = 60
 
 const MAX_NOTES = 20
 
+export async function GET(req: Request) {
+  const id = new URL(req.url).searchParams.get('id')
+  if (!validRunId(id)) return Response.json({ error: 'Invalid collection id.' }, { status: 400 })
+  const record = await demoCollectionsFromEnv(process.env)?.read(id)
+  return Response.json(record ?? { error: 'Collection record not found.' }, {
+    status: record ? 200 : 404,
+    headers: { 'cache-control': 'no-store' },
+  })
+}
+
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as { chain?: unknown; notes?: unknown }
+  const body = (await req.json().catch(() => ({}))) as { chain?: unknown; notes?: unknown; id?: unknown }
+  if (!validRunId(body.id)) return Response.json({ error: 'Send a collection id.' }, { status: 400 })
+  const id = body.id
+  const records = demoCollectionsFromEnv(process.env)
+  if (!records) return Response.json({ error: 'Collection recovery is not configured.' }, { status: 503 })
+  const previous = await records.read(id)
+  if (previous)
+    return Response.json(
+      previous.hash
+        ? { hash: previous.hash }
+        : { error: 'This collection has already started. Check its saved status; do not send again.' },
+      { status: previous.hash ? 200 : 409 },
+    )
   const chainKey = typeof body.chain === 'string' && isChainKey(body.chain) ? body.chain : null
   const raw = Array.isArray(body.notes) ? body.notes.filter((n): n is string => typeof n === 'string') : []
   if (!chainKey || raw.length === 0 || raw.length > MAX_NOTES)
@@ -62,13 +86,10 @@ export async function POST(req: Request) {
       functionName: 'redeemMany',
       args: [items],
     })
+    if (!(await records.claim(id))) return Response.json({ error: 'Collection already started.' }, { status: 409 })
     const tx = await wallet.writeContract(request)
-    const receipt = await pub.waitForTransactionReceipt({ hash: tx })
-    if (receipt.status !== 'success') throw new Error('Collection transaction reverted.')
-    const collected = parseEventLogs({ abi: flyingMoneyAbi, logs: receipt.logs, eventName: 'NoteRedeemed' }).filter(
-      (log) => isAddressEqual(log.address, chain.flyingMoney!),
-    ).length
-    return Response.json({ collected, tx: `${chain.explorer}/tx/${tx}`, hash: tx })
+    await records.submitted(id, tx)
+    return Response.json({ tx: `${chain.explorer}/tx/${tx}`, hash: tx }, { status: 202 })
   } catch (e) {
     return Response.json({ error: `Couldn’t collect: ${(e as Error).message.split('\n')[0]}` }, { status: 502 })
   }

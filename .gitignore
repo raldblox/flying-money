@@ -33,6 +33,7 @@ apps/web/next-env.d.ts
 .vercel
 test-results/
 playwright-report/
+apps/web/public/recovery-worker.js
 
 .vercel
 .env*.local

@@ -28,6 +28,9 @@ importers:
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -187,12 +190,34 @@ importers:
 
   packages/browser:
     dependencies:
+      '@flying-money/chains':
+        specifier: workspace:*
+        version: link:../chains
+      '@flying-money/client':
+        specifier: workspace:*
+        version: link:../client
+      '@flying-money/core':
+        specifier: workspace:*
+        version: link:../core
+      '@flying-money/server':
+        specifier: workspace:*
+        version: link:../server
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
+      ggwave:
+        specifier: 0.4.0
+        version: 0.4.0(patch_hash=297587c21253c6566335d16ba9c2489111df06e55f5a5e176e15ec618147a524)
+      jsqr:
+        specifier: ^1.4.0
+        version: 1.4.0
       viem:
         specifier: ^2.56.8
         version: 2.56.8(typescript@7.0.2)(zod@4.6.5)
+    devDependencies:
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
 
   packages/chains:
     dependencies:
@@ -1511,6 +1536,10 @@ packages:
   express@5.2.1:
     resolution: {integrity: sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==}
     engines: {node: '>= 18'}
+
+  fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -3219,6 +3248,8 @@ snapshots:
       vary: 1.1.2
     transitivePeerDependencies:
       - supports-color
+
+  fake-indexeddb@6.2.5: {}
 
   fast-deep-equal@3.1.3: {}
 
