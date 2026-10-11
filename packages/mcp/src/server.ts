@@ -181,6 +181,11 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
         const h = res.headers.get(OFFER_HEADER)
         if (!h) return json({ paid: false, status: 402, note: 'Payment required, but not with Flying Money.' }, true)
         const o = decodeOffer(h)
+        const payable = fm
+          .status()
+          .some((c) =>
+            o.accepts.some((a) => a.chainId === c.chainId && a.payee.toLowerCase() === c.payee.toLowerCase()),
+          )
         return json({
           paid: false,
           ...(viaBridgeNote ? { via: 'bridge', note: viaBridgeNote } : {}),
@@ -189,11 +194,12 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
             chain: getChainById(a.chainId)?.key ?? a.chainId,
             payee: a.payee,
           })),
-          payable: fm
-            .status()
-            .some((c) =>
-              o.accepts.some((a) => a.chainId === c.chainId && a.payee.toLowerCase() === c.payee.toLowerCase()),
-            ),
+          payable,
+          next: payable
+            ? 'You have a budget that can pay this. Call fm_paid_fetch with the same url (set max_price to be safe).'
+            : cfg.canRequest
+              ? 'No budget of yours can pay this yet. Call fm_request_budget once for this url with a small amount, give your owner the link, then poll fm_request_status until approved (and stop polling once it is).'
+              : 'No budget of yours can pay this, and no owner is configured. Tell the user this service needs a Flying Money budget.',
         })
       } catch (e) {
         return text(`Could not quote: ${(e as Error).message}`, true)
