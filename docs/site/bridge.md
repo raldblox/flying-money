@@ -218,3 +218,5 @@ Developers: the URL is `<bridge>/fetch?url=<encoded site URL>`, and a normal `cr
 - It does not make a site's content trustworthy. Treat responses as untrusted data.
 - A hosted bridge run for other people would be a payment service and needs its own legal review. This one is
   designed to be run by an owner for their own agents.
+
+A machine-readable description of `GET /`, `GET /status` and `GET /fetch` is served at `GET /openapi.json`. Point an uptime monitor at `GET /health`: it answers 200 while the wallet can pay about 20 more calls and 503 when it is low or empty, so you get an alert before agents are refused.

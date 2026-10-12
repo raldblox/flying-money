@@ -104,6 +104,8 @@ Collect with the redeemer (`startRedeemer`): one `redeemMany` for up to 20 notes
 
 **Pay any x402 site.** Most x402 sites have never heard of Flying Money, and an agent's spending key holds no money. The [x402 bridge](docs/site/bridge.md) (`packages/bridge`, self-hosted, prototype) lets an agent pay them anyway: the owner makes a small budget for the bridge, set `FM_BRIDGE_URL`, and `fm_paid_fetch` pays the site through it. The agent holds no money and pays no gas; the budget is the cap. Tested on Base Sepolia against a real third-party x402 site. Overview: [x402](docs/site/x402.md).
 
+Runnable samples (a buyer, a seller, and a bridge client, about 15 lines each) are in [`examples/`](examples/). Questions: [SUPPORT.md](SUPPORT.md).
+
 ## Guarantees
 
 | Party | Guarantee | Conditions |

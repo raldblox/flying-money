@@ -2,6 +2,12 @@
 
 All notable changes to Flying Money. The contract has no version: each deployment is immutable; packages follow semver.
 
+## Unreleased
+
+### Added
+- `npx -y @flying-money/mcp onboard`: makes the key, checks the setup and prints the address and the link for the owner.
+- Bridge `GET /openapi.json`; `examples/` (buyer, seller, bridge client); `server.json` for the MCP registry; `SUPPORT.md`.
+
 ## 0.1.1 (12 October 2026)
 
 ### Added

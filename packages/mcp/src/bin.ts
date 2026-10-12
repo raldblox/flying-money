@@ -17,6 +17,7 @@ const HELP = `flying-money-mcp: the Flying Money MCP server (stdio by default)
 
   npx -y @flying-money/mcp                       serve MCP over stdio (put this in your MCP client's settings)
   npx -y @flying-money/mcp --check               check the setup: list the tools, print fm_status, exit
+  npx -y @flying-money/mcp onboard               make the key, check the setup, print what to tell your owner
   npx -y @flying-money/mcp call <tool> [json]    run one tool once and print its result (no MCP client needed)
   npx -y @flying-money/mcp --http 8788           serve streamable HTTP at http://127.0.0.1:8788/mcp
 
@@ -71,6 +72,28 @@ if (args.includes('--check')) {
   const instructions = client.getInstructions()
   console.log(JSON.stringify({ ok: true, tools, fm_status: JSON.parse(status.text || '{}'), instructions }, null, 2))
   await done(client, 0)
+}
+
+// `onboard`: one command for a new agent: the spending address (made on first run), a setup check, and the next step
+if (args[0] === 'onboard') {
+  const { client, call } = await inProcess()
+  const tools = (await client.listTools()).tools.map((t) => t.name)
+  const status = await call('fm_status')
+  const link = `${cfg.approvalBase}/app/connect`
+  console.log(
+    [
+      'Flying Money is ready.',
+      `  Your spending address (public, safe to share): ${cfg.spendingAddress}`,
+      `  Tools available: ${tools.length} (${tools.join(', ')})`,
+      status.isError ? `  Setup check: ${status.text}` : '  Setup check: ok',
+      cfg.canRequest
+        ? '  Next: call fm_request_budget to ask your owner for a budget; they approve it in their account.'
+        : '  Next: set FM_OWNER to your owner’s wallet address so you can ask for budgets.',
+      `  Give your owner this address and this link: ${link}`,
+      '  Real money warning: mainnets are used only when named in AGENT_CHAINS.',
+    ].join('\n'),
+  )
+  await done(client, status.isError ? 1 : 0)
 }
 
 // `call <tool> [json]`: the same tools for agents without MCP (any language can run this and read stdout)

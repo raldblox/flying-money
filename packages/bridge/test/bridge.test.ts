@@ -130,6 +130,22 @@ function setup(up: ReturnType<typeof upstream>, extra: Partial<Parameters<typeof
 }
 
 describe('bridge: an ordinary x402 endpoint paid from a Flying Money budget', () => {
+  it('/health is 503 when the wallet is empty, for uptime monitors', async () => {
+    const { bridge } = setup(upstream())
+    const res = await bridge.app.request('http://bridge.test/health')
+    expect(res.status).toBe(503)
+    expect(((await res.json()) as { health: string }).health).toBe('empty')
+  })
+
+  it('describes itself for tools and directories at /openapi.json, free of secrets', async () => {
+    const { bridge } = setup(upstream())
+    const res = await bridge.app.request('http://bridge.test/openapi.json')
+    expect(res.status).toBe(200)
+    const doc = (await res.json()) as { openapi: string; paths: Record<string, unknown> }
+    expect(doc.openapi).toMatch(/^3\./)
+    expect(Object.keys(doc.paths).sort()).toEqual(['/', '/fetch', '/health', '/status'])
+  })
+
   it('quotes the upstream price as a Flying Money offer payable to the bridge', async () => {
     const up = upstream()
     const { call, float } = setup(up)

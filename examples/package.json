@@ -1,0 +1,20 @@
+{
+  "name": "@flying-money/examples",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "buyer": "tsx src/buyer.ts",
+    "seller": "tsx src/seller.ts",
+    "bridge-buyer": "tsx src/bridge-buyer.ts"
+  },
+  "dependencies": {
+    "@flying-money/client": "workspace:*",
+    "@flying-money/server": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.12.0",
+    "viem": "^2.56.8"
+  }
+}

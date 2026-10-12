@@ -236,9 +236,65 @@ export function createBridge(config: BridgeConfig) {
       feeBps: config.feeBps ?? 0,
       feeFlat: (config.feeFlat ?? 0n).toString(),
       status: 'GET /status',
+      health: 'GET /health (200 ok, 503 low or empty)',
       use: 'GET /fetch?url=<x402 site>, paying with a Flying Money note (Flying-Money-Note) for the quoted price',
       limits:
         'Only the exact USDC scheme. A budget for this payee can be spent only here; unspent money returns to its funder after the end date.',
+    }),
+  )
+
+  // For uptime monitors and low-balance alerts: 200 while the wallet can pay about 20 more calls, 503 when low or empty
+  app.get('/health', async (c) => {
+    const res = await app.request('/status')
+    const body = (await res.json()) as { liquidity?: { health?: string; coversCalls?: string } }
+    const health = body.liquidity?.health ?? 'unknown'
+    c.header('cache-control', 'no-store')
+    return c.json({ health, coversCalls: body.liquidity?.coversCalls ?? '0' }, health === 'ok' ? 200 : 503)
+  })
+
+  // Machine-readable description for tool builders and agent directories (no secrets: shape only)
+  app.get('/openapi.json', (c) =>
+    c.json({
+      openapi: '3.1.0',
+      info: {
+        title: 'Flying Money x402 bridge',
+        version: '1',
+        description:
+          'Pays ordinary x402 sites for an agent from a Flying Money budget whose payee is this bridge. Beta, not audited.',
+      },
+      paths: {
+        '/': {
+          get: {
+            summary: 'What this bridge is, its payee, networks and fees',
+            responses: { '200': { description: 'JSON' } },
+          },
+        },
+        '/health': {
+          get: {
+            summary: 'Uptime and balance check: 200 ok, 503 low or empty',
+            responses: { '200': { description: 'ok' }, '503': { description: 'low or empty' } },
+          },
+        },
+        '/status': {
+          get: {
+            summary: 'Public health: balances, totals, recent activity',
+            responses: { '200': { description: 'JSON' } },
+          },
+        },
+        '/fetch': {
+          get: {
+            summary: 'Call an x402 site through the bridge',
+            description:
+              'Without a Flying-Money-Note header the answer is 402 with a Flying Money offer for the quoted price. Send a note signed for that price to receive the upstream response.',
+            parameters: [{ name: 'url', in: 'query', required: true, schema: { type: 'string', format: 'uri' } }],
+            responses: {
+              '200': { description: 'The upstream response' },
+              '402': { description: 'Payment required: a Flying Money offer for the quoted price' },
+              '4XX': { description: 'Refused (blocked address, over the cap, rate limited)' },
+            },
+          },
+        },
+      },
     }),
   )
 

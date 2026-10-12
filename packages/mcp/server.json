@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.raldblox/flying-money",
+  "title": "Flying Money",
+  "description": "Let an AI agent pay APIs in USDC from a capped, expiring budget its owner approves. Ordinary x402 sites work through a bridge.",
+  "repository": { "url": "https://github.com/raldblox/flying-money", "source": "github", "subfolder": "packages/mcp" },
+  "version": "0.1.1",
+  "websiteUrl": "https://useflyingmoney.vercel.app",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@flying-money/mcp",
+      "version": "0.1.1",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        { "name": "FM_OWNER", "description": "The owner's wallet address (the person who approves budgets).", "isRequired": true },
+        { "name": "AGENT_CHAINS", "description": "Comma-separated networks. Defaults to test networks; name a mainnet only for real money.", "isRequired": false },
+        { "name": "FM_BRIDGE_URL", "description": "An x402 bridge, to pay ordinary x402 sites.", "isRequired": false },
+        { "name": "FM_MAX_PRICE", "description": "Per-request cap in USDC (default 0.05).", "isRequired": false }
+      ]
+    }
+  ]
+}

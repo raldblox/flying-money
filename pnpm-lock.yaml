@@ -205,6 +205,24 @@ importers:
 
   contracts: {}
 
+  examples:
+    dependencies:
+      '@flying-money/client':
+        specifier: workspace:*
+        version: link:../packages/client
+      '@flying-money/server':
+        specifier: workspace:*
+        version: link:../packages/server
+      '@hono/node-server':
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.8)
+      hono:
+        specifier: ^4.12.0
+        version: 4.13.8
+      viem:
+        specifier: ^2.56.8
+        version: 2.56.8(typescript@7.0.2)(zod@4.6.5)
+
   packages/abi: {}
 
   packages/bridge:

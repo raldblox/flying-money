@@ -29,6 +29,12 @@ To try a real paid API, `fm_quote` the live demo seller: `https://flying-money-o
 
 Then, when a paid service needs a budget, `fm_request_budget` sends your owner a request (or gives you a link for them). The owner approves it in the app. Nobody copies keys or ids by hand.
 
+New agent? One command makes the spending key, checks the setup and prints your address and the link to give your owner:
+
+```bash
+FM_OWNER=0xYourWallet npx -y @flying-money/mcp onboard
+```
+
 ## Tools
 
 | Tool | Input | Output |
