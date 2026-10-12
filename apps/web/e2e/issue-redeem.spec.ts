@@ -65,7 +65,7 @@ test('fund an agent from the account, see it on Home and Budgets, collect as the
   await row.getByRole('button', { name: 'Save as a place…' }).click()
   await row.getByRole('textbox').fill('My test shop')
   await row.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(row.getByText('My test shop')).toBeVisible()
+  await expect(row.getByRole('link', { name: 'My test shop' })).toBeVisible()
   await expect(row.getByText('Not saved')).toHaveCount(0)
 
   // phone width: the account screens fit without sideways scrolling

@@ -48,9 +48,12 @@ for (const scheme of ['light', 'dark'] as const)
         .getByRole('link', { name: new RegExp(link) })
         .click()
       await page.waitForLoadState('networkidle')
+      // a client-side navigation sets the title after the page renders: scan only once it has one
+      await expect(page).toHaveTitle(new RegExp(link))
       await scan(page, `/app ${link} (${scheme})`)
     }
     await page.setViewportSize({ width: 375, height: 812 })
     await page.getByRole('navigation', { name: 'Account' }).getByRole('link', { name: 'Home' }).click()
+    await expect(page).toHaveTitle(/.+/)
     await scan(page, `/app at 375 px (${scheme})`)
   })

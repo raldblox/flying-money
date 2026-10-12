@@ -6,3 +6,7 @@ packages:
 
 patchedDependencies:
   ggwave@0.4.0: patches/ggwave@0.4.0.patch
+
+overrides:
+  source-map-js: ">=1.2.2"
+  sharp: ">=0.35.5"
