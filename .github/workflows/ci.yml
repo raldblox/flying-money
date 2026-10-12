@@ -1,9 +1,11 @@
 name: CI
 
+# Manual for now: GitHub Actions is blocked on this account by a billing lock ("account is locked due to a billing issue"),
+# which would put a red mark on every commit. Once billing is fixed, restore:
+#   push: { branches: [main] }
+#   pull_request:
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
