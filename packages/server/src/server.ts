@@ -1,4 +1,4 @@
-import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
+import { type ChainKey, getChain, rpcTransport } from '@flying-money/chains'
 import {
   type Accept,
   type Certificate,
@@ -113,7 +113,7 @@ export function createFlyingMoneyServer(config: FlyingMoneyServerConfig): Flying
       let client = clients.get(chainId)
       if (!client) {
         const key = config.accepts.find((k) => getChain(k).chain.id === chainId)!
-        client = createPublicClient({ transport: http(rpcUrl(key, config.env ?? {})) }) as PublicClient
+        client = createPublicClient({ transport: rpcTransport(key, config.env ?? {}) }) as PublicClient
         clients.set(chainId, client)
       }
       return readCertificate(client, contract, id)

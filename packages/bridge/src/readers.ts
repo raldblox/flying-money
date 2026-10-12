@@ -1,6 +1,6 @@
-import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
+import { type ChainKey, getChain, rpcTransport } from '@flying-money/chains'
 import type { Hex } from '@flying-money/core'
-import { createPublicClient, erc20Abi, http } from 'viem'
+import { createPublicClient, erc20Abi } from 'viem'
 import type { Ledger } from './ledger.js'
 
 /** Balance readers for the bridge wallet, keyed by CAIP-2 network ("eip155:8453"): USDC and the fee token. */
@@ -9,7 +9,7 @@ export function chainReaders(chains: ChainKey[], wallet: Hex, env: Record<string
   const gas = new Map<string, () => Promise<bigint>>()
   for (const k of chains) {
     const c = getChain(k)
-    const pub = createPublicClient({ chain: c.chain, transport: http(rpcUrl(k, env)) })
+    const pub = createPublicClient({ chain: c.chain, transport: rpcTransport(k, env) })
     const id = `eip155:${c.chain.id}`
     usdc.set(id, () => pub.readContract({ address: c.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [wallet] }))
     gas.set(id, () => pub.getBalance({ address: wallet }))
@@ -40,7 +40,7 @@ export async function logCollection(
   const key = chains.find((k) => getChain(k).chain.id === e.chainId)
   if (!key) return void (await ledger.add(entry))
   try {
-    const pub = createPublicClient({ chain: getChain(key).chain, transport: http(rpcUrl(key, env)) })
+    const pub = createPublicClient({ chain: getChain(key).chain, transport: rpcTransport(key, env) })
     const r = await pub.getTransactionReceipt({ hash: e.txHash })
     const l1 = (r as unknown as { l1Fee?: bigint }).l1Fee ?? 0n
     await ledger.add({ ...entry, gas: (r.gasUsed * r.effectiveGasPrice + l1).toString() })

@@ -1,4 +1,4 @@
-import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
+import { type ChainKey, getChain, rpcTransport } from '@flying-money/chains'
 import {
   type Certificate,
   type CertKey,
@@ -289,7 +289,7 @@ export function createFlyingMoneyClient(config: FlyingMoneyClientConfig): Flying
   const pubFor = (chainKey: ChainKey) => {
     let c = clients.get(chainKey)
     if (!c) {
-      c = createPublicClient({ transport: http(rpcUrl(chainKey, config.env ?? {})) }) as PublicClient
+      c = createPublicClient({ transport: rpcTransport(chainKey, config.env ?? {}) }) as PublicClient
       clients.set(chainKey, c)
     }
     return c

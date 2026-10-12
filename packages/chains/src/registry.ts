@@ -1,4 +1,4 @@
-import type { Chain, Hex } from 'viem'
+import { type Chain, fallback, type Hex, type HttpTransportConfig, http, type Transport } from 'viem'
 import {
   anvil,
   arbitrumSepolia,
@@ -241,11 +241,37 @@ export function isChainKey(k: string): k is ChainKey {
   return Object.hasOwn(baseRegistry, k)
 }
 
+/** Extra public RPCs tried when the first one refuses a request (rate limits, archive-only methods, outages). */
+const specFallbackRpcs: Partial<Record<ChainKey, string[]>> = {
+  // publicnode refuses receipts and logs of transactions a few dozen minutes old ("archive requests"), and the official
+  // endpoint rate-limits; each answers what the other refuses
+  'base-mainnet': ['https://mainnet.base.org'],
+}
+
+/** Every RPC to try for a chain, best first. RPC_<KEY> may hold one URL or several separated by commas. */
+export function rpcUrls(key: ChainKey, env: Record<string, string | undefined> = {}): string[] {
+  const override = env[rpcEnvVar[key]]
+    ?.split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+  const primary = specRpc[key] ?? baseRegistry[key].chain.rpcUrls.default.http[0]
+  const urls = override && override.length > 0 ? override : [primary, ...(specFallbackRpcs[key] ?? [])]
+  const clean = [...new Set(urls.filter((u): u is string => Boolean(u)))]
+  if (clean.length === 0) throw new Error(`No RPC for ${key}`)
+  return clean
+}
+
 /** Default RPC for a chain; `env` (e.g. process.env) may override via RPC_<KEY>. */
 export function rpcUrl(key: ChainKey, env: Record<string, string | undefined> = {}): string {
-  const override = env[rpcEnvVar[key]]
-  if (override) return override
-  const url = specRpc[key] ?? baseRegistry[key].chain.rpcUrls.default.http[0]
-  if (!url) throw new Error(`No RPC for ${key}`)
-  return url
+  return rpcUrls(key, env)[0] as string
+}
+
+/** A viem transport over every RPC for the chain: a request one endpoint refuses is retried on the next. */
+export function rpcTransport(
+  key: ChainKey,
+  env: Record<string, string | undefined> = {},
+  opts?: HttpTransportConfig,
+): Transport {
+  const urls = rpcUrls(key, env)
+  return urls.length === 1 ? http(urls[0], opts) : fallback(urls.map((u) => http(u, opts)))
 }

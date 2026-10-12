@@ -112,6 +112,8 @@ export function hostedBridgeFromEnv(
     maxAgeSeconds: Number(env.BRIDGE_REDEEM_MAX_AGE ?? (plan === 'hobby' ? 20 * 3600 : 86_400)),
     safetyBeforeExpiry: Number(env.BRIDGE_REDEEM_SAFETY ?? safety),
   }
+  // writes started by a collection finish before the function returns (a serverless function is frozen afterwards)
+  const logging: Promise<unknown>[] = []
   const redeemer = createRedeemer({
     chains: accepts,
     store: seller.store,
@@ -121,7 +123,7 @@ export function hostedBridgeFromEnv(
     policy,
     onRedeemed: (e) => {
       console.log(`collected ${e.paid} on chain ${e.chainId}: ${e.txHash}`)
-      void logCollection(ledger, accepts, env, e)
+      logging.push(logCollection(ledger, accepts, env, e))
     },
     onError: (e, chainId) => console.error(`collection problem on chain ${chainId}: ${e.message}`),
   })
@@ -129,6 +131,7 @@ export function hostedBridgeFromEnv(
   async function maintain(opts: { force?: boolean } = {}) {
     const swept = await bridge.server.sweep()
     await redeemer.tick(opts.force ? { force: true } : undefined)
+    await Promise.allSettled(logging.splice(0))
     return { swept: swept.resolved, running: swept.running, forced: Boolean(opts.force) }
   }
   const afterServe = coalesce(maintain, (e) => console.error(`maintenance failed: ${e.message}`))

@@ -1,4 +1,4 @@
-import { type ChainKey, getChain, rpcUrl } from '@flying-money/chains'
+import { type ChainKey, getChain, rpcTransport } from '@flying-money/chains'
 import { type Certificate, certKey, flyingMoneyAbi, type Hex, readCertificate } from '@flying-money/core'
 import {
   createPublicClient,
@@ -84,7 +84,7 @@ export function createRedeemer(config: RedeemerConfig): Redeemer {
   const chains = config.chains.map((key) => {
     const c = getChain(key)
     if (!c.flyingMoney) throw new Error(`No FlyingMoney deployment for ${key}`)
-    const transport = http(rpcUrl(key, config.env ?? {}))
+    const transport = rpcTransport(key, config.env ?? {})
     return {
       key,
       chainId: c.chain.id,

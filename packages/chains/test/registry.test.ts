@@ -2,7 +2,16 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { allChains, baseRegistry, chainKeys, getChain, getChainById, rpcUrl, setLocalDeployment } from '../src/index.js'
+import {
+  allChains,
+  baseRegistry,
+  chainKeys,
+  getChain,
+  getChainById,
+  rpcUrl,
+  rpcUrls,
+  setLocalDeployment,
+} from '../src/index.js'
 
 // Expected values transcribed from BUILD_SPEC §5.4 (the normative table).
 const SPEC = {
@@ -144,5 +153,23 @@ describe('no hard-coded chain values outside @flying-money/chains', () => {
       for (const n of [...needles, ...rpcs]) if (s.includes(n)) offenders.push(`${relative(root, f)}: ${n}`)
     }
     expect(offenders).toEqual([])
+  })
+})
+
+describe('RPC fallbacks', () => {
+  it('Base mainnet tries publicnode, then the official endpoint (each answers what the other refuses)', () => {
+    expect(rpcUrls('base-mainnet')).toEqual(['https://base-rpc.publicnode.com', 'https://mainnet.base.org'])
+    expect(rpcUrl('base-mainnet')).toBe('https://base-rpc.publicnode.com')
+  })
+  it('RPC_<KEY> may hold several URLs, best first, and replaces the defaults', () => {
+    expect(
+      rpcUrls('base-mainnet', { RPC_BASE_MAINNET: ' https://a.example , https://b.example ,https://a.example' }),
+    ).toEqual(['https://a.example', 'https://b.example'])
+    expect(rpcUrl('base-mainnet', { RPC_BASE_MAINNET: 'https://a.example,https://b.example' })).toBe(
+      'https://a.example',
+    )
+  })
+  it('every chain still has at least one RPC', () => {
+    for (const k of chainKeys) expect(rpcUrls(k).length).toBeGreaterThan(0)
   })
 })
