@@ -35,7 +35,12 @@ export function allSkills(): Skill[] {
       continue
     }
     const fm = /^---\n([\s\S]*?)\n---\n/.exec(raw)?.[1] ?? ''
-    const field = (k: string) => new RegExp(`^${k}:s*(.*)$`, 'm').exec(fm)?.[1]?.trim() ?? ''
+    // simple "key: value" lines (YAML); a value may be double-quoted
+    const field = (k: string) => {
+      const line = fm.split('\n').find((l) => l.startsWith(`${k}:`))
+      const v = line ? line.slice(k.length + 1).trim() : ''
+      return v.length > 1 && v.startsWith('"') && v.endsWith('"') ? v.slice(1, -1).split('\\"').join('"') : v
+    }
     out.push({ name: field('name') || n, description: field('description'), raw })
   }
   return out

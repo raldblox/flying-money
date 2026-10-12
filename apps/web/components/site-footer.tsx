@@ -39,6 +39,9 @@ const groups = [
       ['/llms.txt', 'Docs for your AI'],
       [SITE.github, 'Source on GitHub'],
       ['/pitch', 'Project overview'],
+      ['/security', 'Security'],
+      ['/terms', 'Terms'],
+      ['/privacy', 'Privacy'],
     ],
   },
 ] as const

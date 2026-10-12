@@ -4,6 +4,7 @@ import '@/lib/e2e'
 import { notFound } from 'next/navigation'
 import { isAddress } from 'viem'
 import { OfflineReady } from '@/components/offline-ready'
+import { RealMoneyNote } from '@/components/test-note'
 import { Pos } from './pos-client'
 
 // per request, so the strict CSP nonce (proxy.ts, audit F11) reaches every script
@@ -32,6 +33,7 @@ export default async function PosPage({
         </p>
         <OfflineReady />
       </div>
+      {c.mainnet && <RealMoneyNote chain={c} className="mt-4" />}
       <Pos chainKey={c.key} payee={payee} initialName={name?.slice(0, 60)} />
     </div>
   )

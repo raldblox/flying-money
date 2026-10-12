@@ -1,4 +1,4 @@
-import { getChainById } from '@flying-money/chains'
+import { getChain, getChainById } from '@flying-money/chains'
 import {
   type FlyingMoneyClient,
   InsufficientBudgetError,
@@ -95,6 +95,8 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       redeemedOnChain: usdc(c.redeemedOnChain),
       expiresAt: new Date(Number(c.expiresAt) * 1000).toISOString(),
       pendingPayment: c.pending,
+      network: getChainById(c.chainId)?.chain.name ?? c.chain,
+      ...(getChainById(c.chainId)?.mainnet ? { realMoney: true } : {}),
     }))
 
   server.registerTool(
@@ -111,6 +113,12 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
       return json({
         ...(cfg.spendingAddress ? { spendingAddress: cfg.spendingAddress } : {}),
         certificates: list,
+        ...(list.some((c) => c.realMoney)
+          ? {
+              warning:
+                'At least one budget is on a mainnet: real USDC, and the contract is not audited. Spend only what your owner asked for, and tell your owner before using it.',
+            }
+          : {}),
         maxPricePerRequest: usdc(cfg.maxPricePerRequest),
         ...(list.length === 0
           ? {
@@ -352,6 +360,12 @@ export function createFlyingMoneyMcp(cfg: FlyingMoneyMcpConfig): McpServer {
     requestId: r.requestId,
     status: r.status,
     chain: r.chain,
+    ...(getChain(r.chain).mainnet
+      ? {
+          realMoney: true,
+          warning: `This is REAL USDC on ${getChain(r.chain).chain.name}, not test money, and the contract is not audited. Say so plainly to your owner, ask for a small amount, and never ask again if they decline.`,
+        }
+      : {}),
     service: r.request.origin || r.request.payee,
     amount: usdc(r.request.amount),
     days: Number(r.request.validFor / 86_400n),

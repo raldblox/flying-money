@@ -1,6 +1,6 @@
 ---
 name: flying-money
-description: Pay for paid APIs from a capped budget your owner funds, without holding any money or key of theirs. Use when a task needs a paid web API (HTTP 402), when you need to ask your owner for spending power, or when you are asked to set up Flying Money payments.
+description: "Pay for paid APIs from a capped budget your owner funds, without holding any money or key of theirs. Use when a task needs a paid web API (HTTP 402), when you need to ask your owner for spending power, or when you are asked to set up Flying Money payments."
 ---
 
 # Flying Money: pay from a budget, never a wallet

@@ -1,6 +1,6 @@
 ---
 name: flying-money-owner
-description: For the person who funds an AI agent with Flying Money budgets: approve or decline an agent's budget request, check where the money is, take back what's unspent, and run or check an x402 bridge. Use when helping an owner (not the agent) with budgets.
+description: "For the person who funds an AI agent with Flying Money budgets: approve or decline an agent's budget request, check where the money is, take back what's unspent, and run or check an x402 bridge. Use when helping an owner (not the agent) with budgets."
 ---
 
 # Flying Money for owners

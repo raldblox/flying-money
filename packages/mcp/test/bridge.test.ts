@@ -190,4 +190,33 @@ describe('MCP: ordinary x402 sites through the owner’s bridge', () => {
     expect(r.isError).toBeFalsy()
     expect((r.content as Array<{ text: string }>)[0]?.text).toContain('"status": "asked"')
   })
+
+  it('tells the agent plainly when a budget is on a mainnet (real USDC, not audited)', async () => {
+    const fake = {
+      ready: Promise.resolve(),
+      status: () => [
+        {
+          id: '0x01',
+          chain: 'base-mainnet',
+          chainId: 8453,
+          payee: '0x00000000000000000000000000000000000b01d9',
+          faceValue: 50_000n,
+          spentLocal: 0n,
+          credit: 0n,
+          remaining: 50_000n,
+          redeemedOnChain: 0n,
+          expiresAt: 4_000_000_000n,
+          pending: false,
+        },
+      ],
+    }
+    const server = createFlyingMoneyMcp({ client: fake as never, maxPricePerRequest: 1n })
+    const [a, b] = InMemoryTransport.createLinkedPair()
+    const client = new Client({ name: 'tester-agent', version: '1.0.0' })
+    await Promise.all([server.connect(a), client.connect(b)])
+    const r = await client.callTool({ name: 'fm_status', arguments: {} })
+    const j = JSON.parse((r.content as Array<{ text: string }>)[0]?.text ?? '{}')
+    expect(j.certificates[0]).toMatchObject({ realMoney: true, network: expect.stringMatching(/Base/) })
+    expect(j.warning).toMatch(/real USDC.*not audited/i)
+  })
 })

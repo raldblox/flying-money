@@ -20,7 +20,10 @@ describe('agent skills', () => {
       const raw = readFileSync(join(root, n, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n')
       const fm = /^---\n([\s\S]*?)\n---\n/.exec(raw)?.[1] ?? ''
       expect(/^name:\s*(.+)$/m.exec(fm)?.[1]?.trim()).toBe(n)
-      const description = /^description:\s*(.+)$/m.exec(fm)?.[1]?.trim() ?? ''
+      const rawDescription = (fm.split('\n').find((l) => l.startsWith('description:')) ?? '').slice(12).trim()
+      // the front matter is YAML: a description with a colon must be quoted, or strict parsers (the skills CLI) drop the skill
+      expect(rawDescription.startsWith('"') && rawDescription.endsWith('"')).toBe(true)
+      const description = rawDescription.slice(1, -1)
       expect(description.length).toBeGreaterThan(40)
       expect(description.length).toBeLessThanOrEqual(1024)
       expect(description).toMatch(/\bUse when\b/i)
@@ -36,6 +39,8 @@ describe('agent skills', () => {
     const { GET: index } = await import('@/app/api/skills/route')
     const j = (await index().json()) as { skills: Array<{ name: string; url: string }>; install: string }
     expect(j.skills.map((s) => s.name)).toEqual(['flying-money', 'flying-money-owner', 'flying-money-x402'])
+    for (const sk of j.skills as unknown as Array<{ description: string }>)
+      expect(sk.description.length).toBeGreaterThan(40)
     expect(j.skills[0]?.url).toMatch(/\/\.well-known\/skills\/flying-money\/SKILL\.md$/)
     expect(j.install).toMatch(/npx skills add .* --skill/)
   })

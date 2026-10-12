@@ -7,6 +7,7 @@ import { WalletButton } from '@/components/app/wallet-button'
 import { NetworkPicker } from '@/components/network-picker'
 import { QrCode } from '@/components/qr'
 import { buttonClass } from '@/components/section'
+import { RealMoneyNote } from '@/components/test-note'
 import { usePreferredChain } from '@/lib/chain-param'
 import { short } from '@/lib/fmt'
 import { toPickerNetworks } from '@/lib/networks'
@@ -45,6 +46,7 @@ export function OpenShop() {
 
   return (
     <div className="mt-10 grid gap-8">
+      {chain.mainnet && <RealMoneyNote chain={chain} />}
       {tills.length > 0 && step !== 3 && (
         <section className="sheet p-6" aria-labelledby="your-tills">
           <h2 id="your-tills" className="font-display text-2xl font-semibold">

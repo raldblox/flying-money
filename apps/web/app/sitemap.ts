@@ -23,6 +23,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/mainnet',
     '/testnet',
     '/bridge',
+    '/security',
+    '/terms',
+    '/privacy',
   ]
   const agent = ['/agent.md', '/llms.txt', '/llms-full.txt', '/skill.md', '/.well-known/skills/index.json']
   const docs = DOCS.flatMap((d) => [`/docs/${d.slug}`, `/docs/${d.slug}.md`])

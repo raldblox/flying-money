@@ -5,6 +5,7 @@ import { useId, useState } from 'react'
 import { erc20Abi, parseEventLogs } from 'viem'
 import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import { buttonClass } from '@/components/section'
+import { RealMoneyNote } from '@/components/test-note'
 import { dayTimeLabel, parseAmount, usdc } from '@/lib/fmt'
 import { TxStatus, useTx } from './tx'
 
@@ -47,6 +48,8 @@ export function FunderActions({
   const approveTx = useTx(publicClient)
   const ids = useId()
   const [amount, setAmount] = useState(initial?.amount ?? '1')
+  // on a mainnet a top-up is real USDC: it is never sent without this being ticked
+  const [realOk, setRealOk] = useState(false)
 
   // right after an approve, trust the receipt's Approval event over a possibly lagging RPC read
   const [approvedNow, setApprovedNow] = useState<bigint | null>(null)
@@ -146,6 +149,7 @@ export function FunderActions({
     if (add && chain.maxFaceValue > 0n && cert.faceValue + add > chain.maxFaceValue)
       problems.push(`This deployment caps a budget at ${usdc(chain.maxFaceValue)} USDC.`)
     if (add && balance !== undefined && add > balance) problems.push(`Your wallet holds ${usdc(balance)} USDC.`)
+    if (chain.mainnet && !realOk) problems.push('Confirm that this is real money before you add to it.')
   }
   const effectiveAllowance =
     allowance === undefined ? undefined : approvedNow !== null && approvedNow > allowance ? approvedNow : allowance
@@ -213,6 +217,23 @@ export function FunderActions({
             else void send('topUp', [cert.id, add])
           }}
         >
+          {chain.mainnet && (
+            <>
+              <RealMoneyNote chain={chain} />
+              <label className="flex cursor-pointer items-start gap-3 rounded-md border border-seal/40 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 accent-seal"
+                  checked={realOk}
+                  onChange={(e) => setRealOk(e.target.checked)}
+                />
+                <span>
+                  I understand this is real USDC on {chain.brand}, the contract is not audited, and what I add can’t be
+                  taken back before the budget ends.
+                </span>
+              </label>
+            </>
+          )}
           <label htmlFor={`${ids}-amt`} className="text-sm font-medium">
             Add to the budget (USDC)
           </label>

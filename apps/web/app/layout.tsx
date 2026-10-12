@@ -5,6 +5,7 @@ import { Providers } from '@/app/app/providers'
 import { PaperDefs } from '@/components/art/paper-defs'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { SITE } from '@/lib/site'
 import { THEME_SCRIPT } from '@/lib/theme'
 import './globals.css'
 
@@ -19,13 +20,30 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' }
 // The Chinese display mark 飛錢 (§11.2). Loaded without preload; glyphs are fetched on demand.
 const han = Noto_Serif_TC({ weight: ['600'], variable: '--font-noto-tc', preload: false })
 
+const DESCRIPTION =
+  'Set aside USDC for one seller, one spending key, an amount and an end date. Pay APIs and shops with signed slips that work offline, and let an AI agent spend a capped budget without ever holding your wallet.'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE.url),
+  openGraph: {
+    type: 'website',
+    siteName: 'Flying Money',
+    title: 'Flying Money: give a budget, not your wallet',
+    description: DESCRIPTION,
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Flying Money: give a budget, not your wallet',
+    description: DESCRIPTION,
+  },
   title: { default: 'Flying Money: give a budget, not your wallet', template: '%s · Flying Money' },
   description:
     'Set aside USDC for one seller, one spending key, an amount and an end date. Experience sponsored shop and agent demos, then explore how signed payment slips work offline after budget verification.',
   applicationName: 'Flying Money',
   // entry points for AI agents: setup instructions, a short index, and every docs page in one file
   alternates: {
+    canonical: './',
     types: {
       'text/markdown': [{ url: '/agent.md', title: 'Setup for AI agents' }],
       'text/plain': [
@@ -46,6 +64,25 @@ export const viewport: Viewport = {
   ],
 }
 
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: 'Flying Money',
+      alternateName: '飛錢',
+      applicationCategory: 'FinanceApplication',
+      operatingSystem: 'Web',
+      description: DESCRIPTION,
+      url: SITE.url,
+      license: 'https://opensource.org/licenses/MIT',
+      codeRepository: SITE.github,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    },
+    { '@type': 'WebSite', name: 'Flying Money', url: SITE.url },
+  ],
+}
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
@@ -59,6 +96,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh flex flex-col antialiased">
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: fixed JSON-LD data block, never user input
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
         <PaperDefs />
         <a
           href="#main"

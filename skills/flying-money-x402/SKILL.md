@@ -1,6 +1,6 @@
 ---
 name: flying-money-x402
-description: Pay ordinary x402 sites (paid APIs that answer HTTP 402 with x402 and know nothing about Flying Money) from a capped Flying Money budget through a bridge. Use when a paid site wants an x402 payment and you hold no wallet or money of your own.
+description: "Pay ordinary x402 sites (paid APIs that answer HTTP 402 with x402 and know nothing about Flying Money) from a capped Flying Money budget through a bridge. Use when a paid site wants an x402 payment and you hold no wallet or money of your own."
 ---
 
 # Pay any x402 site through a bridge
