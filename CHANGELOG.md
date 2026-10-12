@@ -2,7 +2,7 @@
 
 All notable changes to Flying Money. The contract has no version: each deployment is immutable; packages follow semver.
 
-## Unreleased
+## 0.1.1 (12 October 2026)
 
 ### Added
 - **Base mainnet deployment** (`0x25C12e1B9106Ef64fA5849b3910ceebBf8cB7EF9`, chain 8453): immutable caps of 1,000 USDC per budget and 10,000 USDC in total. Source verified on Sourcify. Arc mainnet stays at 100 / 1,000.
